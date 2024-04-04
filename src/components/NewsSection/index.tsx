@@ -1,4 +1,4 @@
-import { NewsIcon } from "@app/assets/Icons";
+// import { NewsIcon } from "@app/assets/Icons";
 import styles from "./NewsSection.module.css";
 import NewsEntry from "./NewsEntry";
 import { useNews } from "@app/hooks/useNews";

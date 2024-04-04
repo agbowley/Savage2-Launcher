@@ -17,9 +17,9 @@ function NightlyS2Page() {
             <LaunchPage
                 version={S2Version}
                 releaseTag={releaseData?.tag_name}
-                playName="BETA"
+                playName="BETA TEST CLIENT"
                 description={<>
-                    Savage 2 - BETA
+                    {releaseData?.body}
                 </>}
                 // websiteUrl="https://github.com/agbowley/savage2/releases/tag/nightly"
                 websiteUrl="https://savage2.net"

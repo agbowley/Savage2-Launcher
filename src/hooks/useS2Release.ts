@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Endpoints } from "@octokit/types";
 import { OsType } from "@tauri-apps/api/os";
+import { repositoryBaseURL } from "@app/utils/consts";
 
 export type ReleaseChannels = "stable" | "nightly";
 
@@ -18,7 +19,7 @@ export const useS2Release = (channel: ReleaseChannels) => {
     return useQuery({
         queryKey: ["agbowley", channel],
         queryFn: async (): Promise<ReleaseData> => await fetch(
-            `https://api.github.com/repos/agbowley/${repositoryName[channel]}/releases/latest`)
+            `${repositoryBaseURL}/${repositoryName[channel]}/releases/latest`)
             .then(res => res.json()),
         select: (data): ExtendedReleaseData => ({ ...data, channel: channel })
     });

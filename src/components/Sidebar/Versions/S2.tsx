@@ -27,7 +27,7 @@ const S2Version: React.FC<Props> = ({ channel }: Props) => {
             case "stable":
                 return "Community Edition";
             case "nightly":
-                return "Beta Test";
+                return "Beta Test Client";
         }
     }
 
