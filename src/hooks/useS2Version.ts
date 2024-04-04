@@ -28,7 +28,7 @@ export type S2Version = {
 
 export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profileName: ReleaseChannels): S2Version => {
     // Initialize hooks before returning
-    const { state, setState } = useS2State(releaseData?.tag_name);
+    const { state, setState } = useS2State(`${releaseData?.name}-${releaseData?.id}-${releaseData?.tag_name}`);
     const task = useTask("Savage 2", profileName);
     const payload = usePayload(task?.taskUUID);
 
