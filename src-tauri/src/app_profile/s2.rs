@@ -19,7 +19,7 @@ impl S2AppProfile {
         &self
     ) -> PathBuf {
         let mut path = self.root_folder.join(&self.profile).join(&self.version).join("Savage 2 - A Tortured Soul");
-        println!("get folder\n{:?}", format!("Path: \n{:?}", path));
+        // println!("get folder\n{:?}", format!("Path: \n{:?}", path));
 
         self.root_folder.join(&self.profile).join(&self.version).join("Savage 2 - A Tortured Soul")
     }
@@ -28,7 +28,7 @@ impl S2AppProfile {
         &self
     ) -> Result<PathBuf, String> {
         let mut path = self.get_folder();
-        println!("get exec\n{:?}", format!("Path: \n{:?}", path));
+        // println!("get exec\n{:?}", format!("Path: \n{:?}", path));
 
         // Each OS has a different executable
         path = match std::env::consts::OS.to_string().as_str() {
