@@ -40,7 +40,7 @@ jobs:
           TAURI_KEY_PASSWORD: ${{ inputs.keyPassword }}
         with:
           tagName: v__VERSION__
-          releaseName: 'YARG Launcher v__VERSION__'
+          releaseName: 'Savage 2 Launcher v__VERSION__'
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: true
           prerelease: false
