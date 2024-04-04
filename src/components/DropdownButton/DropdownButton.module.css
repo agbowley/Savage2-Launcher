@@ -22,21 +22,21 @@
     display: flex;
     box-sizing: border-box;
     padding: 10px;
-    height: 100%;
+    height: 3.525em;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     gap: 10px;
     flex-shrink: 0;
 
-    background: var(--sideBar_background);
+    background: var(--dropdown_background);
     border: none;
     cursor: pointer;
 }
 
 .dropdown_content {
     width: 300px;
-    background: var(--sideBar_background);
+    background: var(--dropdown_background);
 
     border-radius: 8px;
     padding: 5px;
@@ -67,9 +67,9 @@
 }
 
 .dropdown_item[data-highlighted] {
-    background: var(--sideBar_selection);
+    background: var(--dropdown_background);
 }
 
 .dropdown_arrow {
-    fill: var(--sideBar_background);
+    fill: var(--dropdown_background);
 }

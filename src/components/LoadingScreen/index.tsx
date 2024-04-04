@@ -58,8 +58,8 @@ const LoadingScreen: React.FC<Props> = (props: Props) => {
         </Progress.Root>
 
         <div className={styles.factContainer}>
-            <p className={styles.factHeader}>Fun Fact</p>
-            YARG stands for Yet Another Rhythm Game
+            {/* <p className={styles.factHeader}>Fun Fact</p> */}
+            Loading...
         </div>
     </div>;
 };

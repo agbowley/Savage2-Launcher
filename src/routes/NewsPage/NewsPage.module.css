@@ -6,7 +6,7 @@
     gap: 50px;
     align-self: stretch;
 
-    background: linear-gradient(8deg, #050609 0%, rgba(8, 10, 14, 0.00) 100%), var(--bannerURL), lightgray;
+    background: linear-gradient(8deg, #050609 0%, rgba(8, 10, 14, 0.00) 100%), var(--bannerURL), rgb(20, 20, 20);
     background-size: cover;
 }
 
@@ -15,12 +15,12 @@
     align-items: center;
     gap: 10px;
 
-    opacity: 0.5;
+    opacity: 0.9;
 
-    color: white;
-    font-size: 10px;
+    color: #ffffff;
+    font-size: 12px;
     font-style: normal;
-    font-weight: 600;
+    font-weight: 700;
     line-height: normal;
     text-transform: uppercase;
 
@@ -47,8 +47,16 @@
     flex-direction: column;
     gap: 5px;
     padding: 25px 50px 50px 50px;
-    color: #333;
-    --primary: #333;
+    color: #ffffff;
+    --primary: #ffffff;
+    min-height: calc(100% - 187px);
+
+    /* background: var(--black-background); */
+    background: var(--malph-bg);
+    background-size: contain;
+    background-attachment: fixed;
+    background-position: top;
+    background-size: 120%;
 }
 
 .content a {

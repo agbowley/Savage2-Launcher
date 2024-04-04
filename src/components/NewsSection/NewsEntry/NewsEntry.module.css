@@ -13,7 +13,7 @@
 }
 
 .container:hover {
-    background: rgba(0, 0, 0, 0.05);
+    background: rgba(255, 255, 255, 0.25);
 }
 
 .main {
@@ -33,7 +33,7 @@
     gap: 5px;
     align-self: stretch;
 
-    color: #222;
+    color: #ffffff;
     font-size: 16px;
     font-style: normal;
     font-weight: 700;
@@ -47,7 +47,7 @@
     gap: 5px;
     align-self: stretch;
 
-    color: #494949;
+    color: #ACACAC;
     font-family: Inter;
     font-size: 12px;
     font-style: normal;

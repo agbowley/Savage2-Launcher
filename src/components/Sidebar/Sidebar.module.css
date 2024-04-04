@@ -18,9 +18,11 @@
 }
 
 .footer > .credits {
-    color: var(--primary-25);
+    /* color: var(--primary-25); */
     font-size: 12px;
     font-weight: 700;
+    text-shadow: 1px 1px 1px black;
+    color: #fff;
 }
 
 .footer > .socials {
@@ -58,7 +60,8 @@
 
 [aria-current="page"] > .button,
 .button:hover {
-    background: rgba(255, 255, 255, 0.025);
+    /* background: rgba(255, 255, 255, 0.025); */
+    background: rgba(255, 255, 255, 0.25);
 }
 
 .button .icon {

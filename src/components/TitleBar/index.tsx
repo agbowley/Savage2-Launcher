@@ -25,7 +25,7 @@ const TitleBar: React.FC = () => {
 
     return <div data-tauri-drag-region className={styles.title_bar}>
         <div className={styles.text}>
-            YARC Launcher
+            Savage 2 Launcher
         </div>
 
         <div className={styles.buttons}>

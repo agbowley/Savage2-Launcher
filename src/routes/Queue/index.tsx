@@ -2,8 +2,8 @@ import styles from "./Queue.module.css";
 import QueueSection from "@app/components/Queue/QueueSection";
 import PayloadProgress from "@app/components/PayloadProgress";
 import * as Progress from "@radix-ui/react-progress";
-import { useEffect, useState } from "react";
-import { InstallingIcon, QueueListIcon } from "@app/assets/Icons";
+import { useState } from "react";
+import { QueueListIcon } from "@app/assets/Icons";
 import QueueStore from "@app/tasks/queue";
 import { usePayload } from "@app/tasks/payload";
 import { useCurrentTask } from "@app/tasks";
@@ -11,20 +11,20 @@ import { useCurrentTask } from "@app/tasks";
 function Queue() {
     // These are for the "You've been staring at this blank page for..."
     const [lastWasEmpty, setLastWasEmpty] = useState(false);
-    const [startTime, setStartTime] = useState(Date.now());
-    const [time, setTime] = useState(Date.now());
+    // const [startTime, setStartTime] = useState(Date.now());
+    // const [time, setTime] = useState(Date.now());
 
     const queue = QueueStore.useQueue();
     const currentTask = useCurrentTask();
     const payload = usePayload(currentTask?.taskUUID);
 
     // Update the timer so the text also updates
-    useEffect(() => {
-        const interval = setInterval(() => setTime(Date.now()), 1000);
-        return () => {
-            clearInterval(interval);
-        };
-    }, []);
+    // useEffect(() => {
+    //     const interval = setInterval(() => setTime(Date.now()), 1000);
+    //     return () => {
+    //         clearInterval(interval);
+    //     };
+    // }, []);
 
     function getProgressValue() {
         if (payload?.state === "downloading") {
@@ -41,7 +41,7 @@ function Queue() {
             }
 
             return <div className={styles.banner}>
-                <span className={styles.downloading_text}>DOWNLOADING</span>
+                {/* <h1 className={styles.downloading_text}>DOWNLOADING</h1> */}
                 {currentTask?.getQueueEntry(true)}
                 <div className={styles.progress_container}>
                     <div className={styles.progress_info}>
@@ -58,20 +58,20 @@ function Queue() {
         } else {
             // Make sure to update the start time when it becomes empty
             if (!lastWasEmpty) {
-                setStartTime(Date.now());
+                // setStartTime(Date.now());
                 setLastWasEmpty(true);
             }
 
-            const seconds = Math.round((time - startTime) / 1000);
+            // const seconds = Math.round((time - startTime) / 1000);
 
             return <div className={styles.empty_banner}>
-                <div className={styles.empty_banner_header}>
-                    <InstallingIcon width={20} height={20} />
-                    HOWDY COWBOY, GO DOWNLOAD SOMETHING
-                </div>
-                <div className={styles.empty_banner_subheader}>
+                <h1 className={styles.empty_banner_header}>
+                    {/* <InstallingIcon width={40} height={40} /> */}
+                    DOWNLOADS
+                </h1>
+                {/* <div className={styles.empty_banner_subheader}>
                     You have been staring at this blank page for <strong>{seconds} seconds</strong>
-                </div>
+                </div> */}
             </div>;
         }
     }

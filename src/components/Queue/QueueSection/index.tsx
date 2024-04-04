@@ -8,7 +8,7 @@ type Props = React.PropsWithChildren<{
 const QueueSection: React.FC<Props> = ({ icon, children, title }: Props) => {
     return <div className={styles.container}>
         <div className={styles.title}>
-            {icon} {title}
+            <div className={styles.icon}>{icon}</div> {title}
         </div>
         <div className={styles.list}>
             {children}

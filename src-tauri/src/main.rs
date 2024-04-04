@@ -5,8 +5,9 @@ mod utils;
 mod app_profile;
 
 use app_profile::AppProfile;
-use app_profile::official_setlist::OfficialSetlistProfile;
-use app_profile::yarg::YARGAppProfile;
+// use app_profile::official_setlist::OfficialSetlistProfile;
+// use app_profile::yarg::YARGAppProfile;
+use app_profile::s2::S2AppProfile;
 use directories::BaseDirs;
 use std::fs::{self, remove_file, File};
 use std::path::PathBuf;
@@ -22,11 +23,10 @@ pub struct Settings {
 }
 
 pub struct InnerState {
-    pub yarc_folder: PathBuf,
+    pub s2_folder: PathBuf,
     pub launcher_folder: PathBuf,
     pub temp_folder: PathBuf,
-    pub yarg_folder: PathBuf,
-    pub setlist_folder: PathBuf,
+    pub savage2_folder: PathBuf,
 
     pub settings: Settings,
 }
@@ -35,10 +35,10 @@ impl InnerState {
     pub fn init(&mut self) -> Result<(), String> {
         let dirs = BaseDirs::new().ok_or("Failed to get directories.")?;
 
-        self.yarc_folder = PathBuf::from(dirs.data_local_dir());
-        self.yarc_folder.push("YARC");
+        self.s2_folder = PathBuf::from(dirs.data_local_dir());
+        self.s2_folder.push("Savage 2");
 
-        self.launcher_folder = PathBuf::from(&self.yarc_folder);
+        self.launcher_folder = PathBuf::from(&self.s2_folder);
         self.launcher_folder.push("Launcher");
 
         self.temp_folder = PathBuf::from(&self.launcher_folder);
@@ -76,17 +76,12 @@ impl InnerState {
     }
 
     fn set_download_locations(&mut self) -> Result<(), String> {
-        self.yarg_folder = PathBuf::from(&self.settings.download_location);
-        self.yarg_folder.push("YARG Installs");
-
-        self.setlist_folder = PathBuf::from(&self.settings.download_location);
-        self.setlist_folder.push("Setlists");
+        self.savage2_folder = PathBuf::from(&self.settings.download_location);
+        // self.savage2_folder.push("Savage 2 - A Tortured Soul");
 
         // Create the directories if they don't exist
-        std::fs::create_dir_all(&self.yarg_folder)
-            .map_err(|e| format!("Failed to create YARG directory.\n{:?}", e))?;
-        std::fs::create_dir_all(&self.setlist_folder)
-            .map_err(|e| format!("Failed to create setlist directory.\n{:?}", e))?;
+        std::fs::create_dir_all(&self.savage2_folder)
+            .map_err(|e| format!("Failed to create Savage 2 directory.\n{:?}", e))?;
 
         Ok(())
     }
@@ -95,7 +90,7 @@ impl InnerState {
         // Create new settings
         self.settings = Default::default();
         self.settings.download_location = self
-            .yarc_folder
+            .s2_folder
             .clone()
             .into_os_string()
             .into_string()
@@ -149,14 +144,8 @@ fn create_app_profile(
     let state_guard = state.0.read().unwrap();
 
     Ok(match app_name.as_str() {
-        "yarg" => Box::new(YARGAppProfile {
-            root_folder: state_guard.yarg_folder.clone(),
-            temp_folder: state_guard.temp_folder.clone(),
-            version,
-            profile
-        }),
-        "official_setlist" => Box::new(OfficialSetlistProfile {
-            root_folder: state_guard.setlist_folder.clone(),
+        "Savage 2" => Box::new(S2AppProfile {
+            root_folder: state_guard.savage2_folder.clone(),
             temp_folder: state_guard.temp_folder.clone(),
             version,
             profile
@@ -306,11 +295,10 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_log::Builder::default().build())
         .manage(State(RwLock::new(InnerState {
-            yarc_folder: PathBuf::new(),
+            s2_folder: PathBuf::new(),
             launcher_folder: PathBuf::new(),
             temp_folder: PathBuf::new(),
-            yarg_folder: PathBuf::new(),
-            setlist_folder: PathBuf::new(),
+            savage2_folder: PathBuf::new(),
             settings: Default::default(),
         })))
         .invoke_handler(tauri::generate_handler![

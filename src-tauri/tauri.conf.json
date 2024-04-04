@@ -7,8 +7,8 @@
     "withGlobalTauri": false
   },
   "package": {
-    "productName": "YARC Launcher",
-    "version": "0.3.1"
+    "productName": "Savage 2 Launcher",
+    "version": "1.0.1"
   },
   "tauri": {
     "allowlist": {
@@ -48,7 +48,7 @@
         "app",
         "updater"
       ],
-      "identifier": "in.yarg.launcher",
+      "identifier": "net.savage2.launcher",
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",
@@ -65,7 +65,7 @@
         "label": "main",
         "fullscreen": false,
         "resizable": true,
-        "title": "YARC Launcher",
+        "title": "Savage 2 Launcher",
         "width": 1250,
         "height": 700,
         "minWidth": 1000,
@@ -76,10 +76,10 @@
     "updater": {
       "active": true,
       "endpoints": [
-        "https://releases.yarg.in/launcher/update.json"
+        "https://gist.github.com/agbowley/989eb06d8e9f796a1be451d0049256c7"
       ],
       "dialog": true,
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDczMjdBMkM2RjYzRkExQ0MKUldUTW9ULzJ4cUluYzJTNG9VUis2azlaejYzcmc1SHRzT1Rtc0RUVWVCNEY2T0V1djlReENMV2gK",
+      "pubkey": "",
       "windows": {
         "installMode": "passive"
       }

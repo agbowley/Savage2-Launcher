@@ -1,1 +1,1 @@
-export const newsBaseURL = "https://raw.githubusercontent.com/YARC-Official/News/master";
+export const newsBaseURL = "https://raw.githubusercontent.com/agbowley/Savage2News/main";

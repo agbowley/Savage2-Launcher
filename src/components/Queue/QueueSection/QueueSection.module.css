@@ -30,3 +30,7 @@
     align-items: flex-start;
     align-self: stretch;
 }
+
+.icon {
+    color: var(--accent);
+}

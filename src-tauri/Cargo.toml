@@ -1,10 +1,10 @@
 [package]
-name = "yet_another_launcher"
-version = "0.3.1"
-description = "The YARC (Yet Another Rhythm Company) launcher."
-authors = ["YARC Team"]
+name = "s2_launcher"
+version = "1.0.1"
+description = "Savage 2 launcher."
+authors = ["Savage 2"]
 license = "YARG License"
-repository = "https://github.com/YARC-Official/YARC-Launcher"
+repository = ""
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

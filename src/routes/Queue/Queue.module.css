@@ -1,40 +1,57 @@
 .main {
     display: flex;
+    min-height: calc(100% - 184px);
     padding: 25px;
     flex-direction: column;
     align-items: flex-start;
     gap: 25px;
     align-self: stretch;
-
+    /* background: var(--black-background); */
+    background: var(--malph-bg);
+    background-size: contain;
+    background-attachment: fixed;
+    background-position: top;
+    background-size: 120%;
     z-index: 1000;
 }
 
 .banner {
     display: flex;
-    height: 215px;
+    height: 184px;
     padding: 25px;
     flex-direction: column;
     align-items: flex-start;
+    justify-content: flex-end;
     gap: 25px;
     align-self: stretch;
 
-    background-image:
+    /* background-image:
         linear-gradient(216deg, #080A0E 0%, rgba(0, 0, 0, 0.00) 100%),
         url("/src/assets/Background.png");
     background-repeat: no-repeat, no-repeat;
-    background-size: contain, cover;
+    background-size: contain, cover; */
+    background: linear-gradient(8deg, #050609 0%, rgba(8, 10, 14, 0.00) 100%), url("/src/assets/Background.png"), rgb(20, 20, 20);
+    background-size: cover;
+    background-position: center;
 }
 
 .empty_banner {
     display: flex;
-    height: 215px;
+    height: 184px;
     padding: 25px;
     flex-direction: column;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
+    justify-content: flex-end;
     gap: 20px;
     align-self: stretch;
-    background: #080A0E;
+    /* background: #080A0E; */
+    /* background: url("/src/assets/Background.png");
+    background-size: cover;
+    background-position: center; */
+    background: linear-gradient(8deg, #050609 0%, rgba(8, 10, 14, 0.00) 100%), url("/src/assets/Background.png"), rgb(20, 20, 20);
+    background-size: cover;
+    background-position: center;
     color: white;
 }
 
@@ -43,7 +60,8 @@
     justify-content: center;
     align-items: center;
     gap: 10px;
-    opacity: 0.75;
+    opacity: 1;
+    margin: 0;
 }
 
 .empty_banner_subheader {
@@ -62,7 +80,10 @@
     gap: 10px;
     align-self: stretch;
 
-    color: rgba(0, 0, 0, 0.50);
+    /* color: rgba(0, 0, 0, 0.50); */
+    color: #fff;
+    /* background: #000000AA; */
+    background: #FFFFFF33;
     font-size: 12px;
     font-style: normal;
     font-weight: 400;
@@ -70,10 +91,10 @@
 }
 
 .downloading_text {
-    color: #2ED9FF;
-    font-size: 12px;
+    color: #ffffff;
+    /* font-size: 12px; */
     font-style: normal;
-    font-weight: 600;
+    /* font-weight: 600; */
     line-height: normal;
     text-transform: uppercase;
 }
@@ -92,7 +113,7 @@
     align-items: center;
     align-self: stretch;
 
-    color: #2ED9FF;
+    color: #ffce2e;
     font-size: 12px;
     font-style: normal;
     font-weight: 600;

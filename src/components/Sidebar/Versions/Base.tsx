@@ -13,6 +13,7 @@ interface Props {
     versionChannel?: string;
     version?: string;
     updateAvailable?: boolean;
+    created_at?: string;
 }
 
 const styleType = {

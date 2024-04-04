@@ -1,8 +1,9 @@
 use tauri::AppHandle;
 use async_trait::async_trait;
 
-pub mod yarg;
-pub mod official_setlist;
+// pub mod yarg;
+// pub mod official_setlist;
+pub mod s2;
 
 pub const YARG_PUB_KEY: &str = "untrusted comment: minisign public key C26EBBBEC4C1DB81
 RWSB28HEvrtuwvPn3pweVBodgVi/d+UH22xDsL3K8VBgeRqaIrDdTvps

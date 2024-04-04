@@ -10,7 +10,8 @@
     flex: 1 0 0;
     align-self: stretch;
 
-    background: var(--sideBar_background);
+    /* background: var(--sideBar_background); */
+    background-image: url("../../assets/Background.png");
 
     color: #FFF;
     font-size: 16px;

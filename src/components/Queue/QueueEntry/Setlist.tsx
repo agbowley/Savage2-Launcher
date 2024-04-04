@@ -9,7 +9,7 @@ interface Props {
 
 const SetlistQueue: React.FC<Props> = ({ setlistTask, bannerMode }: Props) => {
     return <BaseQueue
-        name="YARG Setlist"
+        name="S2 Setlist"
         icon={<img src={SetlistIcon} />}
         versionChannel={setlistTask.version}
         bannerMode={bannerMode}

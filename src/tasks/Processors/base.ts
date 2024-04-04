@@ -1,6 +1,6 @@
 import { v4 as generateUUID } from "uuid";
 
-export type TaskTag = "yarg" | "setlist";
+export type TaskTag = "Savage 2" | "setlist";
 
 export interface IBaseTask {
     startedAt?: Date,

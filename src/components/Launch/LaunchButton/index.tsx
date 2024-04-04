@@ -1,4 +1,4 @@
-import { YARGStates, YARGVersion } from "@app/hooks/useYARGVersion";
+import { S2States, S2Version } from "@app/hooks/useS2Version";
 import { ButtonColor } from "../../Button";
 import { InstallingIcon, UpdateIcon } from "@app/assets/Icons";
 import { calculatePayloadPercentage } from "@app/tasks/payload";
@@ -7,7 +7,7 @@ import Button from "@app/components/Button";
 import { DropdownButton, DropdownItem } from "@app/components/DropdownButton";
 
 interface LaunchButtonProps extends React.PropsWithChildren {
-    version: YARGVersion,
+    version: S2Version,
     playName: string,
     style?: React.CSSProperties
 }
@@ -15,21 +15,21 @@ interface LaunchButtonProps extends React.PropsWithChildren {
 export function LaunchButton(props: LaunchButtonProps) {
     const { version, playName } = props;
 
-    if (version.state === YARGStates.NEW_UPDATE) {
+    if (version.state === S2States.NEW_UPDATE) {
         const buttonChildren = <>
-            <UpdateIcon /> Update {playName}
+            <UpdateIcon /> Install {playName}
         </>;
 
         return <Button
             style={props.style}
-            color={ButtonColor.GREEN}
+            color={ButtonColor.BLUE}
             onClick={() => version.download()}>
 
             {buttonChildren}
         </Button>;
     }
 
-    if (version.state === YARGStates.DOWNLOADING) {
+    if (version.state === S2States.DOWNLOADING) {
         const buttonChildren = <>
             <InstallingIcon />
             <PayloadProgress payload={version.payload} />
@@ -44,7 +44,7 @@ export function LaunchButton(props: LaunchButtonProps) {
         </Button>;
     }
 
-    if (version.state === YARGStates.AVAILABLE) {
+    if (version.state === S2States.AVAILABLE) {
         const buttonChildren = <>
             Play {playName}
         </>;
@@ -60,7 +60,7 @@ export function LaunchButton(props: LaunchButtonProps) {
 
         return <DropdownButton
             style={props.style}
-            color={ButtonColor.BLUE}
+            color={ButtonColor.GREEN}
             onClick={() => version.play()}
             dropdownChildren={dropdownChildren}>
 
@@ -68,9 +68,9 @@ export function LaunchButton(props: LaunchButtonProps) {
         </DropdownButton>;
     }
 
-    if (version.state === YARGStates.PLAYING) {
+    if (version.state === S2States.PLAYING) {
         const buttonChildren = <>
-            Opening YARG {playName}
+            Opening S2 {playName}
         </>;
 
         return <Button
@@ -81,7 +81,7 @@ export function LaunchButton(props: LaunchButtonProps) {
         </Button>;
     }
 
-    if (version.state === YARGStates.ERROR) {
+    if (version.state === S2States.ERROR) {
         const buttonChildren = <>
             Error!
         </>;

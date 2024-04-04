@@ -12,6 +12,7 @@ import CloseIcon from "./Close.svg?react";
 import DateIcon from "./Date.svg?react";
 import DiscordIcon from "./Discord.svg?react";
 import GithubIcon from "./Github.svg?react";
+import GitlabIcon from "./Gitlab.svg?react";
 import HomeIcon from "./Home.svg?react";
 import InformationIcon from "./Information.svg?react";
 import InstallingIcon from "./Installing.svg?react";
@@ -41,6 +42,7 @@ export {
     DateIcon,
     DiscordIcon,
     GithubIcon,
+    GitlabIcon,
     HomeIcon,
     InformationIcon,
     InstallingIcon,

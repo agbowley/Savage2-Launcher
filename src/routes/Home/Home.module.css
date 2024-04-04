@@ -1,17 +1,24 @@
 .banner {
     display: flex;
     justify-content: center;
-    align-items: center;
     flex-direction: column;
-
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding: 25px;
     background-color: #080A0E;
-    height: 250px;
+    /* background: url("/src/assets/Background.png");
+    background-size: cover; */
+    background: linear-gradient(8deg, #050609 0%, rgba(8, 10, 14, 0.00) 100%), url("/src/assets/Background.png"), rgb(20, 20, 20);
+    background-size: cover;
+    background-position: center;
+    height: 184px;
 
     color: white;
 }
 
 .banner > h1 {
     font-weight: 300;
+    margin: 0;
 }
 
 .blue {
@@ -24,9 +31,14 @@
     align-items: flex-start;
     gap: 25px;
     align-self: stretch;
-    min-height: calc(100% - 250px);
+    min-height: calc(100% - 184px);
 
-    background: var(--white-background);
+    /* background: var(--black-background); */
+    background: var(--malph-bg);
+    background-size: contain;
+    background-attachment: fixed;
+    background-position: top;
+    background-size: 120%;
 }
 
 .content_inner {
@@ -68,9 +80,9 @@
     background-size: auto, 114% 290.613%;
     background-repeat: no-repeat, no-repeat; */
 
-    background-image: linear-gradient(90deg, #4458D1 40%, rgba(17, 52, 132, 0.00) 75%), url(/src/assets/Background.png);
-    background-position: 0, 115.562px -55.512px;
-    background-size: auto, 114% 290.613%;
+    background-image: linear-gradient(90deg, #4458D1 40%, rgba(17, 52, 132, 0.00) 75%), url(/src/assets/Background-Savage.png);
+    background-position: 0, 115.562px -20.512px;
+    background-size: auto, 100% 270.613%;
     background-repeat: no-repeat, no-repeat;
 }
 

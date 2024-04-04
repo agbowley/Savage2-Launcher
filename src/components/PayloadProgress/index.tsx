@@ -1,4 +1,6 @@
 import { TaskPayload } from "@app/tasks/payload";
+import { ClipLoader } from "react-spinners";
+import styles from "./progress.module.css";
 
 interface Props {
     payload?: TaskPayload;
@@ -34,6 +36,9 @@ interface ProgressDownloadingProps {
 
 const ProgressDownloading: React.FC<ProgressDownloadingProps> = ({ payload, fullMode }: ProgressDownloadingProps) => {
     return <span>
+        {fullMode &&
+        <ClipLoader size={12} color={"#2ED9FF"} className={styles.spinner} />
+        }
         {fullMode &&
             "Downloading "
         }

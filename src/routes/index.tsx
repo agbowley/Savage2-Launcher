@@ -3,9 +3,9 @@ import { createBrowserRouter } from "react-router-dom";
 import RootLayout from "@app/routes/root";
 import Home from "@app/routes/Home";
 import Settings from "@app/routes/Settings";
-import StableYARGPage from "./YARG/Stable";
-import NightlyYARGPage from "./YARG/Nightly";
-import OfficialSetlistPage from "./Setlist/Official";
+import StableS2Page from "./S2/Stable";
+import NightlyS2Page from "./S2/Nightly";
+// import OfficialSetlistPage from "./Setlist/Official";
 import Queue from "@app/routes/Queue";
 import NewsPage from "./NewsPage";
 
@@ -30,19 +30,19 @@ const Router = createBrowserRouter([
             },
 
             {
-                path: "/yarg/stable",
-                element: <StableYARGPage />
+                path: "/s2/stable",
+                element: <StableS2Page />
             },
 
             {
-                path: "/yarg/nightly",
-                element: <NightlyYARGPage />
+                path: "/s2/nightly",
+                element: <NightlyS2Page />
             },
 
-            {
-                path: "/setlist/official",
-                element: <OfficialSetlistPage />
-            },
+            // {
+            //     path: "/setlist/official",
+            //     element: <OfficialSetlistPage />
+            // },
 
             {
                 path: "/news/:md",
