@@ -70,7 +70,7 @@ export function LaunchButton(props: LaunchButtonProps) {
 
     if (version.state === S2States.PLAYING) {
         const buttonChildren = <>
-            Opening S2 {playName}
+            Opening Savage 2
         </>;
 
         return <Button
