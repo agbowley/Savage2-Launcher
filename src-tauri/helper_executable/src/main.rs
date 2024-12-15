@@ -26,7 +26,6 @@ fn main() {
         eprintln!("Usage: helper_executable <path_to_game_executable>");
         return;
     }
-
     let game_path: &String = &args[1];
     let game_path_cstr: CString = match CString::new(game_path.as_str()) {
         Ok(cstr) => cstr,
