@@ -5,6 +5,7 @@ import Home from "@app/routes/Home";
 import Settings from "@app/routes/Settings";
 import StableS2Page from "./S2/Stable";
 import NightlyS2Page from "./S2/Nightly";
+import LegacyS2Page from "./S2/Legacy";
 // import OfficialSetlistPage from "./Setlist/Official";
 import Queue from "@app/routes/Queue";
 import NewsPage from "./NewsPage";
@@ -29,14 +30,19 @@ const Router = createBrowserRouter([
                 element: <Queue />
             },
 
-            {
-                path: "/s2/stable",
-                element: <StableS2Page />
-            },
+            // {
+            //     path: "/s2/stable",
+            //     element: <StableS2Page />
+            // },
+
+            // {
+            //     path: "/s2/nightly",
+            //     element: <NightlyS2Page />
+            // },
 
             {
-                path: "/s2/nightly",
-                element: <NightlyS2Page />
+                path: "/s2/legacy",
+                element: <LegacyS2Page />
             },
 
             // {

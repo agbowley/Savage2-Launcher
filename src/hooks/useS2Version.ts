@@ -27,7 +27,6 @@ export type S2Version = {
 }
 
 export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profileName: ReleaseChannels): S2Version => {
-    // Initialize hooks before returning
     const { state, setState } = useS2State(`${releaseData?.name}-${releaseData?.id}-${releaseData?.tag_name}`);
     const task = useTask("Savage 2", profileName);
     const payload = usePayload(task?.taskUUID);
@@ -46,7 +45,6 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         })();
     }, [releaseData]);
 
-    // If we don't have a release data yet, return a dummy loading version;
     if (!releaseData) {
         return {
             state,
@@ -71,13 +69,11 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
 
             setState(S2States.PLAYING);
 
-            // As we don't have a way to check if the S2 game process is closed, we set a timer to avoid locking the state to PLAYING
             setTimeout(() => {
                 setState(S2States.AVAILABLE);
             }, 10 * 1000);
         } catch (e) {
             setState(S2States.ERROR);
-
             showErrorDialog(e as string);
             console.error(e);
         }
@@ -86,9 +82,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
     const download = async () => {
         if (!releaseData || state === S2States.DOWNLOADING) return;
 
-        // Ask for a download location (if required)
         if (!await showInstallFolderDialog()) {
-            // Skip if the dialog is closed or it errors
             return;
         }
 
@@ -111,7 +105,6 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
             addTask(downloader);
         } catch (e) {
             setState(S2States.ERROR);
-
             showErrorDialog(e as string);
             console.error(e);
         }
@@ -120,7 +113,6 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
     const uninstall = async () => {
         if (!releaseData || state === S2States.DOWNLOADING) return;
 
-        // You can't uninstall if the launcher is not initialized
         if (!await invoke("is_initialized")) return;
 
         setState(S2States.DOWNLOADING);
@@ -136,7 +128,6 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
             addTask(downloader);
         } catch (e) {
             setState(S2States.ERROR);
-
             showErrorDialog(e as string);
             console.error(e);
         }
@@ -144,6 +135,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
 
     const revealFolder = async () => {
         if (!releaseData) return;
+        console.log(releaseData.tag_name, profileName);
 
         try {
             await invoke("reveal_folder", {

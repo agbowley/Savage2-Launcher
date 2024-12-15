@@ -2,6 +2,7 @@ import { S2Task } from "@app/tasks/Processors/S2";
 import BaseQueue from "./base";
 import StableS2Icon from "@app/assets/s2icon-stable.png";
 import NightlyS2Icon from "@app/assets/s2icon-nightly.png";
+import LegacyS2Icon from "@app/assets/s2icon-legacy.png";
 import { ReleaseChannels } from "@app/hooks/useS2Release";
 
 interface Props {
@@ -12,7 +13,8 @@ interface Props {
 const S2Queue: React.FC<Props> = ({ s2Task, bannerMode }: Props) => {
     const channelIconPath: { [key in ReleaseChannels]: string } = {
         "stable": StableS2Icon,
-        "nightly": NightlyS2Icon
+        "nightly": NightlyS2Icon,
+        "legacy": LegacyS2Icon
     };
 
     function getChannelDisplayName() {
@@ -20,7 +22,9 @@ const S2Queue: React.FC<Props> = ({ s2Task, bannerMode }: Props) => {
             case "stable":
                 return "Community Edition";
             case "nightly":
-                return "Beta Test";
+                return "Beta Test Client";
+            case "legacy":
+                return "Legacy Client";
         }
     }
 

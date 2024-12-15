@@ -3,14 +3,15 @@ import { S2States, useS2Version } from "@app/hooks/useS2Version";
 import BaseVersion from "./Base";
 import NightlyS2Icon from "@app/assets/s2icon-nightly.png";
 import StableS2Icon from "@app/assets/s2icon-stable.png";
+import LegacyS2Icon from "@app/assets/s2icon-legacy.png";
 import { NavLink } from "react-router-dom";
 
 interface Props {
-    channel: ReleaseChannels
+    channel: ReleaseChannels;
 }
 
 const S2Version: React.FC<Props> = ({ channel }: Props) => {
-    const {data: releaseData} = useS2Release(channel);
+    const { data: releaseData } = useS2Release(channel);
     const { state } = useS2Version(releaseData, channel);
 
     function getChannelIcon() {
@@ -19,6 +20,8 @@ const S2Version: React.FC<Props> = ({ channel }: Props) => {
                 return StableS2Icon;
             case "nightly":
                 return NightlyS2Icon;
+            case "legacy":
+                return LegacyS2Icon;
         }
     }
 
@@ -28,6 +31,8 @@ const S2Version: React.FC<Props> = ({ channel }: Props) => {
                 return "Community Edition";
             case "nightly":
                 return "Beta Test Client";
+            case "legacy":
+                return "Savage 2";
         }
     }
 

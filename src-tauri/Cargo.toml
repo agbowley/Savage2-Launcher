@@ -1,9 +1,10 @@
+workspace = { members = ["helper_executable"] }
 [package]
 name = "s2_launcher"
 version = "1.0.1"
 description = "Savage 2 launcher"
 authors = ["Savage 2"]
-license = "YARG License"
+license = ""
 repository = ""
 edition = "2021"
 
@@ -40,6 +41,7 @@ window-shadows = "0.2.1"
 minisign = "0.7.5"
 opener = { version = "0.6.1", features = ["reveal"] }
 async-trait = "0.1.74"
+winapi = { version = "0.3", features = ["winbase", "processthreadsapi"] }
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem

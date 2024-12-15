@@ -9,6 +9,7 @@ use app_profile::AppProfile;
 // use app_profile::yarg::YARGAppProfile;
 use app_profile::s2::S2AppProfile;
 use directories::BaseDirs;
+use std::env;
 use std::fs::{self, remove_file, File};
 use std::path::PathBuf;
 use std::sync::RwLock;
@@ -154,7 +155,7 @@ fn create_app_profile(
     })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 async fn download_and_install(
     state: tauri::State<'_, State>,
     app_handle: AppHandle,
@@ -164,6 +165,10 @@ async fn download_and_install(
     zip_urls: Vec<String>,
     sig_urls: Vec<String>
 ) -> Result<(), String> {
+
+    let state_guard = state.0.read();
+    let savage2_folder = state_guard.unwrap().savage2_folder.clone();
+
     let app_profile = create_app_profile(
         app_name,
         &state,

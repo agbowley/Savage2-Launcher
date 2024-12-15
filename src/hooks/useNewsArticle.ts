@@ -15,7 +15,7 @@ export const useNewsArticle = (md: string) => {
         queryKey: ["NewsArticle", md],
         gcTime: 60 * 60 * 1000,
         queryFn: async () => await fetch(
-            `${newsBaseURL}/articles/${md}.md`)
+            `${newsBaseURL}/content/${md}`)
             .then(res => res.text())
     });
 };

@@ -10,8 +10,9 @@ const VersionsList: React.FC = () => {
             <VersionSeparator name="Applications">
                 {/* <AddIcon className={styles.add} /> */}
             </VersionSeparator>
-            <S2Version channel="stable" />
-            <S2Version channel="nightly" />
+            {/* <S2Version channel="stable" />
+            <S2Version channel="nightly" /> */}
+            <S2Version channel="legacy" />
             {/* <VersionSeparator name="Songs">
             <AddIcon className={styles.add} />
         </VersionSeparator>

@@ -19,7 +19,7 @@ function StableS2Page() {
                 releaseTag={releaseData?.tag_name}
                 playName="Community Edition"
                 description={<>
-                    {releaseData?.body}
+                    {releaseData?.description}
                 </>}
                 // websiteUrl="https://github.com/agbowley/savage2/releases/tag/stable"
                 websiteUrl="https://savage2.net"

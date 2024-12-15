@@ -9,6 +9,15 @@ import { intlFormatDistance } from "date-fns";
 import { newsBaseURL } from "@app/utils/consts";
 import { useNewsAuthorSettings } from "@app/hooks/useNewsAuthor";
 import { useQueries } from "@tanstack/react-query";
+import bookThumbnail from "@app/assets/Thumbs/book.webp";
+const thumbnails: Record<string, string> = {
+    "book.webp": bookThumbnail
+};
+
+import adminAvatar from "@app/assets/Avatars/Admin.webp";
+const avatars: Record<string, string> = {
+    "Admin.webp": adminAvatar
+};
 
 interface Props {
     article: ArticleData;
@@ -22,7 +31,8 @@ const NewsEntry: React.FC<Props> = ({ article }: Props) => {
 
     return <Link to={`/news/${article.md}`} key={article.md} style={{ width: "100%" }}>
         <div className={styles.container}>
-            <img className={styles.thumbnail} src={`${newsBaseURL}/images/thumbs/${article.thumb}`} />
+            {/* <img className={styles.thumbnail} src={`${newsBaseURL}/images/thumbs/${article.thumb}`} /> */}
+            <img className={styles.thumbnail} src={thumbnails[article.thumb]} />
             <div className={styles.main}>
                 <div className={styles.top_container}>
                     <div className={styles.top}>
@@ -46,7 +56,8 @@ const NewsEntry: React.FC<Props> = ({ article }: Props) => {
                                 key={`${data?.avatar}`}
                                 height={24}
                                 alt={`${data?.displayName}'s avatar`}
-                                src={[`${newsBaseURL}/images/avatars/${data?.avatar}`, UnknownUserIcon]}
+                                // src={[`${newsBaseURL}/images/avatars/${data?.avatar}`, UnknownUserIcon]}
+                                src={[avatars[data?.avatar || ""], UnknownUserIcon]}
                                 style={{ borderRadius: "50%" }}
                             />))
                     }

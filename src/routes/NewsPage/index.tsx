@@ -14,6 +14,10 @@ import { useNewsAuthorSettings } from "@app/hooks/useNewsAuthor";
 import NewsAuthor from "@app/components/NewsSection/NewsAuthor";
 import urlParser from "js-video-url-parser/lib/base";
 import "js-video-url-parser/lib/provider/youtube";
+import hellBanner from "../../assets/Banner/hell_banner.webp";
+const banners: Record<string, string> = {
+    "hell_banner.webp": hellBanner
+};
 
 function NewsPage() {
     const { md } = useParams();
@@ -34,8 +38,11 @@ function NewsPage() {
 
     if (error) return `An error has occurred: ${error}`;
 
+    const bannerURL = articleData?.banner ? banners[articleData.banner] : "";
+
     return <>
-        <div className={styles.header} style={{ "--bannerURL": `url(${newsBaseURL}/images/banners/${articleData?.banner})` } as CSSProperties}>
+        {/* <div className={styles.header} style={{ "--bannerURL": `url(assets/Banner/${articleData?.banner})` } as CSSProperties}> */}
+        <div className={styles.header} style={{ "--bannerURL": `url(${bannerURL})` } as CSSProperties}>
             <div onClick={() => navigate(-1)} className={styles.header_back}>
                 <BackIcon />
                     RETURN

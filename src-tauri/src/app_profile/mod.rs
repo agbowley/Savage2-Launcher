@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use tauri::AppHandle;
 use async_trait::async_trait;
 
@@ -5,9 +7,7 @@ use async_trait::async_trait;
 // pub mod official_setlist;
 pub mod s2;
 
-pub const YARG_PUB_KEY: &str = "untrusted comment: minisign public key C26EBBBEC4C1DB81
-RWSB28HEvrtuwvPn3pweVBodgVi/d+UH22xDsL3K8VBgeRqaIrDdTvps
-";
+pub const PUB_KEY: &str = "";
 
 #[derive(Clone, serde::Serialize)]
 pub struct ProgressPayload {
@@ -25,7 +25,7 @@ pub trait AppProfile {
         sig_urls: Vec<String>
     ) -> Result<(), String>;
 
-    fn install(
+    async fn install(
         &self
     ) -> Result<(), String>;
 
@@ -36,6 +36,14 @@ pub trait AppProfile {
     fn exists(
         &self
     ) -> bool;
+
+    fn is_dotnetfx_installed(&self) -> bool;
+
+    fn is_vcredist_installed(&self) -> bool;
+
+    fn is_directx_installed(&self) -> bool;
+
+    fn log_message(&self, message: &str);
 
     fn launch(
         &self

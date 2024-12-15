@@ -19,7 +19,7 @@ export const useNews = () => {
     return useQuery({
         queryKey: ["NewsIndex"],
         queryFn: async (): Promise<NewsData> => await fetch(
-            `${newsBaseURL}/index.json`)
+            `${newsBaseURL}`)
             .then(res => res.json())
     });
 };

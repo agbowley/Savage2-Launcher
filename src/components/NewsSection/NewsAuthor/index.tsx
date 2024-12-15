@@ -3,6 +3,10 @@ import UnknownUserIcon from "@app/assets/Icons/UnknownUser.svg";
 import { AuthorData } from "@app/hooks/useNewsAuthor";
 import { newsBaseURL } from "@app/utils/consts";
 import { Img } from "react-image";
+import adminAvatar from "@app/assets/Avatars/Admin.webp";
+const avatars: Record<string, string> = {
+    "Admin.webp": adminAvatar
+};
 
 interface Props {
     author: AuthorData
@@ -13,8 +17,9 @@ const NewsAuthor: React.FC<Props> = ({author}: Props) => {
         <div className={styles.avatar}>
             <Img
                 height={48}
-                alt={`${author.displayName}'s avatar`}
-                src={[`${newsBaseURL}/images/avatars/${author.avatar}`, UnknownUserIcon]}
+                alt={`${author.displayName}'s avatar ${author.avatar}`}
+                // src={[`${newsBaseURL}/images/avatars/${author.avatar}`, UnknownUserIcon]}
+                src={[`${avatars[author.avatar || ""]}`, UnknownUserIcon]}
             />
         </div>
         <div className={styles.authorInformation}>
