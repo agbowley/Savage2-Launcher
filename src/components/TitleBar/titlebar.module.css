@@ -2,7 +2,7 @@
     background: var(--titleBar_background);
     color: var(--titleBar_primary);
     user-select: none;
-    cursor: grab;
+    cursor: default;
 
     height: 30px;
     position: fixed;
