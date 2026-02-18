@@ -21,8 +21,7 @@ function LegacyS2Page() {
                 description={<>
                     {releaseData?.description}
                 </>}
-                // websiteUrl="https://savage2.net"
-                websiteUrl="http://localhost:5000"
+                websiteUrl="https://savage2.net"
                 icon={LegacyS2Icon}
                 banner={LegacyS2Banner}
                 created_at={releaseData?.created_at}

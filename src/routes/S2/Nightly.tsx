@@ -21,7 +21,7 @@ function NightlyS2Page() {
                 description={<>
                     {releaseData?.description}
                 </>}
-                // websiteUrl="https://github.com/agbowley/savage2/releases/tag/nightly"
+                // websiteUrl="https://savage2.net"
                 websiteUrl="https://savage2.net"
                 icon={NightlyS2Icon}
                 banner={NightlyS2Banner}

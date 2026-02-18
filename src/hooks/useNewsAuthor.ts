@@ -1,9 +1,4 @@
-import { newsBaseURL } from "@app/utils/consts";
 import { useQuery } from "@tanstack/react-query";
-import adminData from "../assets/Authors/Admin.json";
-const authors: Record<string, AuthorData> = {
-    "Admin": adminData as AuthorData
-};
 
 export interface AuthorData {
     displayName: string,
@@ -11,23 +6,17 @@ export interface AuthorData {
     role?: string,
 }
 
-export const useNewsAuthorSettings = (authorId: string) => { 
-    // const authorData: AuthorData = adminData as AuthorData;
-
+export const useNewsAuthorSettings = (authorName: string) => {
     return {
-        queryKey: ["NewsAuthor", authorId],
+        queryKey: ["NewsAuthor", authorName],
         queryFn: async (): Promise<AuthorData> => {
-            return authors[authorId];
+            return {
+                displayName: authorName,
+            };
         }
     };
-    // return {
-    //     queryKey: ["NewsAuthor", authorId],
-    //     queryFn: async (): Promise<AuthorData> => await fetch(
-    //         `${newsBaseURL}/authors/${authorId}.json`)
-    //         .then(res => res.json())
-    // };
 };
 
-export const useNewsAuthor = (authorId: string) => {
-    return useQuery(useNewsAuthorSettings(authorId));
+export const useNewsAuthor = (authorName: string) => {
+    return useQuery(useNewsAuthorSettings(authorName));
 };

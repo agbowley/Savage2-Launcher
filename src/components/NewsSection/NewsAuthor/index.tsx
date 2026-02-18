@@ -1,7 +1,6 @@
 import styles from "./NewsAuthor.module.css";
 import UnknownUserIcon from "@app/assets/Icons/UnknownUser.svg";
 import { AuthorData } from "@app/hooks/useNewsAuthor";
-import { newsBaseURL } from "@app/utils/consts";
 import { Img } from "react-image";
 import adminAvatar from "@app/assets/Avatars/Admin.webp";
 const avatars: Record<string, string> = {

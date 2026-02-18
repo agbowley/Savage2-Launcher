@@ -1,8 +1,7 @@
 use async_trait::async_trait;
 use minisign::{PublicKeyBox, SignatureBox};
 use tauri::Manager;
-use std::{env, fs::{remove_file, File}, path::{self, Path, PathBuf}, process::Command, string};
-use std::io::ErrorKind;
+use std::{env, fs::{self, remove_file, File}, path::{Path, PathBuf}, process::Command};
 
 use crate::utils::*;
 
@@ -48,6 +47,47 @@ impl S2AppProfile {
         Ok(path)
     }
 
+    /// Path to the version marker file for this profile
+    fn get_version_file_path(&self) -> PathBuf {
+        self.root_folder.join(&self.profile).join("installed_version.txt")
+    }
+
+    /// Run an NSIS installer silently with /S flag and install to the game folder.
+    /// The NSIS /D= flag sets the install directory (must be last argument, no quotes).
+    async fn run_nsis_installer(&self, app: &tauri::AppHandle, installer_path: &Path) -> Result<(), String> {
+        let install_dir = self.get_folder();
+        let installer_str = installer_path.to_str().ok_or("Invalid installer path")?;
+        let install_dir_str = install_dir.to_str().ok_or("Invalid install directory path")?;
+
+        // Emit installing state
+        let _ = app.emit_all(
+            "progress_info",
+            ProgressPayload {
+                state: "installing".to_string(),
+                current: 0,
+                total: 0,
+            },
+        );
+
+        // NSIS silent install: /S for silent, /D= to set install directory
+        // /D= must be the last parameter and must NOT be wrapped in quotes
+        let script = format!(
+            "Start-Process -FilePath '{}' -ArgumentList '/S /D={}' -Verb runAs -Wait",
+            installer_str, install_dir_str
+        );
+
+        let status = Command::new("powershell")
+            .args(&["-Command", &script])
+            .status()
+            .map_err(|e| format!("Failed to start NSIS installer: {}", e))?;
+
+        if !status.success() {
+            return Err("NSIS installer failed or was cancelled by the user.".into());
+        }
+
+        Ok(())
+    }
+
     async fn run_installer_with_elevation(&self, installer_path: &Path) -> Result<(), String> {
         let installer_str = installer_path.to_str().ok_or("Invalid path")?;
     
@@ -79,7 +119,7 @@ impl AppProfile for S2AppProfile {
     ) -> Result<(), String> {
         let mut folder = self.root_folder.join(&self.profile);
 
-        let zip_url = zip_urls.first().ok_or("Did not get any zip URLs.")?;
+        let zip_url = zip_urls.first().ok_or("Did not get any download URLs.")?;
         let sig_url = sig_urls.first();
 
         // Delete the old installation
@@ -88,59 +128,81 @@ impl AppProfile for S2AppProfile {
         // Move into the version's folder
         folder = folder.join(&self.version);
 
-        // Keep original game folder structure - /Savage 2 - A Tortured Soul/
-        folder = folder.join("Savage 2 - A Tortured Soul");
+        // Check if this is an .exe installer (NSIS) or a zip/tar.gz
+        let is_nsis_installer = zip_url.ends_with(".exe");
 
-        // Download the zip
-        let zip_path = &self.temp_folder.join("update.zip");
-        download(Some(app), &zip_url, &zip_path).await?;
+        if is_nsis_installer {
+            // === NSIS Installer Flow (Windows) ===
+            // Download the NSIS installer to temp
+            let installer_path = &self.temp_folder.join("Savage2CEInstall.exe");
+            download(Some(app), &zip_url, &installer_path).await?;
 
-        // Verify (if signature is provided)
-        if let Some(sig_url) = sig_url {
-            // Emit the verification
+            // Create the target directory for NSIS /D= flag
+            let install_dir = self.get_folder();
+            std::fs::create_dir_all(&install_dir)
+                .map_err(|e| format!("Failed to create install directory.\n{:?}", e))?;
+
+            // Run NSIS installer silently
+            self.run_nsis_installer(app, installer_path).await?;
+
+            // Clean up installer
+            let _ = remove_file(installer_path);
+
+            // Save the installed version
+            self.save_installed_version(&self.version)?;
+        } else {
+            // === Zip/Tar.gz Flow (Linux/macOS) ===
+            // Keep original game folder structure - /Savage 2 - A Tortured Soul/
+            folder = folder.join("Savage 2 - A Tortured Soul");
+
+            // Download the archive
+            let zip_path = &self.temp_folder.join("update.zip");
+            download(Some(app), &zip_url, &zip_path).await?;
+
+            // Verify (if signature is provided)
+            if let Some(sig_url) = sig_url {
+                let _ = app.emit_all(
+                    "progress_info",
+                    ProgressPayload {
+                        state: "verifying".to_string(),
+                        current: 0,
+                        total: 0,
+                    },
+                );
+
+                let sig_path = &self.temp_folder.join("update.sig");
+                download(None, &sig_url, &sig_path).await?;
+
+                let pk_box = PublicKeyBox::from_string(PUB_KEY).unwrap();
+                let pk = pk_box.into_public_key().unwrap();
+
+                let sig_box = SignatureBox::from_file(sig_path)
+                    .map_err(|e| format!("Invalid signature file! Try reinstalling.\n{:?}", e))?;
+
+                let zip_file = File::open(zip_path)
+                    .map_err(|e| format!("Failed to open archive while verifying.\n{:?}", e))?;
+                minisign::verify(&pk, &sig_box, zip_file, true, false, false)
+                    .map_err(|_| "Failed to verify downloaded file! Try reinstalling.")?;
+            }
+
             let _ = app.emit_all(
                 "progress_info",
                 ProgressPayload {
-                    state: "verifying".to_string(),
+                    state: "installing".to_string(),
                     current: 0,
                     total: 0,
                 },
             );
 
-            // Download sig file (don't pass app so it doesn't emit an update)
-            let sig_path = &self.temp_folder.join("update.sig");
-            download(None, &sig_url, &sig_path).await?;
+            extract(&zip_path, &folder)?;
 
-            // Convert public key
-            let pk_box = PublicKeyBox::from_string(PUB_KEY).unwrap();
-            let pk = pk_box.into_public_key().unwrap();
+            let _ = remove_file(&zip_path);
 
-            // Create the signature box
-            let sig_box = SignatureBox::from_file(sig_path)
-                .map_err(|e| format!("Invalid signature file! Try reinstalling. If it keeps failing, let us know ASAP!\n{:?}", e))?;
+            // Save the installed version
+            self.save_installed_version(&self.version)?;
 
-            // Verify
-            let zip_file = File::open(zip_path)
-                .map_err(|e| format!("Failed to open zip while verifying.\n{:?}", e))?;
-            minisign::verify(&pk, &sig_box, zip_file, true, false, false)
-                .map_err(|_| "Failed to verify downloaded zip file! Try reinstalling. If it keeps failing, let us know ASAP!")?;
+            self.install().await?;
         }
-
-        // Emit the install (count extracting as installing)
-        let _ = app.emit_all(
-            "progress_info",
-            ProgressPayload {
-                state: "installing".to_string(),
-                current: 0,
-                total: 0,
-            },
-        );
-
-        extract(&zip_path, &folder)?;
-
-        let _ = remove_file(&zip_path);
-
-        self.install().await?;
 
         Ok(())
     }
@@ -239,9 +301,7 @@ impl AppProfile for S2AppProfile {
     fn exists(
         &self
     ) -> bool {
-        let path = &self.get_folder();
-        let exists = Path::new(&self.get_folder()).exists();
-        exists
+        Path::new(&self.get_folder()).exists()
     }
 
     fn launch(
@@ -277,5 +337,51 @@ impl AppProfile for S2AppProfile {
             .map_err(|e| format!("Failed to reveal folder. Is it installed?\n{:?}", e))?;
 
         Ok(())
+    }
+
+    fn get_installed_version(
+        &self
+    ) -> Result<Option<String>, String> {
+        let version_file = self.get_version_file_path();
+        if !version_file.exists() {
+            return Ok(None);
+        }
+
+        let contents = fs::read_to_string(&version_file)
+            .map_err(|e| format!("Failed to read version file.\n{:?}", e))?;
+        let version = contents.trim().to_string();
+
+        if version.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(version))
+        }
+    }
+
+    fn save_installed_version(
+        &self,
+        version: &str
+    ) -> Result<(), String> {
+        let version_file = self.get_version_file_path();
+
+        // Ensure parent directory exists
+        if let Some(parent) = version_file.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|e| format!("Failed to create version file directory.\n{:?}", e))?;
+        }
+
+        fs::write(&version_file, version)
+            .map_err(|e| format!("Failed to write version file.\n{:?}", e))?;
+
+        Ok(())
+    }
+
+    fn get_install_path(
+        &self
+    ) -> Result<String, String> {
+        let folder = self.get_folder();
+        folder.to_str()
+            .map(|s| s.to_string())
+            .ok_or_else(|| "Failed to convert install path to string.".to_string())
     }
 }

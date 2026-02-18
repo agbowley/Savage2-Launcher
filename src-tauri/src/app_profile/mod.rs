@@ -52,4 +52,17 @@ pub trait AppProfile {
     fn reveal_folder(
         &self
     ) -> Result<(), String>;
+
+    fn get_installed_version(
+        &self
+    ) -> Result<Option<String>, String>;
+
+    fn save_installed_version(
+        &self,
+        version: &str
+    ) -> Result<(), String>;
+
+    fn get_install_path(
+        &self
+    ) -> Result<String, String>;
 }

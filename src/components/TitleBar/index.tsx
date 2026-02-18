@@ -23,7 +23,26 @@ const TitleBar: React.FC = () => {
         }
     }
 
-    return <div data-tauri-drag-region className={styles.title_bar}>
+    async function handleDrag(e: React.MouseEvent) {
+        // Only start dragging from the titlebar background, not from buttons
+        if ((e.target as HTMLElement).closest(`.${styles.buttons}`)) return;
+        await appWindow.startDragging();
+    }
+
+    async function handleDoubleClick(e: React.MouseEvent) {
+        if ((e.target as HTMLElement).closest(`.${styles.buttons}`)) return;
+        const maximized = await appWindow.isMaximized();
+        if (maximized) {
+            await appWindow.unmaximize();
+        } else {
+            await appWindow.maximize();
+        }
+    }
+
+    return <div
+        onMouseDown={handleDrag}
+        onDoubleClick={handleDoubleClick}
+        className={styles.title_bar}>
         <div className={styles.text}>
             Savage 2 Launcher
         </div>

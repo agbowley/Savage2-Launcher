@@ -21,7 +21,6 @@ function StableS2Page() {
                 description={<>
                     {releaseData?.description}
                 </>}
-                // websiteUrl="https://github.com/agbowley/savage2/releases/tag/stable"
                 websiteUrl="https://savage2.net"
                 icon={StableS2Icon}
                 banner={StableS2Banner}

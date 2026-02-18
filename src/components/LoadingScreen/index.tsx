@@ -52,7 +52,11 @@ const LoadingScreen: React.FC<Props> = (props: Props) => {
     }
 
     // Display loading screen
-    return <div className={styles.container} style={{opacity: loading ? 0 : 1}}>
+    // When fading out (opacity 0), disable pointer events so it doesn't block clicks
+    return <div className={styles.container} style={{
+        opacity: loading ? 0 : 1,
+        pointerEvents: loading ? "none" : "auto"
+    }}>
         <Progress.Root className={styles.progressRoot}>
             <Progress.Indicator className={styles.progressIndicator} />
         </Progress.Root>

@@ -1,7 +1,7 @@
 import { S2Version } from "@app/hooks/useS2Version";
 import styles from "./styles.module.css";
 import { GenericBox, GenericBoxHeader } from "../../GenericBox";
-import { DateIcon, InformationIcon, LinkIcon } from "@app/assets/Icons";
+import { DateIcon, DriveIcon, InformationIcon, LinkIcon, SettingsIcon, UpdateIcon } from "@app/assets/Icons";
 import TooltipWrapper from "../../TooltipWrapper";
 import { intlFormatDistance } from "date-fns";
 import NewsSection from "../../NewsSection";
@@ -41,10 +41,15 @@ const LaunchPage: React.FC<Props> = ({ version, releaseTag, playName, descriptio
                     </div>
                 </div>
             </div>
-            <div className={styles.actions}>{playName}</div>
+            <div className={styles.actions}>
+                {playName}
+                <button className={styles.settings_button} onClick={() => version.changeInstallLocation()} title="Change Install Location">
+                    <SettingsIcon width={18} height={18} />
+                </button>
+            </div>
         </div>
         <div className={styles.main}>
-            <NewsSection categoryFilter="s2_launcher" />
+            <NewsSection />
             <div className={styles.sidebar}>
                 <LaunchButton style={{ width: "100%" }} version={version} playName={""} />
                 <GenericBox style={{ background: "#ffffff33", borderRadius: 15 }}>
@@ -56,6 +61,34 @@ const LaunchPage: React.FC<Props> = ({ version, releaseTag, playName, descriptio
                     {description}
 
                     <div className={styles.info_list}>
+                        {version.installedVersion && (
+                            <TooltipWrapper
+                                text={version.installedVersion === version.latestVersion
+                                    ? "You are up to date!"
+                                    : `Update available: ${version.latestVersion}`}
+                                className={styles.info_entry}>
+                                <UpdateIcon />
+                                Installed: {version.installedVersion}
+                                {version.installedVersion !== version.latestVersion && (
+                                    <span className={styles.update_badge}>Update Available</span>
+                                )}
+                            </TooltipWrapper>
+                        )}
+                        {version.installPath && (
+                            <TooltipWrapper
+                                text={version.installPath}
+                                className={`${styles.info_entry} ${styles.clickable}`}
+                                onClick={() => version.revealFolder()}>
+                                <DriveIcon />
+                                <span className={styles.path_text}>{version.installPath}</span>
+                            </TooltipWrapper>
+                        )}
+                        <TooltipWrapper
+                            text={"Latest Version"}
+                            className={styles.info_entry}>
+                            <InformationIcon />
+                            Latest: {releaseTag}
+                        </TooltipWrapper>
                         <TooltipWrapper
                             text={`Initial Release Date (${intlFormatDistance(CreatedDate, new Date())})`}
                             className={styles.info_entry}>
@@ -73,6 +106,20 @@ const LaunchPage: React.FC<Props> = ({ version, releaseTag, playName, descriptio
                         </a>
                     </div>
                 </GenericBox>
+                {version.downloadLocation && (
+                    <GenericBox style={{ background: "#ffffff33", borderRadius: 15 }}>
+                        <GenericBoxHeader>
+                            <DriveIcon />
+                            Install Location
+                        </GenericBoxHeader>
+                        <div className={styles.folder_row}
+                            onClick={() => version.changeInstallLocation()}
+                            title="Click to change install location">
+                            <DriveIcon width={14} height={14} />
+                            <span className={styles.folder_path}>{version.downloadLocation}</span>
+                        </div>
+                    </GenericBox>
+                )}
             </div>
         </div>
     </>;

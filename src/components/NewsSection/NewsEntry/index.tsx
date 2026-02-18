@@ -6,18 +6,8 @@ import { Img } from "react-image";
 import UnknownUserIcon from "@app/assets/Icons/UnknownUser.svg";
 import { TimeIcon } from "@app/assets/Icons";
 import { intlFormatDistance } from "date-fns";
-import { newsBaseURL } from "@app/utils/consts";
 import { useNewsAuthorSettings } from "@app/hooks/useNewsAuthor";
 import { useQueries } from "@tanstack/react-query";
-import bookThumbnail from "@app/assets/Thumbs/book.webp";
-const thumbnails: Record<string, string> = {
-    "book.webp": bookThumbnail
-};
-
-import adminAvatar from "@app/assets/Avatars/Admin.webp";
-const avatars: Record<string, string> = {
-    "Admin.webp": adminAvatar
-};
 
 interface Props {
     article: ArticleData;
@@ -26,22 +16,20 @@ interface Props {
 const NewsEntry: React.FC<Props> = ({ article }: Props) => {
 
     const authors = useQueries({
-        queries: article?.authors?.map(authorId => useNewsAuthorSettings(authorId)) || []
+        queries: [useNewsAuthorSettings(article.author)]
     });
 
-    return <Link to={`/news/${article.md}`} key={article.md} style={{ width: "100%" }}>
+    return <Link to={`/news/${article.id}`} key={article.id} style={{ width: "100%" }}>
         <div className={styles.container}>
-            {/* <img className={styles.thumbnail} src={`${newsBaseURL}/images/thumbs/${article.thumb}`} /> */}
-            <img className={styles.thumbnail} src={thumbnails[article.thumb]} />
             <div className={styles.main}>
                 <div className={styles.top_container}>
                     <div className={styles.top}>
-                        <NewsBadge badgeType={article.type} />
+                        <NewsBadge badgeType="update" />
                         {
-                            article.release ? (
+                            article.createdAt ? (
                                 <div className={styles.releaseDate}>
                                     <TimeIcon height={15} />
-                                    {intlFormatDistance(new Date(article.release), new Date())}
+                                    {intlFormatDistance(new Date(article.createdAt), new Date())}
                                 </div>
                             ) : ""
                         }
@@ -51,13 +39,12 @@ const NewsEntry: React.FC<Props> = ({ article }: Props) => {
                 <div className={styles.bottom_container}>
                     {
                         authors
-                            .filter(({data}) => data?.avatar)
+                            .filter(({data}) => data)
                             .map(({data}) => (<Img
-                                key={`${data?.avatar}`}
+                                key={`${data?.displayName}`}
                                 height={24}
                                 alt={`${data?.displayName}'s avatar`}
-                                // src={[`${newsBaseURL}/images/avatars/${data?.avatar}`, UnknownUserIcon]}
-                                src={[avatars[data?.avatar || ""], UnknownUserIcon]}
+                                src={[UnknownUserIcon]}
                                 style={{ borderRadius: "50%" }}
                             />))
                     }

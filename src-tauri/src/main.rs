@@ -257,6 +257,40 @@ fn reveal_folder(
     app_profile.reveal_folder()
 }
 
+#[tauri::command(async)]
+fn get_installed_version(
+    state: tauri::State<'_, State>,
+    app_name: String,
+    version: String,
+    profile: String
+) -> Result<Option<String>, String> {
+    let app_profile = create_app_profile(
+        app_name,
+        &state,
+        version,
+        profile
+    )?;
+
+    app_profile.get_installed_version()
+}
+
+#[tauri::command(async)]
+fn get_install_path(
+    state: tauri::State<'_, State>,
+    app_name: String,
+    version: String,
+    profile: String
+) -> Result<String, String> {
+    let app_profile = create_app_profile(
+        app_name,
+        &state,
+        version,
+        profile
+    )?;
+
+    app_profile.get_install_path()
+}
+
 #[tauri::command]
 fn get_os() -> String {
     std::env::consts::OS.to_string()
@@ -315,6 +349,8 @@ fn main() {
             exists,
             launch,
             reveal_folder,
+            get_installed_version,
+            get_install_path,
 
             get_os,
             is_dir_empty,
@@ -325,6 +361,8 @@ fn main() {
         .setup(|app| {
             let window = app.get_window("main").unwrap();
             let _ = set_shadow(&window, true);
+            #[cfg(debug_assertions)]
+            window.open_devtools();
             Ok(())
         })
         .run(tauri::generate_context!())

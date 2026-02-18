@@ -5,13 +5,14 @@ import React from "react";
 type Props = React.PropsWithChildren<{
     text: string,
     className?: string,
+    onClick?: React.MouseEventHandler<HTMLDivElement>,
 }>;
 
-const TooltipWrapper: React.FC<Props> = ({ children, text, className }: Props) => {
+const TooltipWrapper: React.FC<Props> = ({ children, text, className, onClick }: Props) => {
     return <Tooltip.Provider delayDuration={200}>
         <Tooltip.Root>
             <Tooltip.Trigger asChild>
-                <div className={className}>
+                <div className={className} onClick={onClick}>
                     {children}
                 </div>
             </Tooltip.Trigger>

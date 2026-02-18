@@ -16,7 +16,7 @@ const DropdownButton: React.FC<DropdownProps> = (props: DropdownProps) => {
         ...buttonProps
     } = props;
 
-    return <DropdownMenu.Root>
+    return <DropdownMenu.Root modal={false}>
         <div className={[styles.container, className].join(" ")} style={style}>
             <Button {...buttonProps as ButtonProps} className={styles.button}>
                 {children}

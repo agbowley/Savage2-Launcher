@@ -137,3 +137,75 @@
     font-weight: 400;
     line-height: normal;
 }
+
+.info_entry.clickable {
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+.info_entry.clickable:hover {
+    color: #77FFC3;
+}
+
+.path_text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 220px;
+    direction: rtl;
+    text-align: left;
+}
+
+.update_badge {
+    display: inline-flex;
+    padding: 1px 6px;
+    border-radius: 50px;
+    background: #c97d1a;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: normal;
+}
+
+.settings_button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    border-radius: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+    color: #ffffff;
+    transition: background 0.15s ease;
+}
+
+.settings_button:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.folder_row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #ffffff;
+    font-size: 12px;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.folder_row:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #77FFC3;
+}
+
+.folder_path {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 220px;
+    direction: rtl;
+    text-align: left;
+}

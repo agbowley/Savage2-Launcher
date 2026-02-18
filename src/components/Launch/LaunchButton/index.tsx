@@ -50,11 +50,14 @@ export function LaunchButton(props: LaunchButtonProps) {
         </>;
 
         const dropdownChildren = <>
-            <DropdownItem onClick={() => version.uninstall()}>
-                Uninstall
+            <DropdownItem onClick={() => version.checkForUpdates()}>
+                Check for Updates
             </DropdownItem>
             <DropdownItem onClick={() => version.revealFolder()}>
                 Open Install Folder
+            </DropdownItem>
+            <DropdownItem onClick={() => version.uninstall()}>
+                Uninstall
             </DropdownItem>
         </>;
 

@@ -30,15 +30,15 @@ const Router = createBrowserRouter([
                 element: <Queue />
             },
 
-            // {
-            //     path: "/s2/stable",
-            //     element: <StableS2Page />
-            // },
+            {
+                path: "/s2/stable",
+                element: <StableS2Page />
+            },
 
-            // {
-            //     path: "/s2/nightly",
-            //     element: <NightlyS2Page />
-            // },
+            {
+                path: "/s2/nightly",
+                element: <NightlyS2Page />
+            },
 
             {
                 path: "/s2/legacy",
@@ -51,7 +51,7 @@ const Router = createBrowserRouter([
             // },
 
             {
-                path: "/news/:md",
+                path: "/news/:id",
                 element: <NewsPage />
             }
         ]
