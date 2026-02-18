@@ -2,27 +2,8 @@ import { appWindow } from "@tauri-apps/api/window";
 
 import styles from "./titlebar.module.css";
 import { CloseIcon, MinimizeIcon } from "@app/assets/Icons";
-import { TryCloseDialog } from "@app/dialogs/Dialogs/TryCloseDialog";
-import { useCurrentTask } from "@app/tasks";
-import { createAndShowDialog } from "@app/dialogs";
 
 const TitleBar: React.FC = () => {
-    const currentTask = useCurrentTask();
-
-    async function tryClose() {
-        // If there is no download, just close
-        if (!currentTask?.startedAt) {
-            appWindow.close();
-            return;
-        }
-
-        // If there is one, show alert
-        const output = await createAndShowDialog(TryCloseDialog);
-        if (output === "close") {
-            appWindow.close();
-        }
-    }
-
     async function handleDrag(e: React.MouseEvent) {
         // Only start dragging from the titlebar background, not from buttons
         if ((e.target as HTMLElement).closest(`.${styles.buttons}`)) return;
@@ -52,7 +33,7 @@ const TitleBar: React.FC = () => {
                 <MinimizeIcon />
             </div>
 
-            <div onClick={() => tryClose()} className={styles.button}>
+            <div onClick={() => appWindow.hide()} className={styles.button}>
                 <CloseIcon />
             </div>
         </div>

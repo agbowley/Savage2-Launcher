@@ -65,6 +65,10 @@
     "security": {
       "csp": null
     },
+    "systemTray": {
+      "iconPath": "icons/icon.png",
+      "iconAsTemplate": false
+    },
     "windows": [
       {
         "label": "main",

@@ -13,7 +13,7 @@ use std::env;
 use std::fs::{self, remove_file, File};
 use std::path::PathBuf;
 use std::sync::RwLock;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, CustomMenuItem, SystemTray, SystemTrayMenu, SystemTrayMenuItem, SystemTrayEvent};
 use utils::clear_folder;
 use window_shadows::set_shadow;
 
@@ -331,6 +331,15 @@ fn get_download_location(state: tauri::State<'_, State>) -> Result<String, Strin
 }
 
 fn main() {
+    // Build the system tray menu
+    let show = CustomMenuItem::new("show", "Open");
+    let quit = CustomMenuItem::new("quit", "Quit");
+    let tray_menu = SystemTrayMenu::new()
+        .add_item(show)
+        .add_native_item(SystemTrayMenuItem::Separator)
+        .add_item(quit);
+    let system_tray = SystemTray::new().with_menu(tray_menu);
+
     tauri::Builder::default()
         .plugin(tauri_plugin_log::Builder::default().build())
         .manage(State(RwLock::new(InnerState {
@@ -340,6 +349,37 @@ fn main() {
             savage2_folder: PathBuf::new(),
             settings: Default::default(),
         })))
+        .system_tray(system_tray)
+        .on_system_tray_event(|app, event| match event {
+            SystemTrayEvent::LeftClick { .. } => {
+                if let Some(window) = app.get_window("main") {
+                    let _ = window.show();
+                    let _ = window.unminimize();
+                    let _ = window.set_focus();
+                }
+            }
+            SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
+                "show" => {
+                    if let Some(window) = app.get_window("main") {
+                        let _ = window.show();
+                        let _ = window.unminimize();
+                        let _ = window.set_focus();
+                    }
+                }
+                "quit" => {
+                    app.exit(0);
+                }
+                _ => {}
+            },
+            _ => {}
+        })
+        .on_window_event(|event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event.event() {
+                // Hide to tray instead of closing
+                let _ = event.window().hide();
+                api.prevent_close();
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             init,
             is_initialized,
