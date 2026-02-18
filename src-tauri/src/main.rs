@@ -9,6 +9,7 @@ use app_profile::AppProfile;
 // use app_profile::yarg::YARGAppProfile;
 use app_profile::s2::S2AppProfile;
 use directories::BaseDirs;
+use std::collections::HashMap;
 use std::env;
 use std::fs::{self, remove_file, File};
 use std::path::PathBuf;
@@ -21,6 +22,8 @@ use window_shadows::set_shadow;
 pub struct Settings {
     pub download_location: String,
     pub initialized: bool,
+    #[serde(default)]
+    pub profile_locations: HashMap<String, String>,
 }
 
 pub struct InnerState {
@@ -144,9 +147,16 @@ fn create_app_profile(
 ) -> Result<Box<dyn AppProfile + Send>, String> {
     let state_guard = state.0.read().unwrap();
 
+    // Use profile-specific location if set, otherwise fall back to global
+    let root_folder = state_guard.settings.profile_locations
+        .get(&profile)
+        .filter(|p| !p.is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| state_guard.savage2_folder.clone());
+
     Ok(match app_name.as_str() {
         "Savage 2" => Box::new(S2AppProfile {
-            root_folder: state_guard.savage2_folder.clone(),
+            root_folder,
             temp_folder: state_guard.temp_folder.clone(),
             version,
             profile
@@ -330,6 +340,31 @@ fn get_download_location(state: tauri::State<'_, State>) -> Result<String, Strin
     Ok(state_guard.settings.download_location.clone())
 }
 
+#[tauri::command]
+fn get_profile_location(state: tauri::State<'_, State>, profile: String) -> Result<String, String> {
+    let state_guard = state.0.read().unwrap();
+    // Return profile-specific location if set, otherwise the global default
+    if let Some(loc) = state_guard.settings.profile_locations.get(&profile) {
+        if !loc.is_empty() {
+            return Ok(loc.clone());
+        }
+    }
+    Ok(state_guard.settings.download_location.clone())
+}
+
+#[tauri::command(async)]
+async fn set_profile_location(
+    state: tauri::State<'_, State>,
+    profile: String,
+    path: String,
+) -> Result<(), String> {
+    let mut state_guard = state.0.write().unwrap();
+    state_guard.settings.profile_locations.insert(profile, path);
+    state_guard.settings.initialized = true;
+    state_guard.save_settings_file()?;
+    Ok(())
+}
+
 fn main() {
     // Build the system tray menu
     let show = CustomMenuItem::new("show", "Open");
@@ -396,13 +431,13 @@ fn main() {
             is_dir_empty,
 
             set_download_location,
-            get_download_location
+            get_download_location,
+            get_profile_location,
+            set_profile_location
         ])
         .setup(|app| {
             let window = app.get_window("main").unwrap();
             let _ = set_shadow(&window, true);
-            #[cfg(debug_assertions)]
-            window.open_devtools();
             Ok(())
         })
         .run(tauri::generate_context!())

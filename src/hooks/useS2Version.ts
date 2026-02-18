@@ -56,19 +56,20 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
 
                 setInstalledVersion(version);
 
-                if (version) {
-                    const path = await invoke("get_install_path", {
-                        appName: "Savage 2",
-                        version: releaseData.tag_name,
+                // Always fetch the install path (shows where the game would be / is)
+                const path = await invoke("get_install_path", {
+                    appName: "Savage 2",
+                    version: releaseData.tag_name,
+                    profile: profileName
+                }) as string;
+                setInstallPath(path);
+
+                // Get the profile-specific install location
+                try {
+                    const profileLocation = await invoke("get_profile_location", {
                         profile: profileName
                     }) as string;
-                    setInstallPath(path);
-                }
-
-                // Always try to get the download location
-                try {
-                    const dlLocation = await invoke("get_download_location") as string;
-                    setDownloadLocation(dlLocation || null);
+                    setDownloadLocation(profileLocation || null);
                 } catch {
                     // Not yet initialized
                 }
@@ -140,6 +141,26 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
 
         if (!await showInstallFolderDialog()) {
             return;
+        }
+
+        // If no profile-specific location is set, inherit the global one
+        try {
+            const profileLoc = await invoke("get_profile_location", {
+                profile: profileName
+            }) as string;
+            const globalLoc = await invoke("get_download_location") as string;
+
+            // get_profile_location falls back to global, so if they match
+            // and no explicit profile location was set, save the global as profile default
+            if (profileLoc === globalLoc) {
+                await invoke("set_profile_location", {
+                    profile: profileName,
+                    path: globalLoc
+                });
+            }
+            setDownloadLocation(profileLoc);
+        } catch {
+            // Continue anyway
         }
 
         setState(S2States.DOWNLOADING);
@@ -233,15 +254,38 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
 
     const changeInstallLocation = async () => {
         try {
+            // Get the current profile location to use as default directory
+            let defaultPath: string | undefined;
+            try {
+                defaultPath = await invoke("get_profile_location", {
+                    profile: profileName
+                }) as string;
+            } catch {
+                // No default
+            }
+
             const selected = await open({
                 directory: true,
                 multiple: false,
-                title: "Choose Install Location"
+                title: "Choose Install Location",
+                defaultPath: defaultPath || undefined
             });
 
             if (selected && typeof selected === "string") {
-                await invoke("set_download_location", { path: selected });
+                // Save per-profile location
+                await invoke("set_profile_location", {
+                    profile: profileName,
+                    path: selected
+                });
                 setDownloadLocation(selected);
+
+                // Re-check if the game exists at the new location
+                const gameExists = await invoke("exists", {
+                    appName: "Savage 2",
+                    version: releaseData.tag_name,
+                    profile: profileName
+                });
+                setState(gameExists ? S2States.AVAILABLE : S2States.NEW_UPDATE);
             }
         } catch (e) {
             showErrorDialog(e as string);

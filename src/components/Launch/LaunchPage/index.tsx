@@ -1,7 +1,7 @@
 import { S2Version } from "@app/hooks/useS2Version";
 import styles from "./styles.module.css";
 import { GenericBox, GenericBoxHeader } from "../../GenericBox";
-import { DateIcon, DriveIcon, InformationIcon, LinkIcon, SettingsIcon, UpdateIcon } from "@app/assets/Icons";
+import { DateIcon, DriveIcon, InformationIcon, LinkIcon, UpdateIcon } from "@app/assets/Icons";
 import TooltipWrapper from "../../TooltipWrapper";
 import { intlFormatDistance } from "date-fns";
 import NewsSection from "../../NewsSection";
@@ -41,12 +41,7 @@ const LaunchPage: React.FC<Props> = ({ version, releaseTag, playName, descriptio
                     </div>
                 </div>
             </div>
-            <div className={styles.actions}>
-                {playName}
-                <button className={styles.settings_button} onClick={() => version.changeInstallLocation()} title="Change Install Location">
-                    <SettingsIcon width={18} height={18} />
-                </button>
-            </div>
+            <div className={styles.actions}>{playName}</div>
         </div>
         <div className={styles.main}>
             <NewsSection />
@@ -76,7 +71,7 @@ const LaunchPage: React.FC<Props> = ({ version, releaseTag, playName, descriptio
                         )}
                         {version.installPath && (
                             <TooltipWrapper
-                                text={version.installPath}
+                                text={`Install Location: ${version.installPath}`}
                                 className={`${styles.info_entry} ${styles.clickable}`}
                                 onClick={() => version.revealFolder()}>
                                 <DriveIcon />
@@ -106,20 +101,6 @@ const LaunchPage: React.FC<Props> = ({ version, releaseTag, playName, descriptio
                         </a>
                     </div>
                 </GenericBox>
-                {version.downloadLocation && (
-                    <GenericBox style={{ background: "#ffffff33", borderRadius: 15 }}>
-                        <GenericBoxHeader>
-                            <DriveIcon />
-                            Install Location
-                        </GenericBoxHeader>
-                        <div className={styles.folder_row}
-                            onClick={() => version.changeInstallLocation()}
-                            title="Click to change install location">
-                            <DriveIcon width={14} height={14} />
-                            <span className={styles.folder_path}>{version.downloadLocation}</span>
-                        </div>
-                    </GenericBox>
-                )}
             </div>
         </div>
     </>;

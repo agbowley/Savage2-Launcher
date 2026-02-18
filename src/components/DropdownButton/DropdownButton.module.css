@@ -67,7 +67,7 @@
 }
 
 .dropdown_item[data-highlighted] {
-    background: var(--dropdown_background);
+    background: rgba(255, 255, 255, 0.15);
 }
 
 .dropdown_arrow {

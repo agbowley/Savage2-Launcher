@@ -21,30 +21,73 @@ impl S2AppProfile {
         self.root_folder.join(&self.profile).join(&self.version).join("Savage 2 - A Tortured Soul")
     }
 
+    /// Returns the platform-specific executable name.
+    fn exec_name() -> Result<&'static str, String> {
+        match std::env::consts::OS {
+            "windows" => Ok("savage2.exe"),
+            "linux" => Ok("savage2.x86_64"),
+            "macos" => Ok("savage2.app"),
+            _ => Err("Unknown platform!".into()),
+        }
+    }
+
+    /// Find the actual game executable by checking multiple candidate locations.
+    /// Priority: 1) standard nested path, 2) directly in root_folder, 3) root_folder/"Savage 2 - A Tortured Soul"
+    fn find_exec(&self) -> Result<PathBuf, String> {
+        let exec_name = Self::exec_name()?;
+
+        // Build list of candidate directories to check
+        let candidates = [
+            self.get_folder(),                                           // root/profile/version/Savage 2 - A Tortured Soul
+            self.root_folder.clone(),                                     // root (user picked folder directly)
+            self.root_folder.join("Savage 2 - A Tortured Soul"),          // root/Savage 2 - A Tortured Soul
+        ];
+
+        for dir in &candidates {
+            let exec_path = if std::env::consts::OS == "macos" {
+                dir.join("savage2.app").join("Contents").join("MacOS").join("Savage2")
+            } else if std::env::consts::OS == "linux" {
+                let p = dir.join("savage2.x86_64");
+                if p.exists() {
+                    p
+                } else {
+                    dir.join("Savage 2 - A Tortured Soul")
+                }
+            } else {
+                dir.join(exec_name)
+            };
+
+            if exec_path.exists() {
+                return Ok(exec_path);
+            }
+        }
+
+        // Return the standard path even though it doesn't exist (for error messages)
+        Ok(self.get_folder().join(exec_name))
+    }
+
+    /// Find the actual game folder (the directory containing the executable).
+    fn find_game_folder(&self) -> PathBuf {
+        if let Ok(exec) = self.find_exec() {
+            if exec.exists() {
+                if let Some(parent) = exec.parent() {
+                    // On macOS the exec is deep inside .app bundle, return the dir containing .app
+                    if std::env::consts::OS == "macos" {
+                        if let Some(app_parent) = parent.parent().and_then(|p| p.parent()).and_then(|p| p.parent()) {
+                            return app_parent.to_path_buf();
+                        }
+                    }
+                    return parent.to_path_buf();
+                }
+            }
+        }
+        self.get_folder()
+    }
+
     fn get_exec(
         &self
     ) -> Result<PathBuf, String> {
-        let mut path = self.get_folder();
-
-        // Each OS has a different executable
-        path = match std::env::consts::OS.to_string().as_str() {
-            "windows" => path.join("savage2.exe"),
-            "linux" => {
-                let mut p = path.join("savage2.x86_64");
-                if !p.exists() {
-                    p = path.join("Savage 2 - A Tortured Soul");
-                }
-                p
-            }
-            "macos" => path
-                .join("savage2.app")
-                .join("Contents")
-                .join("MacOS")
-                .join("Savage2"),
-            _ => Err("Unknown platform for launch!")?,
-        };
-
-        Ok(path)
+        self.find_exec()
     }
 
     /// Path to the version marker file for this profile
@@ -301,7 +344,11 @@ impl AppProfile for S2AppProfile {
     fn exists(
         &self
     ) -> bool {
-        Path::new(&self.get_folder()).exists()
+        // Check for the actual game executable, not just the folder
+        match self.get_exec() {
+            Ok(exec_path) => exec_path.exists(),
+            Err(_) => false,
+        }
     }
 
     fn launch(
@@ -333,7 +380,7 @@ impl AppProfile for S2AppProfile {
             return Err("Cannot reveal something that doesn't exist!".to_string());
         }
 
-        opener::reveal(self.get_folder())
+        opener::reveal(self.find_game_folder())
             .map_err(|e| format!("Failed to reveal folder. Is it installed?\n{:?}", e))?;
 
         Ok(())
@@ -379,7 +426,7 @@ impl AppProfile for S2AppProfile {
     fn get_install_path(
         &self
     ) -> Result<String, String> {
-        let folder = self.get_folder();
+        let folder = self.find_game_folder();
         folder.to_str()
             .map(|s| s.to_string())
             .ok_or_else(|| "Failed to convert install path to string.".to_string())

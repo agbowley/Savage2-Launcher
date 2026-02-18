@@ -20,13 +20,20 @@ export function LaunchButton(props: LaunchButtonProps) {
             <UpdateIcon /> Install {playName}
         </>;
 
-        return <Button
+        const dropdownChildren = <>
+            <DropdownItem onClick={() => version.changeInstallLocation()}>
+                Choose Install Location
+            </DropdownItem>
+        </>;
+
+        return <DropdownButton
             style={props.style}
             color={ButtonColor.BLUE}
-            onClick={() => version.download()}>
+            onClick={() => version.download()}
+            dropdownChildren={dropdownChildren}>
 
             {buttonChildren}
-        </Button>;
+        </DropdownButton>;
     }
 
     if (version.state === S2States.DOWNLOADING) {
@@ -52,6 +59,9 @@ export function LaunchButton(props: LaunchButtonProps) {
         const dropdownChildren = <>
             <DropdownItem onClick={() => version.checkForUpdates()}>
                 Check for Updates
+            </DropdownItem>
+            <DropdownItem onClick={() => version.changeInstallLocation()}>
+                Change Install Location
             </DropdownItem>
             <DropdownItem onClick={() => version.revealFolder()}>
                 Open Install Folder
