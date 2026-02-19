@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use minisign::{PublicKeyBox, SignatureBox};
 use regex::Regex;
 use tauri::Manager;
-use std::{env, fs::{self, remove_file, File}, path::{Path, PathBuf}, process::Command};
+use std::{fs::{self, remove_file, File}, path::{Path, PathBuf}, process::Command};
 
 use crate::utils::*;
 use crate::utils::CancelToken;
@@ -528,32 +528,14 @@ impl AppProfile for S2AppProfile {
 
     fn launch(&self) -> Result<(), String> {
         let game_path = self.get_exec()?;
+        let game_folder = self.find_game_folder();
 
         self.log_message(&format!("Launching game from: {}", game_path.display()));
 
-        #[cfg(target_os = "windows")]
-        {
-            let current_dir = env::current_dir().map_err(|e| format!("Failed to get current directory: {:?}", e))?;
-            let helper_path = current_dir.join("helper_executable").join("src").join("helper_executable.exe");
-
-            let status = Command::new(helper_path)
-                .arg(game_path.display().to_string())
-                .status()
-                .map_err(|e| format!("Failed to start helper executable: {:?}", e))?;
-
-            if !status.success() {
-                return Err("Helper executable failed to launch the game.".into());
-            }
-        }
-
-        #[cfg(not(target_os = "windows"))]
-        {
-            let game_folder = self.find_game_folder();
-            Command::new(&game_path)
-                .current_dir(&game_folder)
-                .spawn()
-                .map_err(|e| format!("Failed to launch game: {:?}", e))?;
-        }
+        Command::new(&game_path)
+            .current_dir(&game_folder)
+            .spawn()
+            .map_err(|e| format!("Failed to launch game: {:?}", e))?;
 
         Ok(())
     }
