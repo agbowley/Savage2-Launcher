@@ -32,7 +32,6 @@ const S2Queue: React.FC<Props> = ({ s2Task, bannerMode, onRemove }: Props) => {
     return <BaseQueue
         name="Savage 2"
         icon={<img src={channelIconPath[s2Task.channel]} />}
-        version={s2Task.version}
         versionChannel={getChannelDisplayName()}
         bannerMode={bannerMode}
         onRemove={onRemove}

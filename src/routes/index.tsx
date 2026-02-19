@@ -1,7 +1,6 @@
 import { createBrowserRouter } from "react-router-dom";
 
 import RootLayout from "@app/routes/root";
-import Home from "@app/routes/Home";
 import Settings from "@app/routes/Settings";
 import StableS2Page from "./S2/Stable";
 import NightlyS2Page from "./S2/Nightly";
@@ -17,7 +16,7 @@ const Router = createBrowserRouter([
         children: [
             {
                 path: "/",
-                element: <Home />
+                element: <StableS2Page />
             },
 
             {
