@@ -1,8 +1,10 @@
 use async_trait::async_trait;
 use minisign::{PublicKeyBox, SignatureBox};
 use regex::Regex;
+use sha2::{Sha256, Digest};
 use tauri::Manager;
-use std::{fs::{self, remove_file, File}, path::{Path, PathBuf}, process::Command};
+use std::collections::HashMap;
+use std::{fs::{self, remove_file, File}, io::Read, path::{Path, PathBuf}, process::Command};
 
 use crate::utils::*;
 use crate::utils::CancelToken;
@@ -99,13 +101,12 @@ fn run_elevated_and_wait(exe_path: &str, args: &str) -> Result<(), String> {
 pub struct S2AppProfile {
     pub root_folder: PathBuf,
     pub temp_folder: PathBuf,
-    pub profile: String
 }
 
 impl S2AppProfile {
-    /// Returns the game folder: root/profile/Savage 2 - A Tortured Soul
+    /// Returns the game folder (root_folder is the game folder directly).
     fn get_folder(&self) -> PathBuf {
-        self.root_folder.join(&self.profile).join("Savage 2 - A Tortured Soul")
+        self.root_folder.clone()
     }
 
     /// Returns the platform-specific executable name.
@@ -119,14 +120,12 @@ impl S2AppProfile {
     }
 
     /// Find the actual game executable by checking multiple candidate locations.
-    /// Priority: 1) standard path (root/profile/Savage 2 - A Tortured Soul),
-    ///           2) directly in root_folder (user picked game folder directly),
-    ///           3) root_folder/Savage 2 - A Tortured Soul (user picked parent)
+    /// Priority: 1) directly in root_folder (the game folder),
+    ///           2) root_folder/Savage 2 - A Tortured Soul (legacy/NSIS installs)
     fn find_exec(&self) -> Result<PathBuf, String> {
         let exec_name = Self::exec_name()?;
 
         let candidates = [
-            self.get_folder(),
             self.root_folder.clone(),
             self.root_folder.join("Savage 2 - A Tortured Soul"),
         ];
@@ -175,11 +174,6 @@ impl S2AppProfile {
         self.find_exec()
     }
 
-    /// Path to the version marker file for this profile
-    fn get_version_file_path(&self) -> PathBuf {
-        self.root_folder.join(&self.profile).join("installed_version.txt")
-    }
-
     /// Get the path to the game's console.log file.
     /// Windows: Documents/Savage 2 - A Tortured Soul CE/game/console.log
     /// Linux: ~/.savage2/game/console.log
@@ -205,17 +199,155 @@ impl S2AppProfile {
         }
     }
 
-    /// Parse the version string from console.log content.
-    /// Looks for a line like: [Feb 18 2026][14:30:00][2.2.2.0]
+    /// Parse a version string (e.g. "2.2.2.0") from text content.
+    /// Looks for the bracketed version pattern: [2.2.2.0]
     fn parse_version_from_console_log(content: &str) -> Option<String> {
         let re = Regex::new(r"\[(\d+\.\d+\.\d+\.\d+)\]").ok()?;
-        // Check only the first few lines for performance
         for line in content.lines().take(20) {
             if let Some(caps) = re.captures(line) {
                 return Some(caps[1].to_string());
             }
         }
         None
+    }
+
+    /// Read the FileVersion from the PE version resource of an executable (Windows only).
+    /// Uses the GetFileVersionInfoW / VerQueryValueW Windows APIs.
+    #[cfg(target_os = "windows")]
+    fn read_pe_version(exe_path: &Path) -> Option<String> {
+        use std::ffi::OsStr;
+        use std::os::windows::ffi::OsStrExt;
+        use std::mem;
+
+        #[link(name = "version")]
+        extern "system" {
+            fn GetFileVersionInfoSizeW(lptstrFilename: *const u16, lpdwHandle: *mut u32) -> u32;
+            fn GetFileVersionInfoW(
+                lptstrFilename: *const u16, dwHandle: u32,
+                dwLen: u32, lpData: *mut u8,
+            ) -> i32;
+            fn VerQueryValueW(
+                pBlock: *const u8, lpSubBlock: *const u16,
+                lplpBuffer: *mut *const u8, puLen: *mut u32,
+            ) -> i32;
+        }
+
+        #[repr(C)]
+        #[allow(non_snake_case)]
+        struct VS_FIXEDFILEINFO {
+            dwSignature: u32,
+            dwStrucVersion: u32,
+            dwFileVersionMS: u32,
+            dwFileVersionLS: u32,
+            dwProductVersionMS: u32,
+            dwProductVersionLS: u32,
+            dwFileFlagsMask: u32,
+            dwFileFlags: u32,
+            dwFileOS: u32,
+            dwFileType: u32,
+            dwFileSubtype: u32,
+            dwFileDateMS: u32,
+            dwFileDateLS: u32,
+        }
+
+        fn to_wide(s: &str) -> Vec<u16> {
+            OsStr::new(s).encode_wide().chain(Some(0)).collect()
+        }
+
+        let path_wide = to_wide(&exe_path.to_string_lossy());
+
+        unsafe {
+            let mut handle: u32 = 0;
+            let size = GetFileVersionInfoSizeW(path_wide.as_ptr(), &mut handle);
+            if size == 0 {
+                return None;
+            }
+
+            let mut buffer = vec![0u8; size as usize];
+            if GetFileVersionInfoW(path_wide.as_ptr(), handle, size, buffer.as_mut_ptr()) == 0 {
+                return None;
+            }
+
+            let sub_block = to_wide("\\");
+            let mut info_ptr: *const u8 = std::ptr::null();
+            let mut info_len: u32 = 0;
+
+            if VerQueryValueW(buffer.as_ptr(), sub_block.as_ptr(), &mut info_ptr, &mut info_len) == 0 {
+                return None;
+            }
+
+            if info_len < mem::size_of::<VS_FIXEDFILEINFO>() as u32 {
+                return None;
+            }
+
+            let info = &*(info_ptr as *const VS_FIXEDFILEINFO);
+
+            // Validate the signature (0xFEEF04BD)
+            if info.dwSignature != 0xFEEF04BD {
+                return None;
+            }
+
+            let major = (info.dwFileVersionMS >> 16) & 0xFFFF;
+            let minor = info.dwFileVersionMS & 0xFFFF;
+            let patch = (info.dwFileVersionLS >> 16) & 0xFFFF;
+            let build = info.dwFileVersionLS & 0xFFFF;
+
+            Some(format!("{}.{}.{}.{}", major, minor, patch, build))
+        }
+    }
+
+    /// Scan the first portion of the game binary for a version string.
+    /// Looks for the pattern X.X.X.X near known context like build date markers.
+    fn scan_binary_for_version(exe_path: &Path) -> Option<String> {
+        let mut file = File::open(exe_path).ok()?;
+
+        // Read up to 8 MB of the binary — the version string is typically in the
+        // early portion embedded as a string literal by the compiler.
+        let max_read = 8 * 1024 * 1024;
+        let file_size = file.metadata().ok()?.len() as usize;
+        let read_size = file_size.min(max_read);
+
+        let mut buffer = vec![0u8; read_size];
+        file.read_exact(&mut buffer).ok()?;
+
+        // Convert to string lossy for regex scanning.
+        // We look for a version pattern near recognizable context strings.
+        let content = String::from_utf8_lossy(&buffer);
+
+        // Look for the version pattern near a date-like context that the S2 engine emits,
+        // e.g. "[Feb 18 2026][14:30:00][2.2.2.0]" or just "2.2.2.0" near "Savage"
+        let re = Regex::new(r"\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b").ok()?;
+
+        // Collect all matches and prefer ones that look like game versions (not IPs like 127.0.0.1)
+        let mut best: Option<String> = None;
+        for caps in re.captures_iter(&content) {
+            let version = caps[1].to_string();
+            let parts: Vec<u32> = version.split('.').filter_map(|p| p.parse().ok()).collect();
+            if parts.len() != 4 { continue; }
+
+            // Skip obvious non-versions: 0.0.0.0, 127.0.0.1, 255.255.255.255, etc.
+            if parts[0] == 0 || parts[0] == 127 || parts[0] == 255 { continue; }
+            if parts.iter().all(|&p| p == 0) { continue; }
+
+            // Prefer versions where the first component is small (1-9) — game version, not IP
+            if parts[0] <= 9 {
+                best = Some(version);
+                // Don't break — the last match in the binary is often the best
+                // (string literals come after header data)
+            }
+        }
+
+        best
+    }
+
+    /// Try to read the version from an existing console.log without launching the game.
+    fn read_version_from_console_log() -> Option<String> {
+        let console_log_path = Self::get_console_log_path().ok()?;
+        if !console_log_path.exists() {
+            return None;
+        }
+        let content = fs::read_to_string(&console_log_path).ok()?;
+        Self::parse_version_from_console_log(&content)
     }
 
     /// Run an NSIS installer silently with /S flag and install to the game folder.
@@ -267,6 +399,120 @@ impl S2AppProfile {
 
         Ok(())
     }
+
+    // ── Patch-update helpers ──────────────────────────────────────────
+
+    /// Compute the SHA-256 hash of a single file and return it as a lowercase hex string.
+    fn sha256_file(path: &Path) -> Result<String, String> {
+        let mut file = File::open(path)
+            .map_err(|e| format!("Failed to open `{}` for hashing.\n{:?}", path.display(), e))?;
+        let mut hasher = Sha256::new();
+        let mut buf = [0u8; 64 * 1024];
+        loop {
+            let n = file.read(&mut buf)
+                .map_err(|e| format!("Error reading `{}` for hashing.\n{:?}", path.display(), e))?;
+            if n == 0 { break; }
+            hasher.update(&buf[..n]);
+        }
+        Ok(format!("{:x}", hasher.finalize()))
+    }
+
+    /// Recursively walk a directory and compute SHA-256 for every file.
+    /// Keys in the map are forward-slash relative paths (e.g. "game/resources0.s2z").
+    fn hash_directory(
+        dir: &Path,
+        root: &Path,
+        out: &mut HashMap<String, String>,
+    ) -> Result<(), String> {
+        let entries = fs::read_dir(dir)
+            .map_err(|e| format!("Failed to read directory `{}`.\n{:?}", dir.display(), e))?;
+
+        for entry in entries {
+            let entry = entry.map_err(|e| format!("Error reading dir entry.\n{:?}", e))?;
+            let path = entry.path();
+            if path.is_dir() {
+                Self::hash_directory(&path, root, out)?;
+            } else {
+                let rel = path.strip_prefix(root)
+                    .map_err(|_| format!("Path `{}` is not under root `{}`", path.display(), root.display()))?;
+                let key = rel.to_string_lossy().replace('\\', "/");
+                // Skip the manifest and generator scripts — they live alongside
+                // the game files but must not be tracked/patched.
+                if matches!(key.as_str(), "manifest.json" | "generate_manifest.py" | "generate-manifest.bat") {
+                    continue;
+                }
+                let hash = Self::sha256_file(&path)?;
+                out.insert(key, hash);
+            }
+        }
+        Ok(())
+    }
+
+    /// Download a single file via streaming with cumulative progress reporting.
+    async fn download_file_with_progress(
+        app: &tauri::AppHandle,
+        client: &reqwest::Client,
+        url: &str,
+        output_path: &Path,
+        already_downloaded: u64,
+        total_size: u64,
+        cancel_token: &CancelToken,
+    ) -> Result<(), String> {
+        use futures_util::StreamExt;
+
+        let resp = client.get(url).send().await
+            .map_err(|e| format!("Failed to download `{}`.\n{:?}", url, e))?;
+
+        if !resp.status().is_success() {
+            return Err(format!(
+                "Download failed with HTTP {} for `{}`.",
+                resp.status().as_u16(), url
+            ));
+        }
+
+        let mut file = File::create(output_path)
+            .map_err(|e| format!("Failed to create `{}`.\n{:?}", output_path.display(), e))?;
+
+        let mut stream = resp.bytes_stream();
+        let mut file_downloaded: u64 = 0;
+
+        while let Some(chunk) = stream.next().await {
+            if cancel_token.is_cancelled() {
+                drop(file);
+                let _ = std::fs::remove_file(output_path);
+                return Err("CANCELLED".into());
+            }
+
+            let bytes = chunk.map_err(|e| format!("Streaming error.\n{:?}", e))?;
+            use std::io::Write;
+            file.write_all(&bytes)
+                .map_err(|e| format!("Write error.\n{:?}", e))?;
+
+            file_downloaded += bytes.len() as u64;
+
+            let _ = app.emit_all("progress_info", ProgressPayload {
+                state: "downloading".to_string(),
+                current: (already_downloaded + file_downloaded).min(total_size),
+                total: total_size,
+            });
+        }
+
+        Ok(())
+    }
+
+    /// Remove empty directories recursively (bottom-up).
+    fn remove_empty_dirs(dir: &Path) {
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    Self::remove_empty_dirs(&path);
+                    // Try to remove — will only succeed if empty
+                    let _ = fs::remove_dir(&path);
+                }
+            }
+        }
+    }
 }
 
 #[async_trait]
@@ -278,21 +524,19 @@ impl AppProfile for S2AppProfile {
         sig_urls: Vec<String>,
         cancel_token: &CancelToken
     ) -> Result<(), String> {
-        let profile_folder = self.root_folder.join(&self.profile);
-
         let zip_url = zip_urls.first().ok_or("Did not get any download URLs.")?;
         let sig_url = sig_urls.first();
 
-        // Delete old game files but preserve installed_version.txt
+        // Delete old game files
         let game_folder = self.get_folder();
         if game_folder.exists() {
             std::fs::remove_dir_all(&game_folder)
                 .map_err(|e| format!("Failed to remove old game files.\n{:?}", e))?;
         }
 
-        // Ensure the profile folder exists
-        std::fs::create_dir_all(&profile_folder)
-            .map_err(|e| format!("Failed to create profile directory.\n{:?}", e))?;
+        // Ensure the game folder exists
+        std::fs::create_dir_all(&game_folder)
+            .map_err(|e| format!("Failed to create game directory.\n{:?}", e))?;
 
         let is_nsis_installer = zip_url.ends_with(".exe");
 
@@ -407,6 +651,165 @@ impl AppProfile for S2AppProfile {
         println!("{}", message);
     }
 
+    async fn patch_update(
+        &self,
+        app: &tauri::AppHandle,
+        manifest_url: String,
+        cancel_token: &CancelToken
+    ) -> Result<(), String> {
+        let game_folder = self.find_game_folder();
+        if !game_folder.exists() {
+            return Err("Game is not installed. Use a full install instead.".into());
+        }
+
+        // --- 1. Fetch the remote manifest ---
+        let _ = app.emit_all("progress_info", ProgressPayload {
+            state: "checking".to_string(),
+            current: 0,
+            total: 0,
+        });
+
+        let client = reqwest::Client::new();
+        let resp = client.get(&manifest_url)
+            .send()
+            .await
+            .map_err(|e| format!("Failed to fetch manifest from `{}`.\n{:?}", &manifest_url, e))?;
+
+        if !resp.status().is_success() {
+            return Err(format!(
+                "Manifest download failed with HTTP {} for `{}`.",
+                resp.status().as_u16(), manifest_url
+            ));
+        }
+
+        let manifest_text = resp.text().await
+            .map_err(|e| format!("Failed to read manifest response.\n{:?}", e))?;
+
+        let manifest: Manifest = serde_json::from_str(&manifest_text)
+            .map_err(|e| format!("Failed to parse manifest JSON.\n{:?}", e))?;
+
+        if cancel_token.is_cancelled() {
+            return Err("CANCELLED".into());
+        }
+
+        // --- 2. Hash local files and build a diff ---
+        let _ = app.emit_all("progress_info", ProgressPayload {
+            state: "checking".to_string(),
+            current: 0,
+            total: manifest.files.len() as u64,
+        });
+
+        let mut local_files: HashMap<String, String> = HashMap::new();
+        Self::hash_directory(&game_folder, &game_folder, &mut local_files)?;
+
+        // Determine which files need to be downloaded (new or changed)
+        let mut to_download: Vec<(String, u64)> = Vec::new();
+        let mut total_download_size: u64 = 0;
+
+        for (rel_path, manifest_entry) in &manifest.files {
+            let needs_download = match local_files.get(rel_path) {
+                Some(local_hash) => local_hash != &manifest_entry.sha256,
+                None => true,
+            };
+            if needs_download {
+                to_download.push((rel_path.clone(), manifest_entry.size));
+                total_download_size += manifest_entry.size;
+            }
+        }
+
+        // Determine which local files should be deleted (not in manifest)
+        let to_delete: Vec<String> = local_files.keys()
+            .filter(|k| !manifest.files.contains_key(*k))
+            .cloned()
+            .collect();
+
+        // If nothing changed, we're already up to date
+        if to_download.is_empty() && to_delete.is_empty() {
+            return Ok(());
+        }
+
+        // --- 3. Download changed / new files ---
+        // Derive the base URL for individual files from the manifest URL.
+        // e.g. ".../latest/manifest.json" → ".../latest/files/"
+        let base_url = manifest_url
+            .rsplit_once('/')
+            .map(|(base, _)| format!("{}/files/", base))
+            .ok_or("Invalid manifest URL — cannot derive file base URL.")?;
+
+        let mut downloaded: u64 = 0;
+
+        // Ensure temp folder exists
+        std::fs::create_dir_all(&self.temp_folder)
+            .map_err(|e| format!("Failed to create temp directory.\n{:?}", e))?;
+
+        for (rel_path, file_size) in &to_download {
+            if cancel_token.is_cancelled() {
+                return Err("CANCELLED".into());
+            }
+
+            let file_url = format!("{}{}", base_url, rel_path.replace('\\', "/"));
+            let target_path = game_folder.join(rel_path);
+
+            // Create parent directories
+            if let Some(parent) = target_path.parent() {
+                std::fs::create_dir_all(parent)
+                    .map_err(|e| format!("Failed to create directory `{}`.\n{:?}", parent.display(), e))?;
+            }
+
+            // Download to a temp file first, then move into place
+            let temp_file = self.temp_folder.join(format!("patch_{}", rel_path.replace(['/', '\\'], "_")));
+
+            // Download with streaming progress
+            Self::download_file_with_progress(
+                app,
+                &client,
+                &file_url,
+                &temp_file,
+                downloaded,
+                total_download_size,
+                cancel_token,
+            ).await?;
+
+            // Verify the hash of the downloaded file
+            let actual_hash = Self::sha256_file(&temp_file)?;
+            let expected_hash = &manifest.files[rel_path].sha256;
+            if &actual_hash != expected_hash {
+                let _ = std::fs::remove_file(&temp_file);
+                return Err(format!(
+                    "Hash mismatch for `{}`.\nExpected: {}\nActual: {}",
+                    rel_path, expected_hash, actual_hash
+                ));
+            }
+
+            // Move the verified file into place
+            // Remove existing file first (in case it's read-only, etc.)
+            if target_path.exists() {
+                let _ = std::fs::remove_file(&target_path);
+            }
+            std::fs::rename(&temp_file, &target_path)
+                .or_else(|_| {
+                    // rename can fail across filesystems — fall back to copy + delete
+                    std::fs::copy(&temp_file, &target_path)
+                        .map_err(|e| format!("Failed to copy `{}` into place.\n{:?}", rel_path, e))?;
+                    let _ = std::fs::remove_file(&temp_file);
+                    Ok::<(), String>(())
+                })?;
+
+            downloaded += file_size;
+        }
+
+        // --- 4. Delete files no longer in the manifest ---
+        for rel_path in &to_delete {
+            let full_path = game_folder.join(rel_path);
+            let _ = std::fs::remove_file(&full_path);
+        }
+
+        // Clean up any empty directories left behind
+        Self::remove_empty_dirs(&game_folder);
+
+        Ok(())
+    }
+
     fn is_directx_installed(&self) -> bool {
         #[cfg(target_os = "windows")]
         {
@@ -514,8 +917,7 @@ impl AppProfile for S2AppProfile {
     }
 
     fn uninstall(&self) -> Result<(), String> {
-        let folder = self.root_folder.join(&self.profile);
-        std::fs::remove_dir_all(folder)
+        std::fs::remove_dir_all(&self.root_folder)
             .map_err(|e| format!("Failed to remove directory.\n{:?}", e))
     }
 
@@ -551,37 +953,6 @@ impl AppProfile for S2AppProfile {
         Ok(())
     }
 
-    fn get_installed_version(&self) -> Result<Option<String>, String> {
-        let version_file = self.get_version_file_path();
-        if !version_file.exists() {
-            return Ok(None);
-        }
-
-        let contents = fs::read_to_string(&version_file)
-            .map_err(|e| format!("Failed to read version file.\n{:?}", e))?;
-        let version = contents.trim().to_string();
-
-        if version.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(version))
-        }
-    }
-
-    fn save_installed_version(&self, version: &str) -> Result<(), String> {
-        let version_file = self.get_version_file_path();
-
-        if let Some(parent) = version_file.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| format!("Failed to create version file directory.\n{:?}", e))?;
-        }
-
-        fs::write(&version_file, version)
-            .map_err(|e| format!("Failed to write version file.\n{:?}", e))?;
-
-        Ok(())
-    }
-
     fn get_install_path(&self) -> Result<String, String> {
         let folder = self.find_game_folder();
         folder.to_str()
@@ -590,49 +961,48 @@ impl AppProfile for S2AppProfile {
     }
 
     fn detect_installed_version(&self) -> Result<Option<String>, String> {
-        // First check if we already have a cached version
-        if let Ok(Some(cached)) = self.get_installed_version() {
-            return Ok(Some(cached));
-        }
-
         // If the game isn't installed, nothing to detect
         if !self.exists() {
             return Ok(None);
         }
 
         let game_path = self.get_exec()?;
-        let game_folder = self.find_game_folder();
 
-        self.log_message(&format!("Detecting version by running: {} quit", game_path.display()));
-
-        // Run the game with "quit" argument to make it write console.log and exit
-        let status = Command::new(&game_path)
-            .arg("quit")
-            .current_dir(&game_folder)
-            .status()
-            .map_err(|e| format!("Failed to run game for version detection: {}", e))?;
-
-        // The game may return non-zero when quitting immediately, that's OK
-        self.log_message(&format!("Game exited with status: {:?}", status.code()));
-
-        // Read and parse console.log
-        let console_log_path = Self::get_console_log_path()?;
-        if !console_log_path.exists() {
-            self.log_message(&format!("console.log not found at: {}", console_log_path.display()));
-            return Ok(None);
+        // === Strategy 1: PE version resource (Windows) ===
+        // Instant, invisible, reads embedded version info from the exe header.
+        #[cfg(target_os = "windows")]
+        {
+            self.log_message("Trying PE version resource...");
+            if let Some(version) = Self::read_pe_version(&game_path) {
+                // Skip 0.0.0.0 which means "no version set"
+                if version != "0.0.0.0" {
+                    self.log_message(&format!("Detected version from PE resource: {}", version));
+                    return Ok(Some(version));
+                }
+            }
+            self.log_message("PE version resource not available or empty.");
         }
 
-        let content = fs::read_to_string(&console_log_path)
-            .map_err(|e| format!("Failed to read console.log: {}", e))?;
-
-        if let Some(version) = Self::parse_version_from_console_log(&content) {
-            self.log_message(&format!("Detected version: {}", version));
-            // Cache the detected version
-            self.save_installed_version(&version)?;
-            Ok(Some(version))
-        } else {
-            self.log_message("Could not parse version from console.log");
-            Ok(None)
+        // === Strategy 2: Binary string scan ===
+        // Scan the executable for embedded version strings.
+        self.log_message("Trying binary scan...");
+        if let Some(version) = Self::scan_binary_for_version(&game_path) {
+            self.log_message(&format!("Detected version from binary scan: {}", version));
+            return Ok(Some(version));
         }
+        self.log_message("Binary scan did not find a version.");
+
+        // === Strategy 3: Existing console.log ===
+        // Check if a previous game session left a console.log with version info.
+        // Does NOT launch the game.
+        self.log_message("Trying existing console.log...");
+        if let Some(version) = Self::read_version_from_console_log() {
+            self.log_message(&format!("Detected version from console.log: {}", version));
+            return Ok(Some(version));
+        }
+        self.log_message("No version found in console.log.");
+
+        self.log_message("Could not detect installed version by any method.");
+        Ok(None)
     }
 }

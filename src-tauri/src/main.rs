@@ -23,9 +23,12 @@ pub struct Settings {
     pub initialized: bool,
     #[serde(default)]
     pub profile_locations: HashMap<String, String>,
+    #[serde(default)]
+    pub profile_versions: HashMap<String, String>,
 }
 
 pub struct InnerState {
+    pub local_data_dir: PathBuf,
     pub s2_folder: PathBuf,
     pub launcher_folder: PathBuf,
     pub temp_folder: PathBuf,
@@ -38,6 +41,8 @@ pub struct InnerState {
 impl InnerState {
     pub fn init(&mut self) -> Result<(), String> {
         let dirs = BaseDirs::new().ok_or("Failed to get directories.")?;
+
+        self.local_data_dir = PathBuf::from(dirs.data_local_dir());
 
         self.s2_folder = PathBuf::from(dirs.data_local_dir());
         self.s2_folder.push("Savage 2");
@@ -125,10 +130,49 @@ impl InnerState {
 
 pub struct State(pub RwLock<InnerState>);
 
+/// All known S2 profile keys (must match the tag_name values in the frontend release definitions).
+const S2_PROFILES: &[&str] = &["latest", "beta", "legacy"];
+
 #[tauri::command(async)]
 fn init(state: tauri::State<State>) -> Result<(), String> {
     let mut state_guard = state.0.write().unwrap();
     state_guard.init()?;
+
+    // Scan each profile for installed versions on startup.
+    // This uses PE resource / binary scan — it's instant and doesn't launch the game.
+    let mut changed = false;
+    for &profile in S2_PROFILES {
+        // Skip profiles that already have a cached version
+        if let Some(v) = state_guard.settings.profile_versions.get(profile) {
+            if !v.is_empty() {
+                continue;
+            }
+        }
+
+        // Build the profile's root folder
+        let root_folder = state_guard.settings.profile_locations
+            .get(profile)
+            .filter(|p| !p.is_empty())
+            .map(PathBuf::from)
+            .unwrap_or_else(|| default_profile_folder(&state_guard.local_data_dir, profile));
+
+        let app_profile = S2AppProfile {
+            root_folder,
+            temp_folder: state_guard.temp_folder.clone(),
+        };
+
+        // Only attempt detection if the game is actually installed
+        if app_profile.exists() {
+            if let Ok(Some(version)) = app_profile.detect_installed_version() {
+                state_guard.settings.profile_versions.insert(profile.to_string(), version);
+                changed = true;
+            }
+        }
+    }
+
+    if changed {
+        let _ = state_guard.save_settings_file();
+    }
 
     Ok(())
 }
@@ -139,6 +183,18 @@ fn is_initialized(state: tauri::State<State>) -> Result<bool, String> {
     Ok(state_guard.settings.initialized)
 }
 
+/// Returns the default install folder for a given profile.
+/// e.g. %LOCALAPPDATA%/Savage 2 CE, %LOCALAPPDATA%/Savage 2 CE - Beta, etc.
+fn default_profile_folder(base: &std::path::Path, profile: &str) -> PathBuf {
+    let folder_name = match profile {
+        "latest" => "Savage 2 CE",
+        "beta" => "Savage 2 CE - Beta",
+        "legacy" => "Savage 2 Legacy",
+        other => other,
+    };
+    base.join(folder_name)
+}
+
 fn create_app_profile(
     app_name: String,
     state: &tauri::State<State>,
@@ -146,18 +202,17 @@ fn create_app_profile(
 ) -> Result<Box<dyn AppProfile + Send>, String> {
     let state_guard = state.0.read().unwrap();
 
-    // Use profile-specific location if set, otherwise fall back to global
+    // Use profile-specific location if set, otherwise use the default per-profile folder
     let root_folder = state_guard.settings.profile_locations
         .get(&profile)
         .filter(|p| !p.is_empty())
         .map(PathBuf::from)
-        .unwrap_or_else(|| state_guard.savage2_folder.clone());
+        .unwrap_or_else(|| default_profile_folder(&state_guard.local_data_dir, &profile));
 
     Ok(match app_name.as_str() {
         "Savage 2" => Box::new(S2AppProfile {
             root_folder,
             temp_folder: state_guard.temp_folder.clone(),
-            profile
         }),
         _ => Err(format!("Unknown app profile `{}`.", app_name))?
     })
@@ -198,6 +253,37 @@ async fn download_and_install(
 }
 
 #[tauri::command(async)]
+async fn patch_update(
+    state: tauri::State<'_, State>,
+    app_handle: AppHandle,
+    app_name: String,
+    profile: String,
+    manifest_url: String,
+) -> Result<(), String> {
+    let (app_profile, cancel_token) = {
+        let state_guard = state.0.read().unwrap();
+        state_guard.cancel_token.reset();
+        let token = state_guard.cancel_token.clone();
+        drop(state_guard);
+
+        let profile = create_app_profile(
+            app_name,
+            &state,
+            profile
+        )?;
+        (profile, token)
+    };
+
+    app_profile.patch_update(
+        &app_handle,
+        manifest_url,
+        &cancel_token
+    ).await?;
+
+    Ok(())
+}
+
+#[tauri::command(async)]
 fn uninstall(
     state: tauri::State<State>,
     app_name: String,
@@ -206,10 +292,15 @@ fn uninstall(
     let app_profile = create_app_profile(
         app_name,
         &state,
-        profile
+        profile.clone()
     )?;
 
     app_profile.uninstall()?;
+
+    // Clear the cached installed version since the game is now removed
+    let mut state_guard = state.0.write().unwrap();
+    state_guard.settings.profile_versions.remove(&profile);
+    let _ = state_guard.save_settings_file();
 
     Ok(())
 }
@@ -262,16 +353,14 @@ fn reveal_folder(
 #[tauri::command(async)]
 fn get_installed_version(
     state: tauri::State<'_, State>,
-    app_name: String,
+    _app_name: String,
     profile: String
 ) -> Result<Option<String>, String> {
-    let app_profile = create_app_profile(
-        app_name,
-        &state,
-        profile
-    )?;
-
-    app_profile.get_installed_version()
+    let state_guard = state.0.read().unwrap();
+    Ok(state_guard.settings.profile_versions
+        .get(&profile)
+        .filter(|v| !v.is_empty())
+        .cloned())
 }
 
 #[tauri::command(async)]
@@ -295,29 +384,45 @@ fn detect_installed_version(
     app_name: String,
     profile: String
 ) -> Result<Option<String>, String> {
+    // First check if we already have a cached version in settings
+    {
+        let state_guard = state.0.read().unwrap();
+        if let Some(v) = state_guard.settings.profile_versions.get(&profile) {
+            if !v.is_empty() {
+                return Ok(Some(v.clone()));
+            }
+        }
+    }
+
     let app_profile = create_app_profile(
         app_name,
         &state,
-        profile
+        profile.clone()
     )?;
 
-    app_profile.detect_installed_version()
+    let detected = app_profile.detect_installed_version()?;
+
+    // Cache the detected version in settings
+    if let Some(ref version) = detected {
+        let mut state_guard = state.0.write().unwrap();
+        state_guard.settings.profile_versions.insert(profile, version.clone());
+        let _ = state_guard.save_settings_file();
+    }
+
+    Ok(detected)
 }
 
 #[tauri::command(async)]
 fn save_installed_version(
     state: tauri::State<'_, State>,
-    app_name: String,
+    _app_name: String,
     profile: String,
     version: String
 ) -> Result<(), String> {
-    let app_profile = create_app_profile(
-        app_name,
-        &state,
-        profile
-    )?;
-
-    app_profile.save_installed_version(&version)
+    let mut state_guard = state.0.write().unwrap();
+    state_guard.settings.profile_versions.insert(profile, version);
+    state_guard.save_settings_file()?;
+    Ok(())
 }
 
 #[tauri::command(async)]
@@ -402,13 +507,14 @@ fn get_download_location(state: tauri::State<'_, State>) -> Result<String, Strin
 #[tauri::command]
 fn get_profile_location(state: tauri::State<'_, State>, profile: String) -> Result<String, String> {
     let state_guard = state.0.read().unwrap();
-    // Return profile-specific location if set, otherwise the global default
+    // Return profile-specific location if set, otherwise the default per-profile folder
     if let Some(loc) = state_guard.settings.profile_locations.get(&profile) {
         if !loc.is_empty() {
             return Ok(loc.clone());
         }
     }
-    Ok(state_guard.settings.download_location.clone())
+    let default_path = default_profile_folder(&state_guard.local_data_dir, &profile);
+    Ok(default_path.to_string_lossy().to_string())
 }
 
 #[tauri::command(async)]
@@ -444,6 +550,7 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_log::Builder::default().build())
         .manage(State(RwLock::new(InnerState {
+            local_data_dir: PathBuf::new(),
             s2_folder: PathBuf::new(),
             launcher_folder: PathBuf::new(),
             temp_folder: PathBuf::new(),
@@ -487,6 +594,7 @@ fn main() {
             is_initialized,
 
             download_and_install,
+            patch_update,
             uninstall,
             exists,
             launch,

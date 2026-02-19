@@ -1,5 +1,6 @@
 use tauri::AppHandle;
 use async_trait::async_trait;
+use std::collections::HashMap;
 use crate::utils::CancelToken;
 
 // pub mod yarg;
@@ -15,6 +16,20 @@ pub struct ProgressPayload {
     pub current: u64,
 }
 
+/// A single file entry in a remote manifest.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct ManifestFile {
+    pub sha256: String,
+    pub size: u64,
+}
+
+/// Remote manifest describing all files in a game release.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct Manifest {
+    pub version: String,
+    pub files: HashMap<String, ManifestFile>,
+}
+
 #[async_trait]
 pub trait AppProfile {
     async fn download_and_install(
@@ -22,6 +37,15 @@ pub trait AppProfile {
         app: &AppHandle,
         zip_urls: Vec<String>,
         sig_urls: Vec<String>,
+        cancel_token: &CancelToken
+    ) -> Result<(), String>;
+
+    /// Patch-update the existing installation using a remote manifest.
+    /// Only downloads files that are new or changed compared to the local install.
+    async fn patch_update(
+        &self,
+        app: &AppHandle,
+        manifest_url: String,
         cancel_token: &CancelToken
     ) -> Result<(), String>;
 
@@ -53,21 +77,11 @@ pub trait AppProfile {
         &self
     ) -> Result<(), String>;
 
-    fn get_installed_version(
-        &self
-    ) -> Result<Option<String>, String>;
-
-    fn save_installed_version(
-        &self,
-        version: &str
-    ) -> Result<(), String>;
-
     fn get_install_path(
         &self
     ) -> Result<String, String>;
 
-    /// Detect the installed version by running the game briefly and parsing console.log.
-    /// Returns the detected version string and caches it in installed_version.txt.
+    /// Detect the installed version by inspecting the game binary.
     fn detect_installed_version(
         &self
     ) -> Result<Option<String>, String>;

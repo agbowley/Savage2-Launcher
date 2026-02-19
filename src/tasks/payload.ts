@@ -5,7 +5,7 @@ import { listen } from "@tauri-apps/api/event";
 import { throttle } from "lodash";
 import { useStore } from "zustand";
 
-export type TaskState = "downloading" | "installing" | "verifying" | "waiting";
+export type TaskState = "downloading" | "installing" | "verifying" | "checking" | "waiting";
 
 export interface TaskPayload {
     state: TaskState;

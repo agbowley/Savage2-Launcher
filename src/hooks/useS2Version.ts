@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/tauri";
 import { type } from "@tauri-apps/api/os";
 import { open } from "@tauri-apps/api/dialog";
 import { useS2State } from "@app/stores/S2StateStore";
-import { S2Download, S2Uninstall } from "@app/tasks/Processors/S2";
+import { S2Download, S2PatchUpdate, S2Uninstall } from "@app/tasks/Processors/S2";
 import { showErrorDialog, showInstallFolderDialog } from "@app/dialogs/dialogUtil";
 import { addTask, cancelTask, useTask } from "@app/tasks";
 import { usePayload, TaskPayload } from "@app/tasks/payload";
@@ -12,10 +12,12 @@ import { usePayload, TaskPayload } from "@app/tasks/payload";
 export enum S2States {
     "AVAILABLE",
     "DOWNLOADING",
+    "UPDATING",
     "ERROR",
     "PLAYING",
     "LOADING",
-    "NEW_UPDATE"
+    "NEW_UPDATE",
+    "UPDATE_AVAILABLE"
 }
 
 export type S2Version = {
@@ -143,7 +145,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         (async () => {
             if (!releaseData) return;
             // Skip if we're in a transient state (downloading, playing, etc.)
-            if (state === S2States.DOWNLOADING || state === S2States.PLAYING || state === S2States.LOADING) return;
+            if (state === S2States.DOWNLOADING || state === S2States.UPDATING || state === S2States.PLAYING || state === S2States.LOADING) return;
 
             try {
                 const exists = await invoke("exists", {
@@ -151,13 +153,19 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
                     profile
                 });
 
-                setState(exists ? S2States.AVAILABLE : S2States.NEW_UPDATE);
+                if (!exists) {
+                    setState(S2States.NEW_UPDATE);
+                } else if (installedVersion && latestVersion && installedVersion !== latestVersion) {
+                    setState(S2States.UPDATE_AVAILABLE);
+                } else {
+                    setState(S2States.AVAILABLE);
+                }
             } catch (e) {
                 console.error("Failed to check if game exists:", e);
                 setState(S2States.NEW_UPDATE);
             }
         })();
-    }, [releaseData]);
+    }, [releaseData, installedVersion, latestVersion]);
 
     if (!releaseData) {
         return {
@@ -201,7 +209,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
     };
 
     const download = async () => {
-        if (!releaseData || state === S2States.DOWNLOADING) return;
+        if (!releaseData || state === S2States.DOWNLOADING || state === S2States.UPDATING) return;
 
         if (!await showInstallFolderDialog()) {
             return;
@@ -233,38 +241,69 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
             const platformType = await type();
             const downloadUrl = getS2ReleaseDownload(releaseData, platformType);
 
-            const downloader = new S2Download(
-                downloadUrl,
-                undefined,
-                releaseData.channel,
-                profile,
-                async () => {
-                    // Save the remote version as the installed version after successful download
-                    if (latestVersion) {
-                        try {
-                            await invoke("save_installed_version", {
-                                appName: "Savage 2",
-                                profile,
-                                version: latestVersion
-                            });
-                        } catch (e) {
-                            console.error("Failed to save installed version:", e);
-                        }
+            const onSuccess = async () => {
+                // Save the remote version as the installed version after successful download
+                if (latestVersion) {
+                    try {
+                        await invoke("save_installed_version", {
+                            appName: "Savage 2",
+                            profile,
+                            version: latestVersion
+                        });
+                    } catch (e) {
+                        console.error("Failed to save installed version:", e);
                     }
-                    setState(S2States.AVAILABLE);
-                    setInstalledVersion(latestVersion);
                 }
-            );
-
-            downloader.onError = () => {
-                setState(S2States.NEW_UPDATE);
+                setState(S2States.AVAILABLE);
+                setInstalledVersion(latestVersion);
             };
 
-            downloader.onCancel = () => {
-                setState(S2States.NEW_UPDATE);
+            const onError = async () => {
+                try {
+                    const stillExists = await invoke("exists", { appName: "Savage 2", profile });
+                    setState(stillExists ? S2States.UPDATE_AVAILABLE : S2States.NEW_UPDATE);
+                } catch {
+                    setState(S2States.NEW_UPDATE);
+                }
             };
 
-            addTask(downloader);
+            const onCancel = async () => {
+                try {
+                    const stillExists = await invoke("exists", { appName: "Savage 2", profile });
+                    setState(stillExists ? S2States.UPDATE_AVAILABLE : S2States.NEW_UPDATE);
+                } catch {
+                    setState(S2States.NEW_UPDATE);
+                }
+            };
+
+            // Use incremental patch update when the game is already installed
+            // (UPDATE_AVAILABLE state), and a manifest URL is available.
+            // Falls back to full download if the manifest isn't hosted yet.
+            const gameExists = await invoke("exists", { appName: "Savage 2", profile });
+            let task: S2Download | S2PatchUpdate;
+
+            if (gameExists && releaseData.manifest_url) {
+                setState(S2States.UPDATING);
+                task = new S2PatchUpdate(
+                    releaseData.manifest_url,
+                    releaseData.channel,
+                    profile,
+                    onSuccess
+                );
+            } else {
+                task = new S2Download(
+                    downloadUrl,
+                    undefined,
+                    releaseData.channel,
+                    profile,
+                    onSuccess
+                );
+            }
+
+            task.onError = onError;
+            task.onCancel = onCancel;
+
+            addTask(task);
         } catch (e) {
             setState(S2States.ERROR);
             showErrorDialog(e as string);
@@ -335,8 +374,10 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
 
             setLatestVersion(remote);
 
-            if (!detected || detected !== remote) {
+            if (!detected) {
                 setState(S2States.NEW_UPDATE);
+            } else if (detected !== remote) {
+                setState(S2States.UPDATE_AVAILABLE);
             } else {
                 setState(S2States.AVAILABLE);
             }
@@ -378,7 +419,13 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
                     appName: "Savage 2",
                     profile
                 });
-                setState(gameExists ? S2States.AVAILABLE : S2States.NEW_UPDATE);
+                if (!gameExists) {
+                    setState(S2States.NEW_UPDATE);
+                } else if (installedVersion && latestVersion && installedVersion !== latestVersion) {
+                    setState(S2States.UPDATE_AVAILABLE);
+                } else {
+                    setState(S2States.AVAILABLE);
+                }
             }
         } catch (e) {
             showErrorDialog(e as string);
@@ -387,7 +434,8 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
     };
 
     const cancel = async () => {
-        if (state !== S2States.DOWNLOADING || !task) return;
+        if (state !== S2States.DOWNLOADING && state !== S2States.UPDATING) return;
+        if (!task) return;
         await cancelTask(task);
     };
 

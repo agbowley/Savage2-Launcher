@@ -1,10 +1,11 @@
 import { S2States, S2Version } from "@app/hooks/useS2Version";
 import { ButtonColor } from "../../Button";
-import { InstallingIcon, UpdateIcon } from "@app/assets/Icons";
+import { ErrorIcon, InstallingIcon, PlayIcon, UpdateIcon, UpgradeIcon } from "@app/assets/Icons";
 import { calculatePayloadPercentage } from "@app/tasks/payload";
 import PayloadProgress from "../../PayloadProgress";
 import Button from "@app/components/Button";
 import { DropdownButton, DropdownItem } from "@app/components/DropdownButton";
+import { ClipLoader } from "react-spinners";
 
 interface LaunchButtonProps extends React.PropsWithChildren {
     version: S2Version,
@@ -23,6 +24,36 @@ export function LaunchButton(props: LaunchButtonProps) {
         const dropdownChildren = <>
             <DropdownItem onClick={() => version.changeInstallLocation()}>
                 Choose Install Location
+            </DropdownItem>
+        </>;
+
+        return <DropdownButton
+            style={props.style}
+            color={ButtonColor.BLUE}
+            onClick={() => version.download()}
+            dropdownChildren={dropdownChildren}>
+
+            {buttonChildren}
+        </DropdownButton>;
+    }
+
+    if (version.state === S2States.UPDATE_AVAILABLE) {
+        const buttonChildren = <>
+            <UpgradeIcon /> Update {playName}
+        </>;
+
+        const dropdownChildren = <>
+            <DropdownItem onClick={() => version.play()}>
+                Play Anyway
+            </DropdownItem>
+            <DropdownItem onClick={() => version.changeInstallLocation()}>
+                Change Install Location
+            </DropdownItem>
+            <DropdownItem onClick={() => version.revealFolder()}>
+                Open Install Folder
+            </DropdownItem>
+            <DropdownItem onClick={() => version.uninstall()}>
+                Uninstall
             </DropdownItem>
         </>;
 
@@ -58,9 +89,31 @@ export function LaunchButton(props: LaunchButtonProps) {
         </DropdownButton>;
     }
 
+    if (version.state === S2States.UPDATING) {
+        const buttonChildren = <>
+            <ClipLoader size={16} color={"currentColor"} />
+            <PayloadProgress payload={version.payload} defaultText="Updating" />
+        </>;
+
+        const dropdownChildren = <>
+            <DropdownItem onClick={() => version.cancel()}>
+                Cancel
+            </DropdownItem>
+        </>;
+
+        return <DropdownButton
+            style={props.style}
+            progress={calculatePayloadPercentage(version.payload)}
+            color={ButtonColor.YELLOW}
+            dropdownChildren={dropdownChildren}>
+
+            {buttonChildren}
+        </DropdownButton>;
+    }
+
     if (version.state === S2States.AVAILABLE) {
         const buttonChildren = <>
-            Play {playName}
+            <PlayIcon /> Play {playName}
         </>;
 
         const dropdownChildren = <>
@@ -103,7 +156,7 @@ export function LaunchButton(props: LaunchButtonProps) {
 
     if (version.state === S2States.ERROR) {
         const buttonChildren = <>
-            Error!
+            <ErrorIcon /> Error!
         </>;
 
         return <Button

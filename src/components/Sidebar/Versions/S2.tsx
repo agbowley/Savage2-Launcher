@@ -53,9 +53,12 @@ const S2Version: React.FC<Props> = ({ channel }: Props) => {
             case S2States.PLAYING:
                 return "installed";
             case S2States.DOWNLOADING:
+            case S2States.UPDATING:
                 return "downloading";
+            case S2States.UPDATE_AVAILABLE:
+                return "update-available";
             case S2States.NEW_UPDATE:
-                return installedVersion ? "update-available" : "not-installed";
+                return "not-installed";
             default:
                 return undefined;
         }

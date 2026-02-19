@@ -16,6 +16,8 @@ const PayloadProgress: React.FC<Props> = ({ payload, defaultText = "Loading", fu
     switch (payload.state) {
         case "downloading":
             return <ProgressDownloading payload={payload} fullMode={fullMode} />;
+        case "checking":
+            return <ProgressChecking />;
         case "installing":
             return <ProgressInstalling />;
         case "verifying":
@@ -48,6 +50,10 @@ const ProgressDownloading: React.FC<ProgressDownloadingProps> = ({ payload, full
 
 const ProgressInstalling: React.FC = () => {
     return (<span>Installing</span>);
+};
+
+const ProgressChecking: React.FC = () => {
+    return (<span>Checking files...</span>);
 };
 
 const ProgressVerifying: React.FC = () => {

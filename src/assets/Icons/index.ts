@@ -33,6 +33,9 @@ import UnknownUserIcon from "./UnknownUser.svg?react";
 import BackIcon from "./Back.svg?react";
 import WarningIcon from "./Warning.svg?react";
 import DropdownIcon from "./Dropdown.svg?react";
+import PlayIcon from "./Play.svg?react";
+import ErrorIcon from "./Error.svg?react";
+import UpgradeIcon from "./Upgrade.svg?react";
 
 export {
     AddIcon,
@@ -62,5 +65,8 @@ export {
     UnknownUserIcon,
     BackIcon,
     WarningIcon,
-    DropdownIcon
+    DropdownIcon,
+    PlayIcon,
+    ErrorIcon,
+    UpgradeIcon
 };
