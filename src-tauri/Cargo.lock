@@ -3239,6 +3239,7 @@ version = "1.0.1"
 dependencies = [
  "async-trait",
  "directories",
+ "flate2",
  "futures-util",
  "log",
  "minisign",
@@ -3248,6 +3249,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sevenz-rust",
+ "tar",
  "tauri",
  "tauri-build",
  "tauri-plugin-log",

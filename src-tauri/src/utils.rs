@@ -137,9 +137,44 @@ pub async fn download(
 pub fn extract(from: &Path, to: &Path) -> Result<(), String> {
     clear_folder(to)?;
 
-    let file = File::open(from).map_err(|e| format!("Error while opening file.\n{:?}", e))?;
-    zip_extract::extract(file, to, false)
-        .map_err(|e| format!("Error while extracting zip.\n{:?}", e))?;
+    let from_str = from.to_string_lossy().to_lowercase();
+
+    if from_str.ends_with(".tar.gz") || from_str.ends_with(".tgz") {
+        // tar.gz extraction
+        let file = File::open(from).map_err(|e| format!("Error while opening file.\n{:?}", e))?;
+        let decompressed = flate2::read::GzDecoder::new(file);
+        let mut archive = tar::Archive::new(decompressed);
+        archive.unpack(to)
+            .map_err(|e| format!("Error while extracting tar.gz.\n{:?}", e))?;
+    } else {
+        // zip extraction
+        let file = File::open(from).map_err(|e| format!("Error while opening file.\n{:?}", e))?;
+        zip_extract::extract(file, to, false)
+            .map_err(|e| format!("Error while extracting zip.\n{:?}", e))?;
+    }
+
+    // Set execute permissions on Linux/macOS binaries
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        // Walk the extracted directory and make common game executables executable
+        if let Ok(entries) = std::fs::read_dir(to) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let name = path.file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("");
+                // Mark known game executables and .sh scripts as executable
+                if name == "savage2.x86_64" || name == "savage2" || name.ends_with(".sh") {
+                    if let Ok(metadata) = std::fs::metadata(&path) {
+                        let mut perms = metadata.permissions();
+                        perms.set_mode(perms.mode() | 0o755);
+                        let _ = std::fs::set_permissions(&path, perms);
+                    }
+                }
+            }
+        }
+    }
 
     Ok(())
 }

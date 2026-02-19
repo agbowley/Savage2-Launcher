@@ -408,35 +408,56 @@ impl AppProfile for S2AppProfile {
     }
 
     fn is_directx_installed(&self) -> bool {
-        let system32_path = Path::new("C:\\Windows\\System32\\d3dx9_43.dll");
-        system32_path.exists()
+        #[cfg(target_os = "windows")]
+        {
+            let system32_path = Path::new("C:\\Windows\\System32\\d3dx9_43.dll");
+            return system32_path.exists();
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            return false;
+        }
     }
 
     fn is_vcredist_installed(&self) -> bool {
-        let registry_key_path_x86 = r"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x86";
-        let registry_key_path_x64 = r"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64";
+        #[cfg(target_os = "windows")]
+        {
+            let registry_key_path_x86 = r"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x86";
+            let registry_key_path_x64 = r"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64";
 
-        let output_x86 = Command::new("reg")
-            .args(&["query", registry_key_path_x86])
-            .output()
-            .expect("Failed to check VC++ Redistributable (x86)");
+            let output_x86 = Command::new("reg")
+                .args(&["query", registry_key_path_x86])
+                .output()
+                .expect("Failed to check VC++ Redistributable (x86)");
 
-        let output_x64 = Command::new("reg")
-            .args(&["query", registry_key_path_x64])
-            .output()
-            .expect("Failed to check VC++ Redistributable (x64)");
+            let output_x64 = Command::new("reg")
+                .args(&["query", registry_key_path_x64])
+                .output()
+                .expect("Failed to check VC++ Redistributable (x64)");
 
-        output_x86.status.success() || output_x64.status.success()
+            return output_x86.status.success() || output_x64.status.success();
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            return false;
+        }
     }
 
     fn is_dotnetfx_installed(&self) -> bool {
-        let registry_key_path = r"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full";
-        let output = Command::new("reg")
-            .args(&["query", registry_key_path])
-            .output()
-            .expect("Failed to check .NET Framework");
+        #[cfg(target_os = "windows")]
+        {
+            let registry_key_path = r"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full";
+            let output = Command::new("reg")
+                .args(&["query", registry_key_path])
+                .output()
+                .expect("Failed to check .NET Framework");
 
-        output.status.success()
+            return output.status.success();
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            return false;
+        }
     }
 
     async fn install(&self) -> Result<(), String> {
@@ -447,38 +468,46 @@ impl AppProfile for S2AppProfile {
         self.log_message("Install folder: ");
         self.log_message(&install_folder.display().to_string());
 
-        let directx_installer = install_folder.join("directxredist/DXSETUP.exe");
-        let vcredist_installer = install_folder.join("vcredist_x86.exe");
-        let dotnetfx_installer = install_folder.join("dotnetfx.exe");
+        #[cfg(target_os = "windows")]
+        {
+            let directx_installer = install_folder.join("directxredist/DXSETUP.exe");
+            let vcredist_installer = install_folder.join("vcredist_x86.exe");
+            let dotnetfx_installer = install_folder.join("dotnetfx.exe");
 
-        if !self.is_directx_installed() {
-            self.log_message("DirectX not installed. Installing...");
-            match self.run_installer_with_elevation(&directx_installer).await {
-                Ok(_) => self.log_message("DirectX installation successful."),
-                Err(e) => self.log_message(&format!("DirectX installation failed: {}", e)),
+            if !self.is_directx_installed() {
+                self.log_message("DirectX not installed. Installing...");
+                match self.run_installer_with_elevation(&directx_installer).await {
+                    Ok(_) => self.log_message("DirectX installation successful."),
+                    Err(e) => self.log_message(&format!("DirectX installation failed: {}", e)),
+                }
+            } else {
+                self.log_message("DirectX already installed. Skipping installation.");
             }
-        } else {
-            self.log_message("DirectX already installed. Skipping installation.");
+
+            if !self.is_vcredist_installed() {
+                self.log_message("VC++ Redistributable not installed. Installing...");
+                match self.run_installer_with_elevation(&vcredist_installer).await {
+                    Ok(_) => self.log_message("VC++ Redistributable installation successful."),
+                    Err(e) => self.log_message(&format!("VC++ Redistributable installation failed: {}", e)),
+                }
+            } else {
+                self.log_message("VC++ Redistributable already installed. Skipping installation.");
+            }
+
+            if !self.is_dotnetfx_installed() {
+                self.log_message(".NET Framework not installed. Installing...");
+                match self.run_installer_with_elevation(&dotnetfx_installer).await {
+                    Ok(_) => self.log_message(".NET Framework installation successful."),
+                    Err(e) => self.log_message(&format!(".NET Framework installation failed: {}", e)),
+                }
+            } else {
+                self.log_message(".NET Framework already installed. Skipping installation.");
+            }
         }
 
-        if !self.is_vcredist_installed() {
-            self.log_message("VC++ Redistributable not installed. Installing...");
-            match self.run_installer_with_elevation(&vcredist_installer).await {
-                Ok(_) => self.log_message("VC++ Redistributable installation successful."),
-                Err(e) => self.log_message(&format!("VC++ Redistributable installation failed: {}", e)),
-            }
-        } else {
-            self.log_message("VC++ Redistributable already installed. Skipping installation.");
-        }
-
-        if !self.is_dotnetfx_installed() {
-            self.log_message(".NET Framework not installed. Installing...");
-            match self.run_installer_with_elevation(&dotnetfx_installer).await {
-                Ok(_) => self.log_message(".NET Framework installation successful."),
-                Err(e) => self.log_message(&format!(".NET Framework installation failed: {}", e)),
-            }
-        } else {
-            self.log_message(".NET Framework already installed. Skipping installation.");
+        #[cfg(not(target_os = "windows"))]
+        {
+            self.log_message("Non-Windows platform — skipping runtime dependency installation.");
         }
 
         Ok(())
@@ -498,19 +527,32 @@ impl AppProfile for S2AppProfile {
     }
 
     fn launch(&self) -> Result<(), String> {
-        let current_dir = env::current_dir().map_err(|e| format!("Failed to get current directory: {:?}", e))?;
-        let helper_path = current_dir.join("helper_executable").join("src").join("helper_executable.exe");
         let game_path = self.get_exec()?;
 
         self.log_message(&format!("Launching game from: {}", game_path.display()));
 
-        let status = Command::new(helper_path)
-            .arg(game_path.display().to_string())
-            .status()
-            .map_err(|e| format!("Failed to start helper executable: {:?}", e))?;
+        #[cfg(target_os = "windows")]
+        {
+            let current_dir = env::current_dir().map_err(|e| format!("Failed to get current directory: {:?}", e))?;
+            let helper_path = current_dir.join("helper_executable").join("src").join("helper_executable.exe");
 
-        if !status.success() {
-            return Err("Helper executable failed to launch the game.".into());
+            let status = Command::new(helper_path)
+                .arg(game_path.display().to_string())
+                .status()
+                .map_err(|e| format!("Failed to start helper executable: {:?}", e))?;
+
+            if !status.success() {
+                return Err("Helper executable failed to launch the game.".into());
+            }
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            let game_folder = self.find_game_folder();
+            Command::new(&game_path)
+                .current_dir(&game_folder)
+                .spawn()
+                .map_err(|e| format!("Failed to launch game: {:?}", e))?;
         }
 
         Ok(())

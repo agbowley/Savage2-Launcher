@@ -36,6 +36,8 @@ serde_json = "1.0"
 reqwest = { version = "0.12", features = ["stream"] }
 futures-util = "0.3"
 zip-extract = "0.1.2"
+tar = "0.4"
+flate2 = "1.0"
 directories = "5.0.1"
 sevenz-rust = { version = "0.4.3", features = ["aes256"] }
 window-shadows = "0.2.1"
