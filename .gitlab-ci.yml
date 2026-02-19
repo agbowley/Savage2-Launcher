@@ -1,0 +1,362 @@
+# ============================================================
+#  Savage 2 Launcher - GitLab CI/CD Release Pipeline
+#
+#  Triggered by pushing a version tag (e.g. v1.0.2).
+#  Builds signed Tauri bundles for every platform, uploads them
+#  to the GitLab Generic Package Registry, creates a GitLab
+#  Release, then calls the savage2.net launcher update API so
+#  the in-app updater picks up the new version automatically.
+#
+#  Runner requirements:
+#    - Linux  : any shared runner   (saas-linux-medium-amd64)
+#    - Windows: Windows shared/self-hosted runner
+#    - macOS  : macOS shared/self-hosted runner (Apple Silicon)
+# ============================================================
+
+stages:
+  - check
+  - build
+  - publish
+
+variables:
+  PACKAGE_NAME: savage2-launcher
+  NODE_VERSION: "20"
+
+# -------------------------------------------------------
+#  Lint - runs on every push / MR
+# -------------------------------------------------------
+lint:
+  stage: check
+  image: node:${NODE_VERSION}
+  script:
+    - npm ci --prefer-offline
+    - npm run lint:nofix
+  rules:
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_MERGE_REQUEST_IID
+    - if: $CI_COMMIT_TAG
+
+# -------------------------------------------------------
+#  Hidden job templates (YAML anchors)
+# -------------------------------------------------------
+.release_only:
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v/
+
+# -------------------------------------------------------
+#  BUILD : Linux  (x86_64)
+# -------------------------------------------------------
+build:linux:
+  stage: build
+  extends: .release_only
+  image: ubuntu:22.04
+  tags:
+    - saas-linux-medium-amd64
+  variables:
+    DEBIAN_FRONTEND: noninteractive
+  before_script:
+    # System deps for Tauri on Linux
+    - apt-get update -qq
+    - apt-get install -y -qq
+        build-essential curl wget file
+        libssl-dev libgtk-3-dev
+        libwebkit2gtk-4.0-dev
+        libayatana-appindicator3-dev
+        librsvg2-dev
+        ca-certificates gnupg
+    # Node.js
+    - curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash -
+    - apt-get install -y -qq nodejs
+    # Rust
+    - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    - . "$HOME/.cargo/env"
+  script:
+    - npm ci --prefer-offline
+    - npx tauri build
+    - mkdir -p artifacts
+    - cp src-tauri/target/release/bundle/appimage/*.AppImage         artifacts/ 2>/dev/null || true
+    - cp src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz  artifacts/
+    - cp src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz.sig artifacts/
+    - ls -lah artifacts/
+  artifacts:
+    paths:
+      - artifacts/
+    expire_in: 3 days
+
+# -------------------------------------------------------
+#  BUILD : Windows  (x86_64)
+# -------------------------------------------------------
+build:windows:
+  stage: build
+  extends: .release_only
+  tags:
+    - saas-windows-medium-amd64
+  before_script:
+    # Install Node.js (zip extract - no MSI / reboot needed)
+    - $nodeZip = "node-v${env:NODE_VERSION}.18.0-win-x64.zip"
+    - Invoke-WebRequest -Uri "https://nodejs.org/dist/v20.18.0/$nodeZip" -OutFile $nodeZip
+    - Expand-Archive $nodeZip -DestinationPath C:\node -Force
+    - $env:Path = "C:\node\node-v20.18.0-win-x64;$env:Path"
+    # Install Rust
+    - Invoke-WebRequest -Uri 'https://win.rustup.rs/x86_64' -OutFile 'rustup-init.exe'
+    - .\rustup-init.exe -y --default-toolchain stable 2>&1 | Out-Null
+    - $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
+  script:
+    - npm ci --prefer-offline
+    - npx tauri build
+    - New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+    - Copy-Item "src-tauri\target\release\bundle\msi\*.msi"         artifacts\ -ErrorAction SilentlyContinue
+    - Copy-Item "src-tauri\target\release\bundle\msi\*.msi.zip"     artifacts\
+    - Copy-Item "src-tauri\target\release\bundle\msi\*.msi.zip.sig" artifacts\
+    - Get-ChildItem artifacts\
+  artifacts:
+    paths:
+      - artifacts/
+    expire_in: 3 days
+
+# -------------------------------------------------------
+#  BUILD : macOS  (aarch64 - Apple Silicon)
+# -------------------------------------------------------
+build:macos-aarch64:
+  stage: build
+  extends: .release_only
+  tags:
+    - saas-macos-medium-m1
+  before_script:
+    - brew install node@${NODE_VERSION} 2>/dev/null || true
+    - export PATH="$(brew --prefix node@${NODE_VERSION})/bin:$PATH"
+    - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    - . "$HOME/.cargo/env"
+  script:
+    - npm ci --prefer-offline
+    - npx tauri build --target aarch64-apple-darwin
+    - mkdir -p artifacts
+    - cp src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz
+        "artifacts/Savage 2 Launcher_aarch64.app.tar.gz"
+    - cp src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz.sig
+        "artifacts/Savage 2 Launcher_aarch64.app.tar.gz.sig"
+    - ls -lah artifacts/
+  artifacts:
+    paths:
+      - artifacts/
+    expire_in: 3 days
+
+# -------------------------------------------------------
+#  BUILD : macOS  (x86_64 - Intel, cross-compiled on M1)
+# -------------------------------------------------------
+build:macos-x86_64:
+  stage: build
+  extends: .release_only
+  tags:
+    - saas-macos-medium-m1
+  before_script:
+    - brew install node@${NODE_VERSION} 2>/dev/null || true
+    - export PATH="$(brew --prefix node@${NODE_VERSION})/bin:$PATH"
+    - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    - . "$HOME/.cargo/env"
+    - rustup target add x86_64-apple-darwin
+  script:
+    - npm ci --prefer-offline
+    - npx tauri build --target x86_64-apple-darwin
+    - mkdir -p artifacts
+    - cp src-tauri/target/x86_64-apple-darwin/release/bundle/macos/*.app.tar.gz
+        "artifacts/Savage 2 Launcher_x86_64.app.tar.gz"
+    - cp src-tauri/target/x86_64-apple-darwin/release/bundle/macos/*.app.tar.gz.sig
+        "artifacts/Savage 2 Launcher_x86_64.app.tar.gz.sig"
+    - ls -lah artifacts/
+  artifacts:
+    paths:
+      - artifacts/
+    expire_in: 3 days
+
+# -------------------------------------------------------
+#  PUBLISH : Upload to Package Registry, create Release,
+#            and update savage2.net launcher API
+# -------------------------------------------------------
+publish:
+  stage: publish
+  extends: .release_only
+  image: alpine:3.19
+  needs:
+    - build:linux
+    - build:windows
+    - build:macos-aarch64
+    - build:macos-x86_64
+  before_script:
+    - apk add --no-cache curl jq bash python3
+  script:
+    - |
+      set -euo pipefail
+
+      VERSION="${CI_COMMIT_TAG#v}"
+      REGISTRY_URL="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PACKAGE_NAME}/${VERSION}"
+
+      echo "============================================"
+      echo " Publishing Savage 2 Launcher v${VERSION}"
+      echo "============================================"
+      echo ""
+
+      # ----------------------------------------------------------
+      #  Upload each artifact to the Generic Package Registry
+      # ----------------------------------------------------------
+      upload_file() {
+        local filepath="$1"
+        local filename
+        filename=$(basename "$filepath")
+        # Replace spaces with hyphens for clean registry URLs
+        local safe_name="${filename// /-}"
+
+        echo "  Uploading: ${filename} -> ${safe_name}"
+        HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+          --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+          --upload-file "$filepath" \
+          "${REGISTRY_URL}/${safe_name}")
+
+        if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+          echo "    OK (HTTP ${HTTP_CODE})"
+        else
+          echo "    FAILED (HTTP ${HTTP_CODE})"
+          return 1
+        fi
+      }
+
+      echo "Uploading to Generic Package Registry..."
+      for f in artifacts/*; do
+        [ -f "$f" ] && upload_file "$f"
+      done
+
+      echo ""
+
+      # ----------------------------------------------------------
+      #  Build platform map for the savage2.net API
+      # ----------------------------------------------------------
+      add_platform() {
+        local key="$1" updater_glob="$2" sig_glob="$3"
+        local updater_file sig_file
+
+        updater_file=$(ls $updater_glob 2>/dev/null | head -1) || true
+        sig_file=$(ls $sig_glob 2>/dev/null | head -1)         || true
+
+        if [ -z "$updater_file" ] || [ -z "$sig_file" ]; then
+          echo "  Skipping ${key} (artifacts not found)"
+          return 0
+        fi
+
+        local filename sig safe_name url
+        filename=$(basename "$updater_file")
+        sig=$(cat "$sig_file")
+        safe_name="${filename// /-}"
+        url="${REGISTRY_URL}/${safe_name}"
+
+        PLATFORMS=$(echo "$PLATFORMS" | jq \
+          --arg k "$key" \
+          --arg u "$url" \
+          --arg s "$sig" \
+          '. + {($k): {url: $u, signature: $s}}')
+
+        echo "  ${key} -> ${url}"
+      }
+
+      PLATFORMS='{}'
+      echo "Registering updater platforms:"
+      add_platform "windows-x86_64"  "artifacts/*.msi.zip"              "artifacts/*.msi.zip.sig"
+      add_platform "linux-x86_64"    "artifacts/*.AppImage.tar.gz"      "artifacts/*.AppImage.tar.gz.sig"
+      add_platform "darwin-x86_64"   "artifacts/*_x86_64.app.tar.gz"    "artifacts/*_x86_64.app.tar.gz.sig"
+      add_platform "darwin-aarch64"  "artifacts/*_aarch64.app.tar.gz"   "artifacts/*_aarch64.app.tar.gz.sig"
+
+      echo ""
+
+      # ----------------------------------------------------------
+      #  POST to savage2.net launcher update API
+      # ----------------------------------------------------------
+      PAYLOAD=$(jq -n \
+        --arg    version  "v${VERSION}" \
+        --arg    notes    "Release v${VERSION}" \
+        --arg    pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        --argjson platforms "$PLATFORMS" \
+        '{version: $version, notes: $notes, pub_date: $pub_date, platforms: $platforms}')
+
+      echo "API Payload:"
+      echo "$PAYLOAD" | jq .
+      echo ""
+
+      HTTP_CODE=$(curl -s -o /tmp/api_resp.json -w '%{http_code}' \
+        -X POST "https://savage2.net/api/launcherupdates" \
+        -H "Authorization: Bearer ${S2_API_TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d "$PAYLOAD")
+
+      cat /tmp/api_resp.json | jq . 2>/dev/null || cat /tmp/api_resp.json
+
+      if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+        echo ""
+        echo "Launcher API updated successfully (HTTP ${HTTP_CODE})"
+      else
+        echo ""
+        echo "ERROR: Failed to update Launcher API (HTTP ${HTTP_CODE})"
+        exit 1
+      fi
+
+      # ----------------------------------------------------------
+      #  Build asset links JSON for the GitLab Release
+      # ----------------------------------------------------------
+      LINKS="[]"
+      add_link() {
+        local name="$1" filepath="$2"
+        local filename safe_name url
+        filename=$(basename "$filepath")
+        safe_name="${filename// /-}"
+        url="${REGISTRY_URL}/${safe_name}"
+        LINKS=$(echo "$LINKS" | jq \
+          --arg n "$name" \
+          --arg u "$url" \
+          '. + [{"name": $n, "url": $u, "link_type": "package"}]')
+      }
+
+      # Add release links for the user-facing installers
+      for f in artifacts/*.msi; do
+        [ -f "$f" ] && add_link "Windows Installer (MSI)" "$f"
+      done
+      for f in artifacts/*.AppImage; do
+        [ -f "$f" ] && add_link "Linux (AppImage)" "$f"
+      done
+      for f in artifacts/*_aarch64.app.tar.gz; do
+        [ -f "$f" ] && add_link "macOS Apple Silicon (.app)" "$f"
+      done
+      for f in artifacts/*_x86_64.app.tar.gz; do
+        [ -f "$f" ] && add_link "macOS Intel (.app)" "$f"
+      done
+
+      echo "$LINKS" | jq . > /tmp/release_links.json
+
+      # Save for the release step
+      echo "RELEASE_VERSION=${VERSION}" >> publish.env
+  artifacts:
+    reports:
+      dotenv: publish.env
+    paths:
+      - /tmp/release_links.json
+    expire_in: 1 day
+
+  # GitLab Release (uses the release keyword)
+  release:
+    tag_name: $CI_COMMIT_TAG
+    name: "Savage 2 Launcher v${RELEASE_VERSION}"
+    description: "Automated release of Savage 2 Launcher v${RELEASE_VERSION}. Download the installer for your platform below."
+    assets:
+      links:
+        - name: "Windows Installer (MSI)"
+          url: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PACKAGE_NAME}/${RELEASE_VERSION}/Savage-2-Launcher_${RELEASE_VERSION}_x64_en-US.msi"
+          link_type: "package"
+        - name: "Windows Updater Bundle"
+          url: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PACKAGE_NAME}/${RELEASE_VERSION}/Savage-2-Launcher_${RELEASE_VERSION}_x64_en-US.msi.zip"
+          link_type: "package"
+        - name: "Linux (AppImage)"
+          url: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PACKAGE_NAME}/${RELEASE_VERSION}/Savage-2-Launcher_${RELEASE_VERSION}_amd64.AppImage"
+          link_type: "package"
+        - name: "macOS Apple Silicon (.app)"
+          url: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PACKAGE_NAME}/${RELEASE_VERSION}/Savage-2-Launcher_aarch64.app.tar.gz"
+          link_type: "package"
+        - name: "macOS Intel (.app)"
+          url: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PACKAGE_NAME}/${RELEASE_VERSION}/Savage-2-Launcher_x86_64.app.tar.gz"
+          link_type: "package"
