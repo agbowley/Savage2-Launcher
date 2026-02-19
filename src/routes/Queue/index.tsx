@@ -6,25 +6,14 @@ import { useState } from "react";
 import { QueueListIcon } from "@app/assets/Icons";
 import QueueStore from "@app/tasks/queue";
 import { usePayload } from "@app/tasks/payload";
-import { useCurrentTask } from "@app/tasks";
+import { useCurrentTask, cancelTask } from "@app/tasks";
 
 function Queue() {
-    // These are for the "You've been staring at this blank page for..."
     const [lastWasEmpty, setLastWasEmpty] = useState(false);
-    // const [startTime, setStartTime] = useState(Date.now());
-    // const [time, setTime] = useState(Date.now());
 
     const queue = QueueStore.useQueue();
     const currentTask = useCurrentTask();
     const payload = usePayload(currentTask?.taskUUID);
-
-    // Update the timer so the text also updates
-    // useEffect(() => {
-    //     const interval = setInterval(() => setTime(Date.now()), 1000);
-    //     return () => {
-    //         clearInterval(interval);
-    //     };
-    // }, []);
 
     function getProgressValue() {
         if (payload?.state === "downloading") {
@@ -41,8 +30,16 @@ function Queue() {
             }
 
             return <div className={styles.banner}>
-                {/* <h1 className={styles.downloading_text}>DOWNLOADING</h1> */}
-                {currentTask?.getQueueEntry(true)}
+                <div className={styles.banner_header}>
+                    {currentTask?.getQueueEntry(true)}
+                    <button
+                        className={styles.cancel_button}
+                        onClick={() => cancelTask(currentTask)}
+                        title="Cancel download"
+                    >
+                        Cancel
+                    </button>
+                </div>
                 <div className={styles.progress_container}>
                     <div className={styles.progress_info}>
                         <PayloadProgress payload={payload} fullMode />
@@ -58,20 +55,13 @@ function Queue() {
         } else {
             // Make sure to update the start time when it becomes empty
             if (!lastWasEmpty) {
-                // setStartTime(Date.now());
                 setLastWasEmpty(true);
             }
 
-            // const seconds = Math.round((time - startTime) / 1000);
-
             return <div className={styles.empty_banner}>
                 <h1 className={styles.empty_banner_header}>
-                    {/* <InstallingIcon width={40} height={40} /> */}
                     DOWNLOADS
                 </h1>
-                {/* <div className={styles.empty_banner_subheader}>
-                    You have been staring at this blank page for <strong>{seconds} seconds</strong>
-                </div> */}
             </div>;
         }
     }
@@ -82,7 +72,9 @@ function Queue() {
             <QueueSection icon={<QueueListIcon />} title="QUEUE">
                 {
                     queue.size > 1 ?
-                        Array.from(queue).splice(1).map(downloader => downloader.getQueueEntry(false)) :
+                        Array.from(queue).splice(1).map(downloader =>
+                            downloader.getQueueEntry(false, () => cancelTask(downloader))
+                        ) :
                         <div className={styles.empty_queue}>There are no downloads in the queue.</div>
                 }
             </QueueSection>

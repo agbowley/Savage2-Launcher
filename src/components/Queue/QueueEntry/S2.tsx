@@ -8,9 +8,10 @@ import { ReleaseChannels } from "@app/hooks/useS2Release";
 interface Props {
     s2Task: S2Task,
     bannerMode: boolean,
+    onRemove?: () => void,
 }
 
-const S2Queue: React.FC<Props> = ({ s2Task, bannerMode }: Props) => {
+const S2Queue: React.FC<Props> = ({ s2Task, bannerMode, onRemove }: Props) => {
     const channelIconPath: { [key in ReleaseChannels]: string } = {
         "stable": StableS2Icon,
         "nightly": NightlyS2Icon,
@@ -34,6 +35,7 @@ const S2Queue: React.FC<Props> = ({ s2Task, bannerMode }: Props) => {
         version={s2Task.version}
         versionChannel={getChannelDisplayName()}
         bannerMode={bannerMode}
+        onRemove={onRemove}
     />;
 };
 

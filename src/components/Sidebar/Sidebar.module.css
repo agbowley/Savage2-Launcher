@@ -11,14 +11,16 @@
     gap: 50px;
 }
 
-.footer {
+.downloads {
     margin-top: auto;
+}
+
+.footer {
     display: flex;
     align-items: center;
 }
 
 .footer > .credits {
-    /* color: var(--primary-25); */
     font-size: 12px;
     font-weight: 700;
     text-shadow: 1px 1px 1px black;
@@ -60,7 +62,6 @@
 
 [aria-current="page"] > .button,
 .button:hover {
-    /* background: rgba(255, 255, 255, 0.025); */
     background: rgba(255, 255, 255, 0.25);
 }
 

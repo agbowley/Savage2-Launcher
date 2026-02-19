@@ -9,9 +9,11 @@ export interface IBaseTask {
     profile: string,
 
     onFinish?: () => void;
+    onError?: (error: string) => void;
+    onCancel?: () => void;
 
     start(): Promise<void>;
-    getQueueEntry(bannerMode: boolean): React.ReactNode;
+    getQueueEntry(bannerMode: boolean, onRemove?: () => void): React.ReactNode;
 }
 
 export class BaseTask {

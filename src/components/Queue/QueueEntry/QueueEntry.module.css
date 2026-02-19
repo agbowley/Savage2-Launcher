@@ -57,3 +57,27 @@
     font-weight: 500;
     line-height: normal;
 }
+
+.remove_button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    transition: background 0.15s;
+    padding: 0;
+}
+
+.remove_button:hover {
+    background: rgba(200, 50, 50, 0.25);
+}
+
+.remove_button > svg {
+    width: 14px;
+    height: 14px;
+    color: rgba(0, 0, 0, 0.5);
+}

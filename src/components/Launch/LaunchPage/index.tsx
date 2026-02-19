@@ -11,22 +11,20 @@ const INITIAL_RELEASE_DATE = new Date("2023-03-09T05:00:00.000Z");
 
 interface Props {
     version: S2Version,
-    releaseTag: string,
     playName: string,
     description: React.ReactNode,
     websiteUrl: string,
     icon: string,
     banner: string,
-    created_at: string
 }
 
-const LaunchPage: React.FC<Props> = ({ version, releaseTag, playName, description, websiteUrl, icon, banner, created_at }: Props) => {
+const LaunchPage: React.FC<Props> = ({ version, playName, description, websiteUrl, icon, banner }: Props) => {
     // If there isn't a version, something went wrong
     if (!version) {
         return <p>Error: No version.</p>;
     }
 
-    const CreatedDate = created_at ? new Date(created_at) : INITIAL_RELEASE_DATE;
+    const CreatedDate = version.releaseDate ? new Date(version.releaseDate) : INITIAL_RELEASE_DATE;
 
     return <>
         <div className={styles.header} style={{backgroundImage: `url("${banner}")`}}>
@@ -37,7 +35,7 @@ const LaunchPage: React.FC<Props> = ({ version, releaseTag, playName, descriptio
                         Savage 2
                     </span>
                     <div className={styles.version_badge}>
-                        {releaseTag}
+                        {version.installedVersion ?? version.latestVersion ?? playName}
                     </div>
                 </div>
             </div>
@@ -58,13 +56,15 @@ const LaunchPage: React.FC<Props> = ({ version, releaseTag, playName, descriptio
                     <div className={styles.info_list}>
                         {version.installedVersion && (
                             <TooltipWrapper
-                                text={version.installedVersion === version.latestVersion
-                                    ? "You are up to date!"
-                                    : `Update available: ${version.latestVersion}`}
+                                text={version.latestVersion
+                                    ? (version.installedVersion === version.latestVersion
+                                        ? "You are up to date!"
+                                        : `Update available: ${version.latestVersion}`)
+                                    : "Checking for updates..."}
                                 className={styles.info_entry}>
                                 <UpdateIcon />
                                 Installed: {version.installedVersion}
-                                {version.installedVersion !== version.latestVersion && (
+                                {version.latestVersion && version.installedVersion !== version.latestVersion && (
                                     <span className={styles.update_badge}>Update Available</span>
                                 )}
                             </TooltipWrapper>
@@ -82,10 +82,10 @@ const LaunchPage: React.FC<Props> = ({ version, releaseTag, playName, descriptio
                             text={"Latest Version"}
                             className={styles.info_entry}>
                             <InformationIcon />
-                            Latest: {releaseTag}
+                            Latest: {version.latestVersion || "Checking..."}
                         </TooltipWrapper>
                         <TooltipWrapper
-                            text={`Initial Release Date (${intlFormatDistance(CreatedDate, new Date())})`}
+                            text={`Release Date (${intlFormatDistance(CreatedDate, new Date())})`}
                             className={styles.info_entry}>
 
                             <DateIcon />

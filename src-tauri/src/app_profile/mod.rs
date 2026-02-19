@@ -1,7 +1,6 @@
-use std::path::Path;
-
 use tauri::AppHandle;
 use async_trait::async_trait;
+use crate::utils::CancelToken;
 
 // pub mod yarg;
 // pub mod official_setlist;
@@ -22,7 +21,8 @@ pub trait AppProfile {
         &self,
         app: &AppHandle,
         zip_urls: Vec<String>,
-        sig_urls: Vec<String>
+        sig_urls: Vec<String>,
+        cancel_token: &CancelToken
     ) -> Result<(), String>;
 
     async fn install(
@@ -65,4 +65,10 @@ pub trait AppProfile {
     fn get_install_path(
         &self
     ) -> Result<String, String>;
+
+    /// Detect the installed version by running the game briefly and parsing console.log.
+    /// Returns the detected version string and caches it in installed_version.txt.
+    fn detect_installed_version(
+        &self
+    ) -> Result<Option<String>, String>;
 }

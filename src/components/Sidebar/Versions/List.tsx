@@ -1,22 +1,20 @@
 import S2Version from "./S2";
 import styles from "./Versions.module.css";
-// import SetlistVersion from "./Setlist";
 import VersionSeparator from "./Separator";
-// import { AddIcon } from "@app/assets/Icons";
+import SubSection from "./SubSection";
 
 const VersionsList: React.FC = () => {
     return (
         <div className={styles.list}>
-            <VersionSeparator name="Applications">
-                {/* <AddIcon className={styles.add} /> */}
-            </VersionSeparator>
+            <VersionSeparator name="Game Clients" />
             <S2Version channel="stable" />
-            <S2Version channel="nightly" />
-            <S2Version channel="legacy" />
-            {/* <VersionSeparator name="Songs">
-            <AddIcon className={styles.add} />
-        </VersionSeparator>
-        <SetlistVersion channel="official" /> */}
+            <VersionSeparator name="Other Clients" />
+            <SubSection name="Testing">
+                <S2Version channel="nightly" />
+            </SubSection>
+            <SubSection name="Legacy" collapsible defaultExpanded={false}>
+                <S2Version channel="legacy" />
+            </SubSection>
         </div>
     );
 };

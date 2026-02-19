@@ -6,7 +6,6 @@
     align-items: flex-start;
     gap: 25px;
     align-self: stretch;
-    /* background: var(--black-background); */
     background: var(--malph-bg);
     background-size: contain;
     background-attachment: fixed;
@@ -25,11 +24,6 @@
     gap: 25px;
     align-self: stretch;
 
-    /* background-image:
-        linear-gradient(216deg, #080A0E 0%, rgba(0, 0, 0, 0.00) 100%),
-        url("/src/assets/Background.png");
-    background-repeat: no-repeat, no-repeat;
-    background-size: contain, cover; */
     background: linear-gradient(8deg, #050609 0%, rgba(8, 10, 14, 0.00) 100%), url("/src/assets/Background.png"), rgb(20, 20, 20);
     background-size: cover;
     background-position: center;
@@ -40,15 +34,10 @@
     height: 184px;
     padding: 25px;
     flex-direction: column;
-    justify-content: center;
-    align-items: flex-start;
     justify-content: flex-end;
+    align-items: flex-start;
     gap: 20px;
     align-self: stretch;
-    /* background: #080A0E; */
-    /* background: url("/src/assets/Background.png");
-    background-size: cover;
-    background-position: center; */
     background: linear-gradient(8deg, #050609 0%, rgba(8, 10, 14, 0.00) 100%), url("/src/assets/Background.png"), rgb(20, 20, 20);
     background-size: cover;
     background-position: center;
@@ -62,14 +51,6 @@
     gap: 10px;
     opacity: 1;
     margin: 0;
-}
-
-.empty_banner_subheader {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 3px;
-    opacity: 0.25;
 }
 
 .empty_queue {
@@ -97,6 +78,31 @@
     /* font-weight: 600; */
     line-height: normal;
     text-transform: uppercase;
+}
+
+.banner_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    align-self: stretch;
+}
+
+.cancel_button {
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 16px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+
+.cancel_button:hover {
+    background: rgba(200, 50, 50, 0.4);
+    border-color: rgba(200, 50, 50, 0.6);
 }
 
 .progress_container {

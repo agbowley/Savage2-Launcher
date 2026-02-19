@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { OsType } from "@tauri-apps/api/os";
 
 export type ReleaseChannels = "stable" | "nightly" | "legacy";
@@ -11,7 +12,7 @@ type ReleaseData = {
     tag_name: string;
     name: string;
     description: string;
-    created_at: string;
+    version_url: string;
     assets: ReleaseAsset[];
 };
 
@@ -23,54 +24,55 @@ const DOWNLOAD_BASE = "https://masterserver1.talesofnewerth.com";
 
 /**
  * Static release definitions for each channel.
- * Download URLs will transition to /latest/ paths in the future.
+ * tag_name is the channel identifier used as the profile/folder name on disk.
+ * version_url points to a remote version.txt for checking the latest version.
  */
 const releaseDefinitions: Record<ReleaseChannels, ReleaseData> = {
     stable: {
-        tag_name: "2.2.0",
-        name: "Savage 2 - Community Edition",
+        tag_name: "latest",
+        name: "Community Edition",
         description: "The official live release of Savage 2: A Tortured Soul – Community Edition. 64-bit client with improved stability, performance, and quality-of-life improvements.",
-        created_at: "2025-11-28T02:40:40",
+        version_url: `${DOWNLOAD_BASE}/wb6/i686/latest/version.txt`,
         assets: [
             {
                 name: "Savage2CEInstall.exe",
-                download_url: `${DOWNLOAD_BASE}/wb6/i686/2.2.0/Savage2CEInstall.exe`,
+                download_url: `${DOWNLOAD_BASE}/wb6/i686/latest/Savage2CEInstall.exe`,
             },
             {
-                name: "sav2_2.2.0.0_release_aamd64.tar.gz",
-                download_url: `${DOWNLOAD_BASE}/lr1/x86_64/2.2.0/sav2_2.2.0.0_release_aamd64.tar.gz`,
+                name: "savage2-linux.tar.gz",
+                download_url: `${DOWNLOAD_BASE}/lr1/x86_64/latest/savage2-linux.tar.gz`,
             },
         ],
     },
     legacy: {
         tag_name: "legacy",
-        name: "Savage 2 - Legacy Client",
-        description: "The legacy version of Savage 2 for players who prefer the original client.",
-        created_at: "2023-03-09T05:00:00",
+        name: "Legacy Client",
+        description: "The legacy version of Savage 2. This version is no longer supported and does not receive updates, but is available for those who wish to play the original version of the game or want to play mods/maps or watch replays that are no longer compatible with the updated game.",
+        version_url: `${DOWNLOAD_BASE}/wb6/i686/legacy/version.txt`,
         assets: [
             {
                 name: "Savage2CEInstall.exe",
-                download_url: `${DOWNLOAD_BASE}/wb6/i686/2.2.0/Savage2CEInstall.exe`,
+                download_url: `${DOWNLOAD_BASE}/wb6/i686/legacy/Savage2-2.1.1.1-windows-installer.exe`,
             },
             {
-                name: "sav2_2.2.0.0_release_aamd64.tar.gz",
-                download_url: `${DOWNLOAD_BASE}/lr1/x86_64/2.2.0/sav2_2.2.0.0_release_aamd64.tar.gz`,
+                name: "savage2-linux.tar.gz",
+                download_url: `${DOWNLOAD_BASE}/lr1/x86_64/legacy/savage2-linux.tar.gz`,
             },
         ],
     },
     nightly: {
         tag_name: "beta",
-        name: "Savage 2 - Beta Test Client",
+        name: "Beta Test Client",
         description: "The beta test client for upcoming features and patches. Use this to help test changes before they go live.",
-        created_at: "2025-11-28T02:40:40",
+        version_url: `${DOWNLOAD_BASE}/wb6/i686/beta/version.txt`,
         assets: [
             {
                 name: "Savage2CEInstall.exe",
-                download_url: `${DOWNLOAD_BASE}/wb6/i686/2.2.0/Savage2CEInstall.exe`,
+                download_url: `${DOWNLOAD_BASE}/wb6/i686/beta/Savage2CEInstall.exe`,
             },
             {
-                name: "sav2_2.2.0.0_release_aamd64.tar.gz",
-                download_url: `${DOWNLOAD_BASE}/lr1/x86_64/2.2.0/sav2_2.2.0.0_release_aamd64.tar.gz`,
+                name: "savage2-linux.tar.gz",
+                download_url: `${DOWNLOAD_BASE}/lr1/x86_64/beta/savage2-linux.tar.gz`,
             },
         ],
     },
@@ -83,7 +85,7 @@ const releaseDefinitions: Record<ReleaseChannels, ReleaseData> = {
  */
 export const useS2Release = (channel: ReleaseChannels) => {
     const release = releaseDefinitions[channel];
-    const data: ExtendedReleaseData = { ...release, channel };
+    const data = useMemo<ExtendedReleaseData>(() => ({ ...release, channel }), [channel]);
 
     return {
         data,
@@ -97,7 +99,7 @@ export const getS2ReleaseDownload = (releaseData: ReleaseData, platformType: OsT
     const filePerPlatform: { [key in OsType]: string } = {
         "Windows_NT": "Savage2CEInstall.exe",
         "Darwin": "Savage2CEInstall.exe",
-        "Linux": "sav2_2.2.0.0_release_aamd64.tar.gz",
+        "Linux": "savage2-linux.tar.gz",
     };
 
     const expectedName = filePerPlatform[platformType];

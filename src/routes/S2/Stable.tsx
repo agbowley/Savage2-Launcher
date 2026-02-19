@@ -16,7 +16,6 @@ function StableS2Page() {
         return (<>
             <LaunchPage
                 version={S2Version}
-                releaseTag={releaseData?.tag_name}
                 playName="Community Edition"
                 description={<>
                     {releaseData?.description}
@@ -24,7 +23,6 @@ function StableS2Page() {
                 websiteUrl="https://savage2.net"
                 icon={StableS2Icon}
                 banner={StableS2Banner}
-                created_at={releaseData?.created_at}
             />
         </>);
     }

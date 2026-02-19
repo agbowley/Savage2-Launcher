@@ -5,21 +5,21 @@ import { ReleaseChannels } from "@app/hooks/useS2Release";
 
 export abstract class S2Task extends BaseTask {
     channel: ReleaseChannels;
-    version: string;
     profile: string;
     onFinish: () => void;
+    onError?: (error: string) => void;
+    onCancel?: () => void;
 
-    constructor(channel: ReleaseChannels, version: string, profile: string, onFinish: () => void) {
+    constructor(channel: ReleaseChannels, profile: string, onFinish: () => void) {
         super("Savage 2", profile);
 
         this.channel = channel;
-        this.version = version;
         this.profile = profile;
         this.onFinish = onFinish;
     }
 
-    getQueueEntry(bannerMode: boolean): React.ReactNode {
-        return <S2Queue s2Task={this} bannerMode={bannerMode} />;
+    getQueueEntry(bannerMode: boolean, onRemove?: () => void): React.ReactNode {
+        return <S2Queue s2Task={this} bannerMode={bannerMode} onRemove={onRemove} />;
     }
 }
 
@@ -27,10 +27,10 @@ export class S2Download extends S2Task implements IBaseTask {
     zipUrl: string;
     sigUrl?: string;
 
-    constructor(zipUrl: string, sigUrl: string | undefined, channel: ReleaseChannels, version: string,
+    constructor(zipUrl: string, sigUrl: string | undefined, channel: ReleaseChannels,
         profile: string, onFinish: () => void) {
 
-        super(channel, version, profile, onFinish);
+        super(channel, profile, onFinish);
 
         this.zipUrl = zipUrl;
         this.sigUrl = sigUrl;
@@ -44,7 +44,6 @@ export class S2Download extends S2Task implements IBaseTask {
 
         return await invoke("download_and_install", {
             appName: "Savage 2",
-            version: this.version,
             profile: this.profile,
             zipUrls: [ this.zipUrl ],
             sigUrls: sigUrls,
@@ -53,14 +52,13 @@ export class S2Download extends S2Task implements IBaseTask {
 }
 
 export class S2Uninstall extends S2Task implements IBaseTask {
-    constructor(channel: ReleaseChannels, version: string, profile: string, onFinish: () => void) {
-        super(channel, version, profile, onFinish);
+    constructor(channel: ReleaseChannels, profile: string, onFinish: () => void) {
+        super(channel, profile, onFinish);
     }
 
     async start(): Promise<void> {
         return await invoke("uninstall", {
             appName: "Savage 2",
-            version: this.version,
             profile: this.profile
         });
     }

@@ -10,12 +10,11 @@ use app_profile::AppProfile;
 use app_profile::s2::S2AppProfile;
 use directories::BaseDirs;
 use std::collections::HashMap;
-use std::env;
 use std::fs::{self, remove_file, File};
 use std::path::PathBuf;
 use std::sync::RwLock;
 use tauri::{AppHandle, Manager, CustomMenuItem, SystemTray, SystemTrayMenu, SystemTrayMenuItem, SystemTrayEvent};
-use utils::clear_folder;
+use utils::{clear_folder, CancelToken};
 use window_shadows::set_shadow;
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
@@ -31,6 +30,7 @@ pub struct InnerState {
     pub launcher_folder: PathBuf,
     pub temp_folder: PathBuf,
     pub savage2_folder: PathBuf,
+    pub cancel_token: CancelToken,
 
     pub settings: Settings,
 }
@@ -142,7 +142,6 @@ fn is_initialized(state: tauri::State<State>) -> Result<bool, String> {
 fn create_app_profile(
     app_name: String,
     state: &tauri::State<State>,
-    version: String,
     profile: String
 ) -> Result<Box<dyn AppProfile + Send>, String> {
     let state_guard = state.0.read().unwrap();
@@ -158,7 +157,6 @@ fn create_app_profile(
         "Savage 2" => Box::new(S2AppProfile {
             root_folder,
             temp_folder: state_guard.temp_folder.clone(),
-            version,
             profile
         }),
         _ => Err(format!("Unknown app profile `{}`.", app_name))?
@@ -170,29 +168,31 @@ async fn download_and_install(
     state: tauri::State<'_, State>,
     app_handle: AppHandle,
     app_name: String,
-    version: String,
     profile: String,
     zip_urls: Vec<String>,
     sig_urls: Vec<String>
 ) -> Result<(), String> {
+    let (app_profile, cancel_token) = {
+        let state_guard = state.0.read().unwrap();
+        // Reset the cancel token before starting
+        state_guard.cancel_token.reset();
+        let token = state_guard.cancel_token.clone();
+        drop(state_guard);
 
-    let state_guard = state.0.read();
-    let savage2_folder = state_guard.unwrap().savage2_folder.clone();
+        let profile = create_app_profile(
+            app_name,
+            &state,
+            profile
+        )?;
+        (profile, token)
+    };
 
-    let app_profile = create_app_profile(
-        app_name,
-        &state,
-        version,
-        profile
-    )?;
-
-    let result = app_profile.download_and_install(
+    app_profile.download_and_install(
         &app_handle,
         zip_urls,
-        sig_urls
-    );
-
-    result.await?;
+        sig_urls,
+        &cancel_token
+    ).await?;
 
     Ok(())
 }
@@ -201,13 +201,11 @@ async fn download_and_install(
 fn uninstall(
     state: tauri::State<State>,
     app_name: String,
-    version: String,
     profile: String
 ) -> Result<(), String> {
     let app_profile = create_app_profile(
         app_name,
         &state,
-        version,
         profile
     )?;
 
@@ -220,13 +218,11 @@ fn uninstall(
 fn exists(
     state: tauri::State<State>,
     app_name: String,
-    version: String,
     profile: String
 ) -> Result<bool, String> {
     let app_profile = create_app_profile(
         app_name,
         &state,
-        version,
         profile
     )?;
 
@@ -237,13 +233,11 @@ fn exists(
 fn launch(
     state: tauri::State<'_, State>,
     app_name: String,
-    version: String,
     profile: String
 ) -> Result<(), String> {
     let app_profile = create_app_profile(
         app_name,
         &state,
-        version,
         profile
     )?;
 
@@ -254,13 +248,11 @@ fn launch(
 fn reveal_folder(
     state: tauri::State<'_, State>,
     app_name: String,
-    version: String,
     profile: String
 ) -> Result<(), String> {
     let app_profile = create_app_profile(
         app_name,
         &state,
-        version,
         profile
     )?;
 
@@ -271,13 +263,11 @@ fn reveal_folder(
 fn get_installed_version(
     state: tauri::State<'_, State>,
     app_name: String,
-    version: String,
     profile: String
 ) -> Result<Option<String>, String> {
     let app_profile = create_app_profile(
         app_name,
         &state,
-        version,
         profile
     )?;
 
@@ -288,17 +278,86 @@ fn get_installed_version(
 fn get_install_path(
     state: tauri::State<'_, State>,
     app_name: String,
-    version: String,
     profile: String
 ) -> Result<String, String> {
     let app_profile = create_app_profile(
         app_name,
         &state,
-        version,
         profile
     )?;
 
     app_profile.get_install_path()
+}
+
+#[tauri::command(async)]
+fn detect_installed_version(
+    state: tauri::State<'_, State>,
+    app_name: String,
+    profile: String
+) -> Result<Option<String>, String> {
+    let app_profile = create_app_profile(
+        app_name,
+        &state,
+        profile
+    )?;
+
+    app_profile.detect_installed_version()
+}
+
+#[tauri::command(async)]
+fn save_installed_version(
+    state: tauri::State<'_, State>,
+    app_name: String,
+    profile: String,
+    version: String
+) -> Result<(), String> {
+    let app_profile = create_app_profile(
+        app_name,
+        &state,
+        profile
+    )?;
+
+    app_profile.save_installed_version(&version)
+}
+
+#[tauri::command(async)]
+async fn fetch_remote_version(
+    version_url: String
+) -> Result<String, String> {
+    let client = reqwest::Client::new();
+    let response = client
+        .get(&version_url)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch remote version from `{}`.\n{:?}", &version_url, e))?;
+
+    let text = response
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read remote version response.\n{:?}", e))?;
+
+    Ok(text.trim().to_string())
+}
+
+/// Sends a HEAD request to the given URL and returns the Last-Modified header value.
+#[tauri::command(async)]
+async fn fetch_last_modified(
+    url: String
+) -> Result<Option<String>, String> {
+    let client = reqwest::Client::new();
+    let response = client
+        .head(&url)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to send HEAD request to `{}`.\n{:?}", &url, e))?;
+
+    let last_modified = response
+        .headers()
+        .get("last-modified")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string());
+
+    Ok(last_modified)
 }
 
 #[tauri::command]
@@ -365,6 +424,13 @@ async fn set_profile_location(
     Ok(())
 }
 
+#[tauri::command]
+fn cancel_task(state: tauri::State<'_, State>) -> Result<(), String> {
+    let state_guard = state.0.read().unwrap();
+    state_guard.cancel_token.cancel();
+    Ok(())
+}
+
 fn main() {
     // Build the system tray menu
     let show = CustomMenuItem::new("show", "Open");
@@ -382,6 +448,7 @@ fn main() {
             launcher_folder: PathBuf::new(),
             temp_folder: PathBuf::new(),
             savage2_folder: PathBuf::new(),
+            cancel_token: CancelToken::new(),
             settings: Default::default(),
         })))
         .system_tray(system_tray)
@@ -426,6 +493,10 @@ fn main() {
             reveal_folder,
             get_installed_version,
             get_install_path,
+            detect_installed_version,
+            save_installed_version,
+            fetch_remote_version,
+            fetch_last_modified,
 
             get_os,
             is_dir_empty,
@@ -433,7 +504,8 @@ fn main() {
             set_download_location,
             get_download_location,
             get_profile_location,
-            set_profile_location
+            set_profile_location,
+            cancel_task
         ])
         .setup(|app| {
             let window = app.get_window("main").unwrap();

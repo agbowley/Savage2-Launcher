@@ -6,7 +6,7 @@ import { open } from "@tauri-apps/api/dialog";
 import { useS2State } from "@app/stores/S2StateStore";
 import { S2Download, S2Uninstall } from "@app/tasks/Processors/S2";
 import { showErrorDialog, showInstallFolderDialog } from "@app/dialogs/dialogUtil";
-import { addTask, useTask } from "@app/tasks";
+import { addTask, cancelTask, useTask } from "@app/tasks";
 import { usePayload, TaskPayload } from "@app/tasks/payload";
 
 export enum S2States {
@@ -22,60 +22,120 @@ export type S2Version = {
     state: S2States,
     play: () => Promise<void>,
     download: () => Promise<void>,
+    cancel: () => Promise<void>,
     uninstall: () => Promise<void>,
     revealFolder: () => Promise<void>,
     checkForUpdates: () => Promise<void>,
     changeInstallLocation: () => Promise<void>,
     installedVersion: string | null,
-    latestVersion: string,
+    latestVersion: string | null,
     installPath: string | null,
     downloadLocation: string | null,
+    releaseDate: string | null,
     payload?: TaskPayload
 }
 
+/** Cache fetched version info per profile so values are instant on repeat visits. */
+type VersionCache = {
+    installedVersion: string | null;
+    latestVersion: string | null;
+    installPath: string | null;
+    downloadLocation: string | null;
+    releaseDate: string | null;
+};
+const versionCache = new Map<string, VersionCache>();
+
 export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profileName: ReleaseChannels): S2Version => {
-    const { state, setState } = useS2State(`${releaseData?.name}-${releaseData?.id}-${releaseData?.tag_name}`);
-    const task = useTask("Savage 2", profileName);
+    const profile = releaseData?.tag_name || profileName;
+    const { state, setState } = useS2State(`${releaseData?.name}-${profileName}`);
+    const task = useTask("Savage 2", profile);
     const payload = usePayload(task?.taskUUID);
 
-    const [installedVersion, setInstalledVersion] = useState<string | null>(null);
-    const [installPath, setInstallPath] = useState<string | null>(null);
-    const [downloadLocation, setDownloadLocation] = useState<string | null>(null);
+    const cached = versionCache.get(profile);
+    const [installedVersion, setInstalledVersion] = useState<string | null>(cached?.installedVersion ?? null);
+    const [latestVersion, setLatestVersion] = useState<string | null>(cached?.latestVersion ?? null);
+    const [installPath, setInstallPath] = useState<string | null>(cached?.installPath ?? null);
+    const [downloadLocation, setDownloadLocation] = useState<string | null>(cached?.downloadLocation ?? null);
+    const [releaseDate, setReleaseDate] = useState<string | null>(cached?.releaseDate ?? null);
 
-    // Fetch installed version and install path on mount / after state changes
+    // Fetch installed version, remote version, and install path on mount / after state changes
     useEffect(() => {
         (async () => {
             if (!releaseData) return;
 
+            // Track fetched values locally so we can write them all to cache at the end
+            let fetchedVersion: string | null = cached?.installedVersion ?? null;
+            let fetchedLatest: string | null = cached?.latestVersion ?? null;
+            let fetchedPath: string | null = cached?.installPath ?? null;
+            let fetchedLocation: string | null = cached?.downloadLocation ?? null;
+            let fetchedDate: string | null = cached?.releaseDate ?? null;
+
             try {
                 const version = await invoke("get_installed_version", {
                     appName: "Savage 2",
-                    version: releaseData.tag_name,
-                    profile: profileName
+                    profile
                 }) as string | null;
 
+                fetchedVersion = version;
                 setInstalledVersion(version);
 
                 // Always fetch the install path (shows where the game would be / is)
                 const path = await invoke("get_install_path", {
                     appName: "Savage 2",
-                    version: releaseData.tag_name,
-                    profile: profileName
+                    profile
                 }) as string;
+                fetchedPath = path;
                 setInstallPath(path);
 
                 // Get the profile-specific install location
                 try {
                     const profileLocation = await invoke("get_profile_location", {
-                        profile: profileName
+                        profile
                     }) as string;
-                    setDownloadLocation(profileLocation || null);
+                    fetchedLocation = profileLocation || null;
+                    setDownloadLocation(fetchedLocation);
                 } catch {
                     // Not yet initialized
+                }
+
+                // Fetch remote latest version
+                try {
+                    const remoteVersion = await invoke("fetch_remote_version", {
+                        versionUrl: releaseData.version_url
+                    }) as string;
+                    fetchedLatest = remoteVersion;
+                    setLatestVersion(remoteVersion);
+                } catch (e) {
+                    console.error("Failed to fetch remote version:", e);
+                }
+
+                // Fetch release date from the remote file's Last-Modified header
+                try {
+                    const firstAsset = releaseData.assets[0];
+                    if (firstAsset) {
+                        const lastModified = await invoke("fetch_last_modified", {
+                            url: firstAsset.download_url
+                        }) as string | null;
+                        if (lastModified) {
+                            fetchedDate = lastModified;
+                            setReleaseDate(lastModified);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch release date:", e);
                 }
             } catch (e) {
                 console.error("Failed to get installed version info:", e);
             }
+
+            // Update the cache so next mount is instant
+            versionCache.set(profile, {
+                installedVersion: fetchedVersion,
+                latestVersion: fetchedLatest,
+                installPath: fetchedPath,
+                downloadLocation: fetchedLocation,
+                releaseDate: fetchedDate,
+            });
         })();
     }, [releaseData, state]);
 
@@ -84,15 +144,18 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
             if (!releaseData) return;
             // Skip if we're in a transient state (downloading, playing, etc.)
             if (state === S2States.DOWNLOADING || state === S2States.PLAYING || state === S2States.LOADING) return;
-            if (state === S2States.AVAILABLE || state === S2States.NEW_UPDATE) return;
 
-            const exists = await invoke("exists", {
-                appName: "Savage 2",
-                version: releaseData.tag_name,
-                profile: profileName
-            });
+            try {
+                const exists = await invoke("exists", {
+                    appName: "Savage 2",
+                    profile
+                });
 
-            setState(exists ? S2States.AVAILABLE : S2States.NEW_UPDATE);
+                setState(exists ? S2States.AVAILABLE : S2States.NEW_UPDATE);
+            } catch (e) {
+                console.error("Failed to check if game exists:", e);
+                setState(S2States.NEW_UPDATE);
+            }
         })();
     }, [releaseData]);
 
@@ -101,14 +164,16 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
             state,
             play: async () => {},
             download: async () => {},
+            cancel: async () => {},
             uninstall: async () => {},
             revealFolder: async () => {},
             checkForUpdates: async () => {},
             changeInstallLocation: async () => {},
             installedVersion: null,
-            latestVersion: "",
+            latestVersion: null,
             installPath: null,
             downloadLocation: null,
+            releaseDate: null,
         };
     }
 
@@ -120,8 +185,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         try {
             await invoke("launch", {
                 appName: "Savage 2",
-                version: releaseData.tag_name,
-                profile: profileName
+                profile
             });
 
             setState(S2States.PLAYING);
@@ -146,7 +210,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         // If no profile-specific location is set, inherit the global one
         try {
             const profileLoc = await invoke("get_profile_location", {
-                profile: profileName
+                profile
             }) as string;
             const globalLoc = await invoke("get_download_location") as string;
 
@@ -154,7 +218,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
             // and no explicit profile location was set, save the global as profile default
             if (profileLoc === globalLoc) {
                 await invoke("set_profile_location", {
-                    profile: profileName,
+                    profile,
                     path: globalLoc
                 });
             }
@@ -173,13 +237,32 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
                 downloadUrl,
                 undefined,
                 releaseData.channel,
-                releaseData.tag_name,
-                profileName,
-                () => {
+                profile,
+                async () => {
+                    // Save the remote version as the installed version after successful download
+                    if (latestVersion) {
+                        try {
+                            await invoke("save_installed_version", {
+                                appName: "Savage 2",
+                                profile,
+                                version: latestVersion
+                            });
+                        } catch (e) {
+                            console.error("Failed to save installed version:", e);
+                        }
+                    }
                     setState(S2States.AVAILABLE);
-                    setInstalledVersion(releaseData.tag_name);
+                    setInstalledVersion(latestVersion);
                 }
             );
+
+            downloader.onError = () => {
+                setState(S2States.NEW_UPDATE);
+            };
+
+            downloader.onCancel = () => {
+                setState(S2States.NEW_UPDATE);
+            };
 
             addTask(downloader);
         } catch (e) {
@@ -199,14 +282,17 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         try {
             const downloader = new S2Uninstall(
                 releaseData.channel,
-                releaseData.tag_name,
-                profileName,
+                profile,
                 () => {
                     setState(S2States.NEW_UPDATE);
                     setInstalledVersion(null);
                     setInstallPath(null);
                 }
             );
+
+            downloader.onError = () => {
+                setState(S2States.AVAILABLE);
+            };
 
             addTask(downloader);
         } catch (e) {
@@ -222,8 +308,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         try {
             await invoke("reveal_folder", {
                 appName: "Savage 2",
-                version: releaseData.tag_name,
-                profile: profileName
+                profile
             });
         } catch (e) {
             showErrorDialog(e as string);
@@ -235,16 +320,25 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         if (!releaseData) return;
 
         try {
-            const currentVersion = await invoke("get_installed_version", {
+            // Detect the installed version (runs exe + parses console.log)
+            const detected = await invoke("detect_installed_version", {
                 appName: "Savage 2",
-                version: releaseData.tag_name,
-                profile: profileName
+                profile
             }) as string | null;
 
-            setInstalledVersion(currentVersion);
+            setInstalledVersion(detected);
 
-            if (!currentVersion || currentVersion !== releaseData.tag_name) {
+            // Fetch the latest remote version
+            const remote = await invoke("fetch_remote_version", {
+                versionUrl: releaseData.version_url
+            }) as string;
+
+            setLatestVersion(remote);
+
+            if (!detected || detected !== remote) {
                 setState(S2States.NEW_UPDATE);
+            } else {
+                setState(S2States.AVAILABLE);
             }
         } catch (e) {
             showErrorDialog(e as string);
@@ -258,7 +352,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
             let defaultPath: string | undefined;
             try {
                 defaultPath = await invoke("get_profile_location", {
-                    profile: profileName
+                    profile
                 }) as string;
             } catch {
                 // No default
@@ -274,7 +368,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
             if (selected && typeof selected === "string") {
                 // Save per-profile location
                 await invoke("set_profile_location", {
-                    profile: profileName,
+                    profile,
                     path: selected
                 });
                 setDownloadLocation(selected);
@@ -282,8 +376,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
                 // Re-check if the game exists at the new location
                 const gameExists = await invoke("exists", {
                     appName: "Savage 2",
-                    version: releaseData.tag_name,
-                    profile: profileName
+                    profile
                 });
                 setState(gameExists ? S2States.AVAILABLE : S2States.NEW_UPDATE);
             }
@@ -293,18 +386,25 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         }
     };
 
+    const cancel = async () => {
+        if (state !== S2States.DOWNLOADING || !task) return;
+        await cancelTask(task);
+    };
+
     return {
         state,
         play,
         download,
+        cancel,
         uninstall,
         revealFolder,
         checkForUpdates,
         changeInstallLocation,
         installedVersion,
-        latestVersion: releaseData.tag_name,
+        latestVersion,
         installPath,
         downloadLocation,
+        releaseDate,
         payload
     };
 };

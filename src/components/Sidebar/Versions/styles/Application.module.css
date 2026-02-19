@@ -14,7 +14,6 @@
 
 [aria-current="page"] > .selector,
 .selector:hover {
-    /* background: rgba(255, 255, 255, 0.025); */
     background: rgba(255, 255, 255, 0.25);
 }
 
@@ -37,7 +36,6 @@
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
-    /* color: var(--primary-40); */
     color: rgb(255, 192, 20);
 }
 
@@ -67,13 +65,50 @@
     display: none;
 }
 
-.selector > .version[data-update-available="true"] {
-    background: var(--green-10);
+/* Installed / up to date — green */
+.selector > .version[data-status="installed"] {
+    background: rgba(70, 231, 79, 0.15);
+    color: #46E74F;
 }
 
-.selector > .version[data-update-available="true"]::after {
+.selector > .version[data-status="installed"]::after {
     content: "";
-    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M8 6L6 4M6 4L4 6M6 4L6 8M1 6C0.999999 3.23858 3.23858 1 6 1C8.76142 1 11 3.23858 11 6C11 8.76142 8.76142 11 6 11C3.23858 11 1 8.76142 1 6Z' stroke='%2346E74F' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E%0A");
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3.5 6L5.5 8L8.5 4M1 6C1 3.23858 3.23858 1 6 1C8.76142 1 11 3.23858 11 6C11 8.76142 8.76142 11 6 11C3.23858 11 1 8.76142 1 6Z' stroke='%2346E74F' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     width: 15px;
     aspect-ratio: 1;
+    flex-shrink: 0;
+}
+
+/* Not installed — blue with download icon */
+.selector > .version[data-status="not-installed"] {
+    background: var(--blue-25);
+    color: var(--primary);
+}
+
+.selector > .version[data-status="not-installed"]::after {
+    content: "";
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 2L6 8M6 8L4 6M6 8L8 6M2 10L10 10' stroke='%232ED9FF' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    width: 15px;
+    aspect-ratio: 1;
+    flex-shrink: 0;
+}
+
+/* Update available — blue with upgrade icon */
+.selector > .version[data-status="update-available"] {
+    background: var(--blue-25);
+    color: var(--primary);
+}
+
+.selector > .version[data-status="update-available"]::after {
+    content: "";
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M8 6L6 4M6 4L4 6M6 4L6 8M1 6C0.999999 3.23858 3.23858 1 6 1C8.76142 1 11 3.23858 11 6C11 8.76142 8.76142 11 6 11C3.23858 11 1 8.76142 1 6Z' stroke='%232ED9FF' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    width: 15px;
+    aspect-ratio: 1;
+    flex-shrink: 0;
+}
+
+/* Downloading — yellow */
+.selector > .version[data-status="downloading"] {
+    background: rgba(255, 206, 46, 0.15);
+    color: #ffce2e;
 }

@@ -12,7 +12,7 @@ interface Props {
 
 const S2Version: React.FC<Props> = ({ channel }: Props) => {
     const { data: releaseData } = useS2Release(channel);
-    const { state } = useS2Version(releaseData, channel);
+    const { state, installedVersion, latestVersion } = useS2Version(releaseData, channel);
 
     function getChannelIcon() {
         switch (channel) {
@@ -32,7 +32,32 @@ const S2Version: React.FC<Props> = ({ channel }: Props) => {
             case "nightly":
                 return "Beta Test Client";
             case "legacy":
-                return "Savage 2";
+                return "Legacy Client";
+        }
+    }
+
+    function getProgramName() {
+        switch (channel) {
+            case "stable":
+                return "Savage 2: CE";
+            case "nightly":
+                return "Savage 2: CE - Beta";
+            case "legacy":
+                return "Savage 2 - A Tortured Soul";
+        }
+    }
+
+    function getStatus(): "installed" | "not-installed" | "update-available" | "downloading" | undefined {
+        switch (state) {
+            case S2States.AVAILABLE:
+            case S2States.PLAYING:
+                return "installed";
+            case S2States.DOWNLOADING:
+                return "downloading";
+            case S2States.NEW_UPDATE:
+                return installedVersion ? "update-available" : "not-installed";
+            default:
+                return undefined;
         }
     }
 
@@ -40,11 +65,10 @@ const S2Version: React.FC<Props> = ({ channel }: Props) => {
         <NavLink to={"/S2/" + channel}>
             <BaseVersion
                 icon={<img src={getChannelIcon()} alt="Savage 2" />}
-                programName={releaseData?.name ? releaseData?.name : "Savage 2"}
+                programName={getProgramName()}
                 versionChannel={getChannelDisplayName()}
-                version={releaseData?.tag_name}
-                updateAvailable={state === S2States.NEW_UPDATE}
-                created_at={releaseData?.created_at}
+                version={installedVersion ?? latestVersion ?? undefined}
+                status={getStatus()}
             />
         </NavLink>
     );

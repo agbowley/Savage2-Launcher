@@ -12,8 +12,7 @@ interface Props {
     programName?: string;
     versionChannel?: string;
     version?: string;
-    updateAvailable?: boolean;
-    created_at?: string;
+    status?: "installed" | "not-installed" | "update-available" | "downloading";
 }
 
 const styleType = {
@@ -21,7 +20,7 @@ const styleType = {
     [VersionType.SONG]: SongStyles
 };
 
-const BaseVersion: React.FC<Props> = ({ type = VersionType.APPLICATION, icon, programName, version, versionChannel, updateAvailable }: Props) => {
+const BaseVersion: React.FC<Props> = ({ type = VersionType.APPLICATION, icon, programName, version, versionChannel, status }: Props) => {
     const styles = styleType[type];
 
     return <div className={styles.selector}>
@@ -30,7 +29,7 @@ const BaseVersion: React.FC<Props> = ({ type = VersionType.APPLICATION, icon, pr
             <div className={styles.channel}>{versionChannel}</div>
             <div className={styles.name}>{programName}</div>
         </div>
-        <div className={styles.version} data-update-available={updateAvailable}>{version}</div>
+        <div className={styles.version} data-status={status}>{version}</div>
     </div>;
 };
 

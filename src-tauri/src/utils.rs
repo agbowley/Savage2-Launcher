@@ -2,12 +2,36 @@ use futures_util::StreamExt;
 use reqwest;
 use sevenz_rust::Password;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::{fs::File, io::Write};
 use tauri::{AppHandle, Manager};
 
 use crate::app_profile::ProgressPayload;
 
 const LETTERS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+/// A shared cancel token that can be checked during long-running operations.
+#[derive(Clone)]
+pub struct CancelToken(pub Arc<AtomicBool>);
+
+impl CancelToken {
+    pub fn new() -> Self {
+        CancelToken(Arc::new(AtomicBool::new(false)))
+    }
+
+    pub fn cancel(&self) {
+        self.0.store(true, Ordering::SeqCst);
+    }
+
+    pub fn is_cancelled(&self) -> bool {
+        self.0.load(Ordering::SeqCst)
+    }
+
+    pub fn reset(&self) {
+        self.0.store(false, Ordering::SeqCst);
+    }
+}
 
 pub fn clear_folder(path: &Path) -> Result<(), String> {
     std::fs::remove_dir_all(path).ok();
@@ -26,6 +50,7 @@ pub async fn download(
     app: Option<&AppHandle>,
     url: &str,
     output_path: &Path,
+    cancel_token: Option<&CancelToken>,
 ) -> Result<(), String> {
     // Create the downloading client
     let client = reqwest::Client::new();
@@ -36,7 +61,17 @@ pub async fn download(
         .send()
         .await
         .map_err(|e| format!("Failed to initialize download from `{}`.\n{:?}", &url, e))?;
-    let total_size = download.content_length().unwrap();
+
+    // Check for HTTP errors (404, 500, etc.)
+    let status = download.status();
+    if !status.is_success() {
+        return Err(format!(
+            "Download failed with HTTP status {} for `{}`.",
+            status.as_u16(), url
+        ));
+    }
+
+    let total_size = download.content_length().unwrap_or(0);
 
     // Create the file to download into
     let mut file = File::create(output_path).map_err(|e| {
@@ -51,6 +86,15 @@ pub async fn download(
 
     // Download into the file
     while let Some(item) = stream.next().await {
+        // Check for cancellation
+        if let Some(token) = cancel_token {
+            if token.is_cancelled() {
+                drop(file);
+                let _ = std::fs::remove_file(output_path);
+                return Err("CANCELLED".into());
+            }
+        }
+
         let chunk = item.map_err(|e| format!("Error while downloading file.\n{:?}", e))?;
         file.write_all(&chunk)
             .map_err(|e| format!("Error while writing to file.\n{:?}", e))?;
@@ -75,7 +119,18 @@ pub async fn download(
         }
     }
 
-    // Done!
+    // Flush to ensure all bytes are written to disk
+    file.flush()
+        .map_err(|e| format!("Failed to flush downloaded file.\n{:?}", e))?;
+
+    // Verify that we actually downloaded something
+    if current_downloaded == 0 {
+        return Err(format!(
+            "Downloaded 0 bytes from `{}`. The file may not exist on the server.",
+            url
+        ));
+    }
+
     Ok(())
 }
 

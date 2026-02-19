@@ -16,16 +16,13 @@ function NightlyS2Page() {
         return (<>
             <LaunchPage
                 version={S2Version}
-                releaseTag={releaseData?.tag_name}
                 playName="Beta Test Client"
                 description={<>
                     {releaseData?.description}
                 </>}
-                // websiteUrl="https://savage2.net"
                 websiteUrl="https://savage2.net"
                 icon={NightlyS2Icon}
                 banner={NightlyS2Banner}
-                created_at={releaseData?.created_at}
             />
         </>);
     }

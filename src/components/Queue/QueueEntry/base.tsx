@@ -1,5 +1,6 @@
 import stylesNormal from "./QueueEntry.module.css";
 import stylesBanner from "./QueueEntryBanner.module.css";
+import { CloseIcon } from "@app/assets/Icons";
 
 interface Props {
     icon?: React.ReactNode;
@@ -7,9 +8,10 @@ interface Props {
     versionChannel?: string;
     version?: string;
     bannerMode: boolean;
+    onRemove?: () => void;
 }
 
-const BaseQueue: React.FC<Props> = ({ icon, name, versionChannel, version, bannerMode }: Props) => {
+const BaseQueue: React.FC<Props> = ({ icon, name, versionChannel, version, bannerMode, onRemove }: Props) => {
     // Choose the right style
     let styles = stylesNormal;
     if (bannerMode) {
@@ -25,6 +27,11 @@ const BaseQueue: React.FC<Props> = ({ icon, name, versionChannel, version, banne
             </div>
         </div>
         <div className={styles.extra}>
+            {onRemove && (
+                <button className={styles.remove_button} onClick={onRemove} title="Remove">
+                    <CloseIcon />
+                </button>
+            )}
         </div>
     </div>;
 };

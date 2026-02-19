@@ -42,13 +42,20 @@ export function LaunchButton(props: LaunchButtonProps) {
             <PayloadProgress payload={version.payload} />
         </>;
 
-        return <Button
+        const dropdownChildren = <>
+            <DropdownItem onClick={() => version.cancel()}>
+                Cancel
+            </DropdownItem>
+        </>;
+
+        return <DropdownButton
             style={props.style}
             progress={calculatePayloadPercentage(version.payload)}
-            color={ButtonColor.YELLOW}>
+            color={ButtonColor.YELLOW}
+            dropdownChildren={dropdownChildren}>
 
             {buttonChildren}
-        </Button>;
+        </DropdownButton>;
     }
 
     if (version.state === S2States.AVAILABLE) {

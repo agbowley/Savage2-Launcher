@@ -16,7 +16,6 @@ function LegacyS2Page() {
         return (<>
             <LaunchPage
                 version={S2Version}
-                releaseTag={releaseData?.tag_name}
                 playName="Legacy Client"
                 description={<>
                     {releaseData?.description}
@@ -24,7 +23,6 @@ function LegacyS2Page() {
                 websiteUrl="https://savage2.net"
                 icon={LegacyS2Icon}
                 banner={LegacyS2Banner}
-                created_at={releaseData?.created_at}
             />
         </>);
     }
