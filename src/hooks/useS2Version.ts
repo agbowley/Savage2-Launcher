@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ExtendedReleaseData, getS2ReleaseDownload, ReleaseChannels } from "./useS2Release";
+import { ExtendedReleaseData, getS2ManifestUrl, getS2ReleaseDownload, ReleaseChannels } from "./useS2Release";
 import { invoke } from "@tauri-apps/api/tauri";
 import { type } from "@tauri-apps/api/os";
 import { open } from "@tauri-apps/api/dialog";
@@ -203,13 +203,15 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         try {
             // Verify game files against the manifest before launching.
             // If any files are missing or corrupted, repair them first.
-            if (releaseData.manifest_url) {
+            const platformType = await type();
+            const manifestUrl = getS2ManifestUrl(releaseData, platformType);
+            if (manifestUrl) {
                 let needsRepair = false;
                 try {
                     needsRepair = await invoke("verify_files", {
                         appName: "Savage 2",
                         profile,
-                        manifestUrl: releaseData.manifest_url
+                        manifestUrl
                     }) as boolean;
                 } catch (e) {
                     // If verification fails (e.g. no network), skip and launch anyway
@@ -223,7 +225,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
 
                     await new Promise<void>((resolve, reject) => {
                         const repairTask = new S2PatchUpdate(
-                            releaseData.manifest_url,
+                            manifestUrl,
                             releaseData.channel,
                             profile,
                             () => {
@@ -301,6 +303,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         try {
             const platformType = await type();
             const downloadUrl = getS2ReleaseDownload(releaseData, platformType);
+            const manifestUrl = getS2ManifestUrl(releaseData, platformType);
 
             const onSuccess = async () => {
                 // Save the remote version as the installed version after successful download
@@ -360,10 +363,10 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
             const previousVersion = installedVersion;
             let task: S2Download | S2PatchUpdate;
 
-            if (gameExists && releaseData.manifest_url) {
+            if (gameExists && manifestUrl) {
                 setState(S2States.UPDATING);
                 task = new S2PatchUpdate(
-                    releaseData.manifest_url,
+                    manifestUrl,
                     releaseData.channel,
                     profile,
                     onSuccess
@@ -400,8 +403,11 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         setState(S2States.UNINSTALLING);
 
         try {
+            const platformType = await type();
+            const manifestUrl = getS2ManifestUrl(releaseData, platformType);
+
             const downloader = new S2Uninstall(
-                releaseData.manifest_url,
+                manifestUrl,
                 releaseData.channel,
                 profile,
                 () => {

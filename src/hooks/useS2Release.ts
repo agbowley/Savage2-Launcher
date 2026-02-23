@@ -13,7 +13,7 @@ type ReleaseData = {
     name: string;
     description: string;
     version_url: string;
-    manifest_url: string;
+    manifest_urls: { [key in OsType]: string };
     assets: ReleaseAsset[];
 };
 
@@ -34,7 +34,11 @@ const releaseDefinitions: Record<ReleaseChannels, ReleaseData> = {
         name: "Community Edition",
         description: "The official live release of Savage 2: A Tortured Soul – Community Edition. 64-bit client with improved stability, performance, and quality-of-life improvements.",
         version_url: `${DOWNLOAD_BASE}/wb6/i686/latest/version.txt`,
-        manifest_url: `${DOWNLOAD_BASE}/wb6/i686/latest/manifest.json`,
+        manifest_urls: {
+            "Windows_NT": `${DOWNLOAD_BASE}/wb6/i686/latest/manifest.json`,
+            "Linux": `${DOWNLOAD_BASE}/lr1/x86_64/latest/manifest.json`,
+            "Darwin": `${DOWNLOAD_BASE}/wb6/i686/latest/manifest.json`,
+        },
         assets: [
             {
                 name: "Savage2CEInstall.exe",
@@ -51,7 +55,11 @@ const releaseDefinitions: Record<ReleaseChannels, ReleaseData> = {
         name: "Legacy Client",
         description: "The legacy version of Savage 2. This version is no longer supported and does not receive updates, but is available for those who wish to play the original version of the game or want to play mods/maps or watch replays that are no longer compatible with the updated game.",
         version_url: `${DOWNLOAD_BASE}/wb6/i686/legacy/version.txt`,
-        manifest_url: `${DOWNLOAD_BASE}/wb6/i686/legacy/manifest.json`,
+        manifest_urls: {
+            "Windows_NT": `${DOWNLOAD_BASE}/wb6/i686/legacy/manifest.json`,
+            "Linux": `${DOWNLOAD_BASE}/lr1/x86_64/legacy/manifest.json`,
+            "Darwin": `${DOWNLOAD_BASE}/wb6/i686/legacy/manifest.json`,
+        },
         assets: [
             {
                 name: "Savage2CEInstall.exe",
@@ -68,7 +76,11 @@ const releaseDefinitions: Record<ReleaseChannels, ReleaseData> = {
         name: "Beta Test Client",
         description: "The beta test client for upcoming features and patches. Use this to help test changes before they go live.",
         version_url: `${DOWNLOAD_BASE}/wb6/i686/beta/version.txt`,
-        manifest_url: `${DOWNLOAD_BASE}/wb6/i686/beta/manifest.json`,
+        manifest_urls: {
+            "Windows_NT": `${DOWNLOAD_BASE}/wb6/i686/beta/manifest.json`,
+            "Linux": `${DOWNLOAD_BASE}/lr1/x86_64/beta/manifest.json`,
+            "Darwin": `${DOWNLOAD_BASE}/wb6/i686/beta/manifest.json`,
+        },
         assets: [
             {
                 name: "Savage2CEInstall.exe",
@@ -97,6 +109,10 @@ export const useS2Release = (channel: ReleaseChannels) => {
         isLoading: false,
         isSuccess: true,
     };
+};
+
+export const getS2ManifestUrl = (releaseData: ReleaseData, platformType: OsType): string => {
+    return releaseData.manifest_urls[platformType];
 };
 
 export const getS2ReleaseDownload = (releaseData: ReleaseData, platformType: OsType): string => {
