@@ -42,8 +42,7 @@ const App: React.FC = () => {
         return <React.StrictMode>
             <TitleBar />
             <p>
-                A fatal error has occurred when attempted to initalize the launcher.
-                Please report this to our Discord or GitHub immediately.
+                An error has occurred when attempted to initalize the launcher. Please report this on our Discord and include the following error message:
             </p>
             <p>
                 {error instanceof Error ? error.message : JSON.stringify(serializeError(error))}

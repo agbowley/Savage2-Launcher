@@ -31,8 +31,7 @@ export class ErrorDialog extends BaseDialog<Record<string, never>> {
     getInnerContents() {
         return <>
             <p>
-                A fatal error has occured. If you don&apos;t know what happened, please report this to our Discord
-                or GitHub immediately. Make sure to send the below text:
+                An error has occured. If you don&apos;t know what happened, please report this on our Discord and include the following error message:
             </p>
             <div className={styles.stacktrace}>
                 { this.props.error instanceof Error && "message" in this.props.error ? this.props.error.message as string : JSON.stringify(serializeError(this.props.error)) }
@@ -41,7 +40,7 @@ export class ErrorDialog extends BaseDialog<Record<string, never>> {
     }
 
     getTitle() {
-        return <>Fatal Error</>;
+        return <>Error</>;
     }
 
     getButtons() {

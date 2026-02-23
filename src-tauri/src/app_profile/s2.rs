@@ -1129,8 +1129,12 @@ impl AppProfile for S2AppProfile {
             return Err("The install folder no longer exists on disk.".to_string());
         }
 
-        opener::reveal(&folder)
-            .map_err(|e| format!("Failed to reveal folder.\n{:?}", e))?;
+        // opener::reveal may fail on Linux-like environments detected as WSL
+        // (tries explorer.exe which doesn't exist). Fall back to opening the folder directly.
+        if let Err(_e) = opener::reveal(&folder) {
+            opener::open(&folder)
+                .map_err(|e| format!("Failed to open folder.\n{:?}", e))?;
+        }
 
         Ok(())
     }

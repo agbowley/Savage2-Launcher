@@ -8,13 +8,12 @@ export abstract class BaseDialog<T> extends React.Component<Record<string, unkno
 
     render() {
         return <>
-            {this.getIcon() && (
-                <div className={`${styles.icon} ${this.getIconClass()}`}>
-                    {this.getIcon()}
-                </div>
-            )}
-
             <div className={styles.title}>
+                {this.getIcon() && (
+                    <div className={`${styles.icon} ${this.getIconClass()}`}>
+                        {this.getIcon()}
+                    </div>
+                )}
                 {this.getTitle()}
             </div>
 
