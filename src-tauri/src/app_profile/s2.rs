@@ -672,7 +672,14 @@ impl AppProfile for S2AppProfile {
             // === Zip/Tar.gz Flow (Linux/macOS) ===
             let folder = self.get_folder();
 
-            let zip_path = &self.temp_folder.join("update.zip");
+            // Preserve the original file extension so extract() picks the right method
+            let archive_ext = if zip_url.ends_with(".tar.gz") || zip_url.ends_with(".tgz") {
+                "tar.gz"
+            } else {
+                "zip"
+            };
+            let archive_name = format!("update.{}", archive_ext);
+            let zip_path = &self.temp_folder.join(archive_name);
             download(Some(app), &zip_url, &zip_path, Some(cancel_token)).await?;
 
             // Verify (if signature is provided)
