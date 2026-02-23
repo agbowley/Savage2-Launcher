@@ -18,7 +18,10 @@
     left: 0;
     right: 0;
     aspect-ratio: 16 / 9;
-    background: var(--bannerURL) right top / cover no-repeat;
+    background-image: var(--bannerURL);
+    background-position: right top;
+    background-size: cover;
+    background-repeat: no-repeat;
     mask-image:
         linear-gradient(to bottom left, black 0%, black 15%, transparent 80%),
         linear-gradient(to bottom, black 0%, black 70%, transparent 90%);
@@ -94,6 +97,7 @@
 
 .content img {
     max-width: 100%;
+    height: auto;
 }
 
 .info {

@@ -19,7 +19,10 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: var(--bannerURL) right center / cover no-repeat;
+    background-image: var(--bannerURL);
+    background-position: right center;
+    background-size: cover;
+    background-repeat: no-repeat;
     mask-image: linear-gradient(45deg, transparent 30%, black 70%);
     -webkit-mask-image: linear-gradient(45deg, transparent 30%, black 70%);
     opacity: 0.4;

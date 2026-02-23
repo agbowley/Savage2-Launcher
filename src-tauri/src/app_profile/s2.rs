@@ -125,7 +125,7 @@ impl S2AppProfile {
     fn exec_name() -> Result<&'static str, String> {
         match std::env::consts::OS {
             "windows" => Ok("savage2.exe"),
-            "linux" => Ok("savage2.x86_64"),
+            "linux" => Ok("savage2"),
             "macos" => Ok("savage2.app"),
             _ => Err("Unknown platform!".into()),
         }
@@ -146,11 +146,17 @@ impl S2AppProfile {
             let exec_path = if std::env::consts::OS == "macos" {
                 dir.join("savage2.app").join("Contents").join("MacOS").join("Savage2")
             } else if std::env::consts::OS == "linux" {
-                let p = dir.join("savage2.x86_64");
+                // Check for both possible Linux binary names
+                let p = dir.join("savage2");
                 if p.exists() {
                     p
                 } else {
-                    dir.join("Savage 2 - A Tortured Soul")
+                    let p2 = dir.join("savage2.x86_64");
+                    if p2.exists() {
+                        p2
+                    } else {
+                        dir.join("savage2")
+                    }
                 }
             } else {
                 dir.join(exec_name)
