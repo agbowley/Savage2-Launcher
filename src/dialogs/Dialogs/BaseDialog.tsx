@@ -8,6 +8,12 @@ export abstract class BaseDialog<T> extends React.Component<Record<string, unkno
 
     render() {
         return <>
+            {this.getIcon() && (
+                <div className={`${styles.icon} ${this.getIconClass()}`}>
+                    {this.getIcon()}
+                </div>
+            )}
+
             <div className={styles.title}>
                 {this.getTitle()}
             </div>
@@ -20,6 +26,14 @@ export abstract class BaseDialog<T> extends React.Component<Record<string, unkno
                 {this.getButtons()}
             </div>
         </>;
+    }
+
+    protected getIcon(): JSX.Element | null {
+        return null;
+    }
+
+    protected getIconClass(): string {
+        return "";
     }
 
     protected abstract getTitle(): JSX.Element;

@@ -1,6 +1,7 @@
 import Button, { ButtonColor } from "@app/components/Button";
 import { BaseDialog } from "./BaseDialog";
 import { open } from "@tauri-apps/api/dialog";
+import baseStyles from "./BaseDialog.module.css";
 import styles from "./InstallFolderDialog.module.css";
 import { DriveIcon, WarningIcon } from "@app/assets/Icons";
 import { invoke } from "@tauri-apps/api";
@@ -71,6 +72,14 @@ export class InstallFolderDialog extends BaseDialog<State> {
 
     getTitle() {
         return <>Install Folder</>;
+    }
+
+    getIcon() {
+        return <DriveIcon />;
+    }
+
+    getIconClass() {
+        return "";
     }
 
     getButtons() {

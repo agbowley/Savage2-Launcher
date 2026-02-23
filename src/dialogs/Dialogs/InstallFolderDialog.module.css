@@ -1,19 +1,21 @@
 .folder_container {
     display: flex;
-    padding: 25px;
+    padding: 16px 18px;
     justify-content: space-between;
     align-items: center;
     align-self: stretch;
 
     border-radius: 8px;
-    border: 1px solid #DADADA;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
 
     cursor: pointer;
     user-select: none;
+    transition: background 100ms ease;
 }
 
 .folder_container:hover {
-    background: rgba(0, 0, 0, 0.02);
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .folder_info {
@@ -21,37 +23,40 @@
     align-items: center;
     gap: 10px;
 
-    color: rgba(0, 0, 0, 0.75);
-    font-size: 14px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
     font-style: normal;
     font-weight: 600;
     line-height: normal;
-    text-transform: uppercase;
+}
+
+.folder_info svg {
+    color: rgba(255, 255, 255, 0.5);
+    flex-shrink: 0;
 }
 
 .folder_extra {
-    color: rgba(0, 0, 0, 0.25);
-    font-size: 14px;
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 13px;
     font-style: normal;
     font-weight: 600;
     line-height: normal;
-    text-transform: uppercase;
 }
 
 .warning_box {
     margin-top: 10px;
 
     display: flex;
-    padding: 15px;
+    padding: 12px 14px;
     align-items: center;
     gap: 10px;
     align-self: stretch;
 
-    border-radius: var(--web-radius, 8px);
-    border: 1px solid #FFA800;
-    background: rgba(255, 168, 0, 0.10);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 168, 0, 0.4);
+    background: rgba(255, 168, 0, 0.08);
 
-    color: #7C5200;
+    color: #FFB800;
     font-size: 12px;
     font-style: normal;
     font-weight: 400;

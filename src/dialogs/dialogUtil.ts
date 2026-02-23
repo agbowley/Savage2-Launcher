@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api";
 import { InstallFolderDialog } from "./Dialogs/InstallFolderDialog";
 import { ErrorDialog } from "./Dialogs/ErrorDialog";
+import { UninstallDialog } from "./Dialogs/UninstallDialog";
 import { createAndShowDialog } from ".";
 
 export async function showInstallFolderDialog() {
@@ -25,4 +26,9 @@ export async function showInstallFolderDialog() {
 
 export async function showErrorDialog(error: string) {
     await createAndShowDialog(ErrorDialog, { error: error });
+}
+
+export async function showUninstallDialog(appName: string): Promise<boolean> {
+    const result = await createAndShowDialog(UninstallDialog, { appName });
+    return result === "confirm";
 }

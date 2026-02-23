@@ -555,7 +555,180 @@ fn cancel_task(state: tauri::State<'_, State>) -> Result<(), String> {
     Ok(())
 }
 
+/// Hidden-install mode: launched as an elevated child process by `run_elevated_and_wait`.
+///
+/// Creates an invisible Windows desktop, runs the given installer on it (so that ALL
+/// windows — including VC Redist, DirectX, and NSIS progress dialogs — are invisible to
+/// the user), waits for the installer to complete, and exits with its exit code.
+///
+/// Usage: `<self_exe> --hidden-install "<installer_path>" "<installer_args>"`
+#[cfg(target_os = "windows")]
+fn hidden_install_main(installer_path: &str, installer_args: &str) -> i32 {
+    use std::ffi::OsStr;
+    use std::os::windows::ffi::OsStrExt;
+    use std::mem;
+    use std::ptr;
+
+    // ── Win32 type declarations ──────────────────────────────────────
+
+    #[repr(C)]
+    #[allow(non_snake_case)]
+    struct STARTUPINFOW {
+        cb: u32,
+        lpReserved: *mut u16,
+        lpDesktop: *mut u16,
+        lpTitle: *mut u16,
+        dwX: u32,
+        dwY: u32,
+        dwXSize: u32,
+        dwYSize: u32,
+        dwXCountChars: u32,
+        dwYCountChars: u32,
+        dwFillAttribute: u32,
+        dwFlags: u32,
+        wShowWindow: u16,
+        cbReserved2: u16,
+        lpReserved2: *mut u8,
+        hStdInput: isize,
+        hStdOutput: isize,
+        hStdError: isize,
+    }
+
+    #[repr(C)]
+    #[allow(non_snake_case)]
+    struct PROCESS_INFORMATION {
+        hProcess: isize,
+        hThread: isize,
+        dwProcessId: u32,
+        dwThreadId: u32,
+    }
+
+    // ── Win32 function imports ───────────────────────────────────────
+
+    #[link(name = "user32")]
+    extern "system" {
+        fn CreateDesktopW(
+            lpszDesktop: *const u16,
+            lpszDevice: *const u16,
+            pDevmode: *const u8,
+            dwFlags: u32,
+            dwDesiredAccess: u32,
+            lpsa: *const u8,
+        ) -> isize;
+        fn CloseDesktop(hDesktop: isize) -> i32;
+    }
+
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn CreateProcessW(
+            lpApplicationName: *const u16,
+            lpCommandLine: *mut u16,
+            lpProcessAttributes: *const u8,
+            lpThreadAttributes: *const u8,
+            bInheritHandles: i32,
+            dwCreationFlags: u32,
+            lpEnvironment: *const u8,
+            lpCurrentDirectory: *const u16,
+            lpStartupInfo: *const STARTUPINFOW,
+            lpProcessInformation: *mut PROCESS_INFORMATION,
+        ) -> i32;
+        fn WaitForSingleObject(hHandle: isize, dwMilliseconds: u32) -> u32;
+        fn GetExitCodeProcess(hProcess: isize, lpExitCode: *mut u32) -> i32;
+        fn CloseHandle(hObject: isize) -> i32;
+    }
+
+    const STARTF_USESHOWWINDOW: u32 = 0x00000001;
+    const SW_HIDE: u16 = 0;
+    const INFINITE: u32 = 0xFFFFFFFF;
+    const GENERIC_ALL: u32 = 0x10000000;
+
+    fn to_wide(s: &str) -> Vec<u16> {
+        OsStr::new(s).encode_wide().chain(Some(0)).collect()
+    }
+
+    unsafe {
+        // Create a hidden desktop — all windows created by the installer (and its
+        // child processes) will appear here instead of on the user's visible desktop.
+        let desktop_name = "S2HiddenInstall";
+        let desktop_name_wide = to_wide(desktop_name);
+
+        let desktop = CreateDesktopW(
+            desktop_name_wide.as_ptr(),
+            ptr::null(),
+            ptr::null(),
+            0,
+            GENERIC_ALL,
+            ptr::null(),
+        );
+
+        // If desktop creation fails, fall back to running on the default desktop.
+        // The installer will still work — windows just won't be hidden.
+        let mut desktop_str = if desktop != 0 {
+            to_wide(desktop_name)
+        } else {
+            to_wide("")
+        };
+
+        // Build command line: "installer_path" installer_args
+        // Note: /D= in NSIS takes everything to end-of-line, so spaces in the
+        // install path are handled correctly without quoting.
+        let cmd_line = format!("\"{}\" {}", installer_path, installer_args);
+        let mut cmd_line_wide = to_wide(&cmd_line);
+
+        let mut si: STARTUPINFOW = mem::zeroed();
+        si.cb = mem::size_of::<STARTUPINFOW>() as u32;
+        si.dwFlags = STARTF_USESHOWWINDOW;
+        si.wShowWindow = SW_HIDE;
+
+        if desktop != 0 {
+            si.lpDesktop = desktop_str.as_mut_ptr();
+        }
+
+        let mut pi: PROCESS_INFORMATION = mem::zeroed();
+
+        let success = CreateProcessW(
+            ptr::null(),
+            cmd_line_wide.as_mut_ptr(),
+            ptr::null(),
+            ptr::null(),
+            0,
+            0,
+            ptr::null(),
+            ptr::null(),
+            &si,
+            &mut pi,
+        );
+
+        if success == 0 {
+            if desktop != 0 { CloseDesktop(desktop); }
+            return 1;
+        }
+
+        WaitForSingleObject(pi.hProcess, INFINITE);
+
+        let mut exit_code: u32 = 0;
+        GetExitCodeProcess(pi.hProcess, &mut exit_code);
+
+        CloseHandle(pi.hThread);
+        CloseHandle(pi.hProcess);
+        if desktop != 0 { CloseDesktop(desktop); }
+
+        exit_code as i32
+    }
+}
+
 fn main() {
+    // ── Hidden-install dispatch ──────────────────────────────────────
+    // When the launcher is re-launched elevated with "--hidden-install", skip
+    // Tauri entirely and just run the installer on a hidden desktop.
+    #[cfg(target_os = "windows")]
+    {
+        let args: Vec<String> = std::env::args().collect();
+        if args.len() >= 4 && args[1] == "--hidden-install" {
+            std::process::exit(hidden_install_main(&args[2], &args[3]));
+        }
+    }
+
     // Build the system tray menu
     let show = CustomMenuItem::new("show", "Open");
     let quit = CustomMenuItem::new("quit", "Quit");

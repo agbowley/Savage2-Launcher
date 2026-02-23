@@ -11,8 +11,13 @@ use crate::utils::CancelToken;
 
 use super::*;
 
-/// Run an executable with UAC elevation ("Run as administrator") and wait for it to finish.
-/// Uses the Windows ShellExecuteExW API directly, bypassing PowerShell entirely.
+/// Run an executable with UAC elevation on a hidden desktop.
+///
+/// Instead of launching the target exe directly (which would let its child processes
+/// show windows on the user's visible desktop), this re-launches the launcher itself
+/// elevated with `--hidden-install`, which creates a hidden Windows desktop and runs
+/// the target exe on it.  All child windows — VC Redist, DirectX, NSIS progress bars —
+/// are invisible to the user.
 #[cfg(target_os = "windows")]
 fn run_elevated_and_wait(exe_path: &str, args: &str) -> Result<(), String> {
     use std::ffi::OsStr;
@@ -59,9 +64,16 @@ fn run_elevated_and_wait(exe_path: &str, args: &str) -> Result<(), String> {
         OsStr::new(s).encode_wide().chain(Some(0)).collect()
     }
 
+    // Re-launch ourselves elevated with --hidden-install so the target exe
+    // (and all its children) run on an invisible desktop.
+    let self_exe = std::env::current_exe()
+        .map_err(|e| format!("Failed to get current exe path: {}", e))?;
+    let self_exe_str = self_exe.to_str()
+        .ok_or("Failed to convert current exe path to string")?;
+
     let verb = to_wide("runas");
-    let file = to_wide(exe_path);
-    let params = to_wide(args);
+    let file = to_wide(self_exe_str);
+    let params = to_wide(&format!("--hidden-install \"{}\" \"{}\"", exe_path, args));
 
     unsafe {
         let mut sei: SHELLEXECUTEINFOW = mem::zeroed();

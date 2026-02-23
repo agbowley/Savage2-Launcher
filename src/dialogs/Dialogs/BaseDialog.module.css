@@ -1,26 +1,52 @@
+.icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.icon svg {
+    width: 36px;
+    height: 36px;
+}
+
+.icon.error svg {
+    color: #F32B37;
+}
+
+.icon.warning svg {
+    color: #FFB800;
+}
+
 .title {
     display: flex;
     justify-content: center;
     align-items: center;
 
-    color: #000;
-    font-size: 24px;
+    color: #fff;
+    font-size: 18px;
     font-style: normal;
     font-weight: 700;
     line-height: normal;
-    text-transform: uppercase;
 }
 
 .contents {
     text-align: center;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.contents p {
+    margin: 4px 0 8px;
 }
 
 .buttons {
     display: flex;
     align-items: flex-start;
-    gap: 15px;
+    gap: 10px;
     align-self: stretch;
-    padding-top: 10px;
+    padding-top: 12px;
 }
 
 .buttons > button {

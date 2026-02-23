@@ -4,7 +4,7 @@ import baseStyles from "./BaseDialog.module.css";
 import { closeDialog } from "..";
 import { WarningIcon } from "@app/assets/Icons";
 
-export class TryCloseDialog extends BaseDialog<Record<string, never>> {
+export class UninstallDialog extends BaseDialog<Record<string, never>> {
     constructor(props: Record<string, unknown>) {
         super(props);
     }
@@ -20,22 +20,20 @@ export class TryCloseDialog extends BaseDialog<Record<string, never>> {
     getInnerContents() {
         return <>
             <p>
-                You cannot close the launcher while something is downloading.
-                <strong> Force closing may corrupt your install!</strong>
+                Are you sure you want to uninstall <strong>{this.props.appName as string}</strong>?
+                This will remove all game files. Your mods and user configuration settings will be preserved.
             </p>
         </>;
     }
 
     getTitle() {
-        return <>Cannot Close</>;
+        return <>Confirm Uninstall</>;
     }
 
     getButtons() {
         return <>
-            <Button color={ButtonColor.GREEN} onClick={() => closeDialog()}>Don&apos;t Close</Button>
-            <Button color={ButtonColor.YELLOW} onClick={() => closeDialog("close")}>
-                <strong>Force Close</strong>
-            </Button>
+            <Button color={ButtonColor.GRAY} onClick={() => closeDialog()}>Cancel</Button>
+            <Button color={ButtonColor.RED} onClick={() => closeDialog("confirm")}>Uninstall</Button>
         </>;
     }
 }

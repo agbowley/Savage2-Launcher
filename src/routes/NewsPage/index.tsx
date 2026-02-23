@@ -34,40 +34,40 @@ function NewsPage() {
     return <>
         <div className={styles.page} style={{ "--bannerURL": `url(${banner.url})`, "--bannerColor": banner.color } as CSSProperties}>
             <div className={styles.header}>
-            <div onClick={() => navigate(-1)} className={styles.header_back}>
-                <BackIcon />
+                <div onClick={() => navigate(-1)} className={styles.header_back}>
+                    <BackIcon />
                     RETURN
-            </div>
-            <div className={styles.header_info}>
-                <NewsBadge badgeType="update" />
-                <div className={styles.title}>{article.title}</div>
-            </div>
-        </div >
-        <div className={styles.content}>
-            <div className={styles.info}>
-                <div className={styles.authors}>
+                </div>
+                <div className={styles.header_info}>
+                    <NewsBadge badgeType="update" />
+                    <div className={styles.title}>{article.title}</div>
+                </div>
+            </div >
+            <div className={styles.content}>
+                <div className={styles.info}>
+                    <div className={styles.authors}>
+                        {
+                            authors
+                                .filter(query => query.data)
+                                .map(({data}) => {
+                                    if(!data) return; 
+                                    return <NewsAuthor key={data?.displayName} author={data} />;
+                                })
+                        }
+                    </div>
                     {
-                        authors
-                            .filter(query => query.data)
-                            .map(({data}) => {
-                                if(!data) return; 
-                                return <NewsAuthor key={data?.displayName} author={data} />;
-                            })
+                        article.createdAt ? (
+                            <div className={styles.releaseDate}>
+                                <TimeIcon />
+                                {intlFormatDistance(new Date(article.createdAt), new Date())}
+                            </div>
+                        ) : ""
                     }
                 </div>
-                {
-                    article.createdAt ? (
-                        <div className={styles.releaseDate}>
-                            <TimeIcon />
-                            {intlFormatDistance(new Date(article.createdAt), new Date())}
-                        </div>
-                    ) : ""
-                }
-            </div>
 
-            <SanitizedHTML 
-                dirtyHTML={ marked.parse(content, {async: false}) as string } 
-            />
+                <SanitizedHTML 
+                    dirtyHTML={ marked.parse(content, {async: false}) as string } 
+                />
             </div>
         </div>
     </>;

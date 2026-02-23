@@ -1,9 +1,11 @@
 import Button, { ButtonColor } from "@app/components/Button";
 import { BaseDialog } from "./BaseDialog";
+import baseStyles from "./BaseDialog.module.css";
 import styles from "./ErrorDialog.module.css";
 import { error as LogError } from "tauri-plugin-log-api";
 import { serializeError } from "serialize-error";
 import { closeDialog } from "..";
+import { ErrorIcon } from "@app/assets/Icons";
 
 export class ErrorDialog extends BaseDialog<Record<string, never>> {
     constructor(props: Record<string, unknown>) {
@@ -16,6 +18,14 @@ export class ErrorDialog extends BaseDialog<Record<string, never>> {
         } catch (e) {
             console.error(e);
         }
+    }
+
+    getIcon() {
+        return <ErrorIcon />;
+    }
+
+    getIconClass() {
+        return baseStyles.error;
     }
 
     getInnerContents() {

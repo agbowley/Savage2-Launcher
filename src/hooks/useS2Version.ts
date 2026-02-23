@@ -5,7 +5,7 @@ import { type } from "@tauri-apps/api/os";
 import { open } from "@tauri-apps/api/dialog";
 import { useS2State } from "@app/stores/S2StateStore";
 import { S2Download, S2PatchUpdate, S2Uninstall } from "@app/tasks/Processors/S2";
-import { showErrorDialog, showInstallFolderDialog } from "@app/dialogs/dialogUtil";
+import { showErrorDialog, showInstallFolderDialog, showUninstallDialog } from "@app/dialogs/dialogUtil";
 import { addTask, cancelTask, useTask } from "@app/tasks";
 import { usePayload, TaskPayload } from "@app/tasks/payload";
 import { useDownloadHistory } from "@app/stores/DownloadHistoryStore";
@@ -379,6 +379,9 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         if (!releaseData || state === S2States.DOWNLOADING) return;
 
         if (!await invoke("is_initialized")) return;
+
+        const confirmed = await showUninstallDialog(`Savage 2 - ${releaseData.name}`);
+        if (!confirmed) return;
 
         setState(S2States.DOWNLOADING);
 
