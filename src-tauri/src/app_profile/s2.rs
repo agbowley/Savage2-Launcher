@@ -397,6 +397,111 @@ impl S2AppProfile {
         Ok(())
     }
 
+    /// Launch the legacy installer with UAC elevation on the **visible** desktop
+    /// so the user can interact with it manually.  Unlike `run_nsis_installer` this
+    /// does NOT use the hidden-desktop approach and passes no silent flags.
+    ///
+    /// The legacy installer always shows a Start Menu error dialog that causes a
+    /// non-zero exit code, so we ignore exit codes and instead verify the game was
+    /// installed by checking for the executable afterwards.
+    #[cfg(target_os = "windows")]
+    async fn run_legacy_installer(&self, app: &tauri::AppHandle, installer_path: &Path) -> Result<(), String> {
+        use std::ffi::OsStr;
+        use std::os::windows::ffi::OsStrExt;
+        use std::mem;
+
+        #[repr(C)]
+        #[allow(non_snake_case)]
+        struct SHELLEXECUTEINFOW {
+            cbSize: u32,
+            fMask: u32,
+            hwnd: isize,
+            lpVerb: *const u16,
+            lpFile: *const u16,
+            lpParameters: *const u16,
+            lpDirectory: *const u16,
+            nShow: i32,
+            hInstApp: isize,
+            lpIDList: isize,
+            lpClass: *const u16,
+            hkeyClass: isize,
+            dwHotKey: u32,
+            hIcon: isize,
+            hProcess: isize,
+        }
+
+        #[link(name = "shell32")]
+        extern "system" {
+            fn ShellExecuteExW(pExecInfo: *mut SHELLEXECUTEINFOW) -> i32;
+        }
+
+        #[link(name = "kernel32")]
+        extern "system" {
+            fn WaitForSingleObject(hHandle: isize, dwMilliseconds: u32) -> u32;
+            fn CloseHandle(hObject: isize) -> i32;
+        }
+
+        const SEE_MASK_NOCLOSEPROCESS: u32 = 0x00000040;
+        const SW_SHOWNORMAL: i32 = 1;
+        const INFINITE: u32 = 0xFFFFFFFF;
+
+        fn to_wide(s: &str) -> Vec<u16> {
+            OsStr::new(s).encode_wide().chain(Some(0)).collect()
+        }
+
+        let installer_str = installer_path.to_str().ok_or("Invalid installer path")?;
+
+        let _ = app.emit_all(
+            "progress_info",
+            ProgressPayload {
+                state: "installing".to_string(),
+                current: 0,
+                total: 0,
+            },
+        );
+
+        let verb = to_wide("runas");
+        let file = to_wide(installer_str);
+
+        unsafe {
+            let mut sei: SHELLEXECUTEINFOW = mem::zeroed();
+            sei.cbSize = mem::size_of::<SHELLEXECUTEINFOW>() as u32;
+            sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+            sei.lpVerb = verb.as_ptr();
+            sei.lpFile = file.as_ptr();
+            sei.nShow = SW_SHOWNORMAL;
+
+            if ShellExecuteExW(&mut sei) == 0 {
+                return Err(format!(
+                    "Failed to launch the legacy installer with elevation.\nPath: {}",
+                    installer_str
+                ));
+            }
+
+            if sei.hProcess != 0 {
+                WaitForSingleObject(sei.hProcess, INFINITE);
+                // We intentionally ignore the exit code — the legacy installer
+                // always shows a Start Menu error dialog that causes a non-zero
+                // exit, but the game files are installed correctly.
+                CloseHandle(sei.hProcess);
+            }
+        }
+
+        // Verify the game was actually installed by looking for the executable.
+        let exec = Self::exec_name()?;
+        let game_folder = self.get_folder();
+        let exec_path = game_folder.join(exec);
+        if !exec_path.exists() {
+            return Err(
+                "The installer finished but the game executable was not found.\n\
+                The install may have been cancelled or installed to a different location."
+                    .to_string(),
+            );
+        }
+
+        Ok(())
+    }
+
     async fn run_installer_with_elevation(&self, installer_path: &Path) -> Result<(), String> {
         let installer_str = installer_path.to_str().ok_or("Invalid path")?;
 
@@ -617,15 +722,25 @@ impl AppProfile for S2AppProfile {
         std::fs::create_dir_all(&game_folder)
             .map_err(|e| format!("Failed to create game directory.\n{:?}", e))?;
 
-        let is_nsis_installer = zip_url.ends_with(".exe");
+        let is_exe_installer = zip_url.ends_with(".exe");
+        // The CE installer (Savage2CEInstall.exe) is NSIS and supports silent
+        // install.  The legacy installer is a different format that requires
+        // user interaction (and always shows a Start Menu error dialog).
+        let is_legacy_installer = is_exe_installer
+            && !zip_url.to_lowercase().contains("savage2ceinstall");
 
-        if is_nsis_installer {
-            // === NSIS Installer Flow (Windows) ===
+        if is_exe_installer {
+            // === EXE Installer Flow (Windows) ===
             // Ensure temp directory exists before downloading
             std::fs::create_dir_all(&self.temp_folder)
                 .map_err(|e| format!("Failed to create temp directory.\n{:?}", e))?;
 
-            let installer_path = &self.temp_folder.join("Savage2CEInstall.exe");
+            // Derive the filename from the URL so the temp name matches
+            let installer_filename = zip_url
+                .rsplit('/')
+                .next()
+                .unwrap_or("installer.exe");
+            let installer_path = &self.temp_folder.join(installer_filename);
             download(Some(app), &zip_url, &installer_path, Some(cancel_token)).await?;
 
             // Verify the installer file actually exists after download
@@ -664,13 +779,23 @@ impl AppProfile for S2AppProfile {
                 }
             }
 
-            // Create the target directory for NSIS /D= flag
-            let install_dir = self.get_folder();
-            std::fs::create_dir_all(&install_dir)
-                .map_err(|e| format!("Failed to create install directory.\n{:?}", e))?;
+            if is_legacy_installer {
+                // Legacy installer — launch on the visible desktop so the user
+                // can interact with it.  Exit code is ignored; we verify the
+                // executable exists afterwards inside run_legacy_installer.
+                #[cfg(target_os = "windows")]
+                self.run_legacy_installer(app, installer_path).await?;
 
-            // Run NSIS installer silently
-            self.run_nsis_installer(app, installer_path).await?;
+                #[cfg(not(target_os = "windows"))]
+                return Err("EXE installers are only supported on Windows.".into());
+            } else {
+                // CE (NSIS) installer — silent install on a hidden desktop.
+                let install_dir = self.get_folder();
+                std::fs::create_dir_all(&install_dir)
+                    .map_err(|e| format!("Failed to create install directory.\n{:?}", e))?;
+
+                self.run_nsis_installer(app, installer_path).await?;
+            }
 
             // Clean up installer
             let _ = remove_file(installer_path);
@@ -1128,12 +1253,76 @@ impl AppProfile for S2AppProfile {
 
         self.log_message(&format!("Launching game from: {}", game_path.display()));
 
-        Command::new(&game_path)
+        let result = Command::new(&game_path)
             .current_dir(&game_folder)
-            .spawn()
-            .map_err(|e| format!("Failed to launch game: {:?}", e))?;
+            .spawn();
 
-        Ok(())
+        match result {
+            Ok(_) => Ok(()),
+            #[cfg(target_os = "windows")]
+            Err(ref e) if e.raw_os_error() == Some(740) => {
+                // ERROR_ELEVATION_REQUIRED (740) — the legacy game executable
+                // has an embedded manifest that demands admin privileges.
+                // Re-launch it with ShellExecuteEx "runas" so the user gets
+                // a UAC prompt instead of an error.
+                self.log_message("Game requires elevation, re-launching with runas...");
+
+                use std::ffi::OsStr;
+                use std::os::windows::ffi::OsStrExt;
+                use std::mem;
+
+                #[repr(C)]
+                #[allow(non_snake_case)]
+                struct SHELLEXECUTEINFOW {
+                    cbSize: u32,
+                    fMask: u32,
+                    hwnd: isize,
+                    lpVerb: *const u16,
+                    lpFile: *const u16,
+                    lpParameters: *const u16,
+                    lpDirectory: *const u16,
+                    nShow: i32,
+                    hInstApp: isize,
+                    lpIDList: isize,
+                    lpClass: *const u16,
+                    hkeyClass: isize,
+                    dwHotKey: u32,
+                    hIcon: isize,
+                    hProcess: isize,
+                }
+
+                #[link(name = "shell32")]
+                extern "system" {
+                    fn ShellExecuteExW(pExecInfo: *mut SHELLEXECUTEINFOW) -> i32;
+                }
+
+                const SW_SHOWNORMAL: i32 = 1;
+
+                fn to_wide(s: &str) -> Vec<u16> {
+                    OsStr::new(s).encode_wide().chain(Some(0)).collect()
+                }
+
+                let verb = to_wide("runas");
+                let file = to_wide(game_path.to_str().ok_or("Invalid game path")?);
+                let dir = to_wide(game_folder.to_str().ok_or("Invalid game folder path")?);
+
+                unsafe {
+                    let mut sei: SHELLEXECUTEINFOW = mem::zeroed();
+                    sei.cbSize = mem::size_of::<SHELLEXECUTEINFOW>() as u32;
+                    sei.lpVerb = verb.as_ptr();
+                    sei.lpFile = file.as_ptr();
+                    sei.lpDirectory = dir.as_ptr();
+                    sei.nShow = SW_SHOWNORMAL;
+
+                    if ShellExecuteExW(&mut sei) == 0 {
+                        return Err("Failed to launch the game with elevation.".to_string());
+                    }
+                }
+
+                Ok(())
+            }
+            Err(e) => Err(format!("Failed to launch game: {:?}", e)),
+        }
     }
 
     fn reveal_folder(&self) -> Result<(), String> {

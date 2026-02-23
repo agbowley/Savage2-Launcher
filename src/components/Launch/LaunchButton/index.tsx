@@ -1,6 +1,6 @@
 import { S2States, S2Version } from "@app/hooks/useS2Version";
 import { ButtonColor } from "../../Button";
-import { ErrorIcon, PlayIcon, UpdateIcon, UpgradeIcon } from "@app/assets/Icons";
+import { ErrorIcon, PlayIcon, TimeIcon, UpdateIcon, UpgradeIcon } from "@app/assets/Icons";
 import { calculatePayloadPercentage } from "@app/tasks/payload";
 import PayloadProgress from "../../PayloadProgress";
 import Button from "@app/components/Button";
@@ -25,7 +25,7 @@ export function LaunchButton(props: LaunchButtonProps) {
 
     if (isQueued) {
         const buttonChildren = <>
-            <Spinner size={16} />
+            <TimeIcon width={16} height={16} />
             Queued
         </>;
 

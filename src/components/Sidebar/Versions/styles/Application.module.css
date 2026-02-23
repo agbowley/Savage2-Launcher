@@ -124,7 +124,7 @@
     animation: spin 0.8s linear infinite;
 }
 
-/* Queued — muted with queue list icon */
+/* Queued — muted with history/clock icon */
 .selector > .version[data-status="queued"] {
     background: rgba(255, 255, 255, 0.08);
     color: rgba(255, 255, 255, 0.55);
@@ -132,7 +132,7 @@
 
 .selector > .version[data-status="queued"]::after {
     content: "";
-    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 14 14' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 3h8M1 7h8M1 11h5M11 7v5M11 12l2-2M11 12l-2-2' stroke='rgba(255,255,255,0.55)' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 17 17' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M8.5 4V8.5L11.5 10M16 8.5C16 12.6421 12.6421 16 8.5 16C4.35786 16 1 12.6421 1 8.5C1 4.35786 4.35786 1 8.5 1C12.6421 1 16 4.35786 16 8.5Z' stroke='rgba(255,255,255,0.55)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     width: 14px;
     aspect-ratio: 1;
     flex-shrink: 0;
