@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type HistoryEntryType = "install" | "update" | "repair";
+export type HistoryEntryType = "install" | "update" | "repair" | "uninstall";
 
 export interface HistoryEntry {
     id: string;

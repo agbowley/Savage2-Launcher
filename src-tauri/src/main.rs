@@ -12,7 +12,9 @@ use directories::BaseDirs;
 use std::collections::HashMap;
 use std::fs::{self, remove_file, File};
 use std::path::PathBuf;
-use std::sync::RwLock;
+use std::sync::{RwLock, atomic::{AtomicBool, Ordering}};
+
+static NOTIFICATIONS_ENABLED: AtomicBool = AtomicBool::new(true);
 use tauri::{AppHandle, Manager, CustomMenuItem, SystemTray, SystemTrayMenu, SystemTrayMenuItem, SystemTrayEvent};
 use utils::{clear_folder, CancelToken};
 use window_shadows::set_shadow;
@@ -555,6 +557,36 @@ fn cancel_task(state: tauri::State<'_, State>) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn set_tray_notifications_label(app: AppHandle, enabled: bool) {
+    NOTIFICATIONS_ENABLED.store(enabled, Ordering::SeqCst);
+    let _ = app.tray_handle().get_item("notifications").set_selected(enabled);
+}
+
+#[tauri::command]
+fn show_notification(app: AppHandle, title: String, body: String) {
+    #[cfg(target_os = "windows")]
+    {
+        use tauri_winrt_notification::Toast;
+        let handle = app.clone();
+        // Spawn so we don't block the command handler
+        std::thread::spawn(move || {
+            let _ = Toast::new("net.savage2.launcher")
+                .title(&title)
+                .text1(&body)
+                .on_activated(move |_action| {
+                    if let Some(window) = handle.get_window("main") {
+                        let _ = window.show();
+                        let _ = window.unminimize();
+                        let _ = window.set_focus();
+                    }
+                    Ok(())
+                })
+                .show();
+        });
+    }
+}
+
 /// Hidden-install mode: launched as an elevated child process by `run_elevated_and_wait`.
 ///
 /// Creates an invisible Windows desktop, runs the given installer on it (so that ALL
@@ -729,11 +761,29 @@ fn main() {
         }
     }
 
+    // ── Set AUMID ────────────────────────────────────────────────────
+    // Tell Windows this process belongs to "Savage 2 Launcher" so that
+    // toast notifications show the correct app name and icon.
+    #[cfg(target_os = "windows")]
+    {
+        extern "system" {
+            fn SetCurrentProcessExplicitAppUserModelID(app_id: *const u16) -> i32;
+        }
+        let id: Vec<u16> = "net.savage2.launcher"
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect();
+        unsafe { SetCurrentProcessExplicitAppUserModelID(id.as_ptr()); }
+    }
+
     // Build the system tray menu
     let show = CustomMenuItem::new("show", "Open");
+    let notifications = CustomMenuItem::new("notifications", "Notifications").selected();
     let quit = CustomMenuItem::new("quit", "Quit");
     let tray_menu = SystemTrayMenu::new()
         .add_item(show)
+        .add_native_item(SystemTrayMenuItem::Separator)
+        .add_item(notifications)
         .add_native_item(SystemTrayMenuItem::Separator)
         .add_item(quit);
     let system_tray = SystemTray::new().with_menu(tray_menu);
@@ -765,6 +815,16 @@ fn main() {
                         let _ = window.unminimize();
                         let _ = window.set_focus();
                     }
+                }
+                "notifications" => {
+                    let prev = NOTIFICATIONS_ENABLED.load(Ordering::SeqCst);
+                    let next = !prev;
+                    NOTIFICATIONS_ENABLED.store(next, Ordering::SeqCst);
+
+                    let _ = app.tray_handle().get_item("notifications").set_selected(next);
+
+                    // Sync the frontend store
+                    let _ = app.emit_all("notifications-toggled", next);
                 }
                 "quit" => {
                     app.exit(0);
@@ -805,7 +865,9 @@ fn main() {
             get_download_location,
             get_profile_location,
             set_profile_location,
-            cancel_task
+            cancel_task,
+            set_tray_notifications_label,
+            show_notification
         ])
         .setup(|app| {
             let window = app.get_window("main").unwrap();

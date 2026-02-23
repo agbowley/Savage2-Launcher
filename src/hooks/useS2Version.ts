@@ -8,13 +8,16 @@ import { S2Download, S2PatchUpdate, S2Uninstall } from "@app/tasks/Processors/S2
 import { showErrorDialog, showInstallFolderDialog, showUninstallDialog } from "@app/dialogs/dialogUtil";
 import { addTask, cancelTask, useTask } from "@app/tasks";
 import { usePayload, TaskPayload } from "@app/tasks/payload";
+import { IBaseTask } from "@app/tasks/Processors/base";
 import { useDownloadHistory } from "@app/stores/DownloadHistoryStore";
+import { showToast } from "@app/utils/toast";
 
 export enum S2States {
     "AVAILABLE",
     "DOWNLOADING",
     "UPDATING",
     "REPAIRING",
+    "UNINSTALLING",
     "ERROR",
     "PLAYING",
     "LOADING",
@@ -36,7 +39,8 @@ export type S2Version = {
     installPath: string | null,
     downloadLocation: string | null,
     releaseDate: string | null,
-    payload?: TaskPayload
+    payload?: TaskPayload,
+    task?: IBaseTask
 }
 
 /** Cache fetched version info per profile so values are instant on repeat visits. */
@@ -147,7 +151,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         (async () => {
             if (!releaseData) return;
             // Skip if we're in a transient state (downloading, playing, etc.)
-            if (state === S2States.DOWNLOADING || state === S2States.UPDATING || state === S2States.REPAIRING || state === S2States.PLAYING || state === S2States.LOADING) return;
+            if (state === S2States.DOWNLOADING || state === S2States.UPDATING || state === S2States.REPAIRING || state === S2States.UNINSTALLING || state === S2States.PLAYING || state === S2States.LOADING) return;
 
             try {
                 const exists = await invoke("exists", {
@@ -159,6 +163,10 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
                     setState(S2States.NEW_UPDATE);
                 } else if (installedVersion && latestVersion && installedVersion !== latestVersion) {
                     setState(S2States.UPDATE_AVAILABLE);
+                    showToast(
+                        "Update Available",
+                        `Savage 2 — ${releaseData.name} ${latestVersion}`
+                    );
                 } else {
                     setState(S2States.AVAILABLE);
                 }
@@ -317,6 +325,12 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
                     previousVersion: gameExists ? previousVersion : null,
                 });
 
+                // Toast
+                showToast(
+                    gameExists ? "Update Complete" : "Install Complete",
+                    `Savage 2 — ${releaseData.name} ${latestVersion ?? ""}`
+                );
+
                 setState(S2States.AVAILABLE);
                 setInstalledVersion(latestVersion);
             };
@@ -376,14 +390,14 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
     };
 
     const uninstall = async () => {
-        if (!releaseData || state === S2States.DOWNLOADING) return;
+        if (!releaseData || state === S2States.DOWNLOADING || state === S2States.UNINSTALLING) return;
 
         if (!await invoke("is_initialized")) return;
 
         const confirmed = await showUninstallDialog(`Savage 2 - ${releaseData.name}`);
         if (!confirmed) return;
 
-        setState(S2States.DOWNLOADING);
+        setState(S2States.UNINSTALLING);
 
         try {
             const downloader = new S2Uninstall(
@@ -391,6 +405,14 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
                 releaseData.channel,
                 profile,
                 () => {
+                    useDownloadHistory.getState().addEntry({
+                        game: "Savage 2",
+                        channel: releaseData.name,
+                        type: "uninstall",
+                        version: installedVersion,
+                        previousVersion: null,
+                    });
+
                     setState(S2States.NEW_UPDATE);
                     setInstalledVersion(null);
                     setInstallPath(null);
@@ -502,7 +524,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
     };
 
     const cancel = async () => {
-        if (state !== S2States.DOWNLOADING && state !== S2States.UPDATING && state !== S2States.REPAIRING) return;
+        if (state !== S2States.DOWNLOADING && state !== S2States.UPDATING && state !== S2States.REPAIRING && state !== S2States.UNINSTALLING) return;
         if (!task) return;
         await cancelTask(task);
     };
@@ -521,6 +543,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         installPath,
         downloadLocation,
         releaseDate,
-        payload
+        payload,
+        task
     };
 };

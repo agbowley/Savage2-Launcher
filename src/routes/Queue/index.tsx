@@ -87,7 +87,7 @@ function Queue() {
         {getBanner()}
         <div className={styles.main}>
             {queue.size > 1 && (
-                <QueueSection icon={<QueueListIcon />} title="QUEUED DOWNLOADS">
+                <QueueSection icon={<QueueListIcon />} title="QUEUED ACTIONS">
                     {Array.from(queue).splice(1).map(downloader =>
                         downloader.getQueueEntry(false, () => cancelTask(downloader))
                     )}

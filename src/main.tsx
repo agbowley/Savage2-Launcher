@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import "./styles.css";
 import TitleBar from "./components/TitleBar";
@@ -12,6 +12,9 @@ import { ErrorScreen, onError } from "./routes/ErrorScreen";
 import { error as logError } from "tauri-plugin-log-api";
 import { serializeError } from "serialize-error";
 import LoadingScreen from "./components/LoadingScreen";
+import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/tauri";
+import { useToastStore } from "./stores/ToastStore";
 
 window.addEventListener("error", event => {
     logError(JSON.stringify(serializeError(event)));
@@ -19,6 +22,20 @@ window.addEventListener("error", event => {
 
 const App: React.FC = () => {
     const [error, setError] = useState<unknown>(null);
+
+    // Sync tray "Notifications" label with store & listen for tray toggle clicks
+    useEffect(() => {
+        // Sync tray label on startup
+        const enabled = useToastStore.getState().toastsEnabled;
+        invoke("set_tray_notifications_label", { enabled });
+
+        // Listen for tray menu "Notifications" toggle (state already changed in Rust)
+        const unlisten = listen<boolean>("notifications-toggled", (event) => {
+            useToastStore.getState().setToastsEnabled(event.payload);
+        });
+
+        return () => { unlisten.then((fn) => fn()); };
+    }, []);
 
     // Show error screen
     if (error) {

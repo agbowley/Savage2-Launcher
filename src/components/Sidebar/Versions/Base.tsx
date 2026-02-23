@@ -12,7 +12,7 @@ interface Props {
     programName?: string;
     versionChannel?: string;
     version?: string;
-    status?: "installed" | "not-installed" | "update-available" | "downloading";
+    status?: "installed" | "not-installed" | "update-available" | "downloading" | "queued";
 }
 
 const styleType = {

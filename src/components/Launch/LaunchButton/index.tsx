@@ -7,6 +7,7 @@ import Button from "@app/components/Button";
 import { DropdownButton, DropdownItem } from "@app/components/DropdownButton";
 import Spinner from "@app/components/Spinner";
 import { useNavigate } from "react-router-dom";
+import { useCurrentTask } from "@app/tasks";
 
 interface LaunchButtonProps extends React.PropsWithChildren {
     version: S2Version,
@@ -17,6 +18,32 @@ interface LaunchButtonProps extends React.PropsWithChildren {
 export function LaunchButton(props: LaunchButtonProps) {
     const { version, playName } = props;
     const navigate = useNavigate();
+    const currentTask = useCurrentTask();
+
+    // Check if this version's task is queued (not the active/first task)
+    const isQueued = version.task != null && currentTask != null && version.task !== currentTask;
+
+    if (isQueued) {
+        const buttonChildren = <>
+            <Spinner size={16} />
+            Queued
+        </>;
+
+        const dropdownChildren = <>
+            <DropdownItem onClick={() => version.cancel()}>
+                Cancel
+            </DropdownItem>
+        </>;
+
+        return <DropdownButton
+            style={props.style}
+            color={ButtonColor.GRAY}
+            onClick={() => navigate("/queue")}
+            dropdownChildren={dropdownChildren}>
+
+            {buttonChildren}
+        </DropdownButton>;
+    }
 
     if (version.state === S2States.NEW_UPDATE) {
         const buttonChildren = <>
@@ -131,6 +158,29 @@ export function LaunchButton(props: LaunchButtonProps) {
             style={props.style}
             progress={calculatePayloadPercentage(version.payload)}
             color={ButtonColor.YELLOW}
+            onClick={() => navigate("/queue")}
+            dropdownChildren={dropdownChildren}>
+
+            {buttonChildren}
+        </DropdownButton>;
+    }
+
+    if (version.state === S2States.UNINSTALLING) {
+        const buttonChildren = <>
+            <Spinner size={16} />
+            <PayloadProgress payload={version.payload} defaultText="Uninstalling" />
+        </>;
+
+        const dropdownChildren = <>
+            <DropdownItem onClick={() => version.cancel()}>
+                Cancel
+            </DropdownItem>
+        </>;
+
+        return <DropdownButton
+            style={props.style}
+            progress={calculatePayloadPercentage(version.payload)}
+            color={ButtonColor.RED}
             onClick={() => navigate("/queue")}
             dropdownChildren={dropdownChildren}>
 

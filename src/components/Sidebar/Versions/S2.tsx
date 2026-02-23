@@ -5,6 +5,7 @@ import NightlyS2Icon from "@app/assets/s2icon-nightly.png";
 import StableS2Icon from "@app/assets/s2icon-stable.png";
 import LegacyS2Icon from "@app/assets/s2icon-legacy.png";
 import { NavLink } from "react-router-dom";
+import { useCurrentTask } from "@app/tasks";
 
 interface Props {
     channel: ReleaseChannels;
@@ -12,7 +13,8 @@ interface Props {
 
 const S2Version: React.FC<Props> = ({ channel }: Props) => {
     const { data: releaseData } = useS2Release(channel);
-    const { state, installedVersion, latestVersion } = useS2Version(releaseData, channel);
+    const { state, installedVersion, latestVersion, task } = useS2Version(releaseData, channel);
+    const currentTask = useCurrentTask();
 
     function getChannelIcon() {
         switch (channel) {
@@ -47,7 +49,11 @@ const S2Version: React.FC<Props> = ({ channel }: Props) => {
         }
     }
 
-    function getStatus(): "installed" | "not-installed" | "update-available" | "downloading" | undefined {
+    function getStatus(): "installed" | "not-installed" | "update-available" | "downloading" | "queued" | undefined {
+        // Queued: task exists but isn't the active/first task
+        const isQueued = task != null && currentTask != null && task !== currentTask;
+        if (isQueued) return "queued";
+
         switch (state) {
             case S2States.AVAILABLE:
             case S2States.PLAYING:
@@ -56,6 +62,7 @@ const S2Version: React.FC<Props> = ({ channel }: Props) => {
             case S2States.UPDATING:
             case S2States.LOADING:
             case S2States.REPAIRING:
+            case S2States.UNINSTALLING:
                 return "downloading";
             case S2States.UPDATE_AVAILABLE:
                 return "update-available";

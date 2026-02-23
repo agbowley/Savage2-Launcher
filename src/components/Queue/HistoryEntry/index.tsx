@@ -25,6 +25,8 @@ function getBadgeClass(type: HistoryEntryType): string {
             return styles.badge_update;
         case "repair":
             return styles.badge_repair;
+        case "uninstall":
+            return styles.badge_uninstall;
     }
 }
 
@@ -36,6 +38,8 @@ function getBadgeLabel(type: HistoryEntryType): string {
             return "Updated";
         case "repair":
             return "Repaired";
+        case "uninstall":
+            return "Uninstalled";
     }
 }
 
@@ -50,6 +54,8 @@ function getDetail(entry: HistoryEntryData): string {
             return entry.version ? `Updated to v${entry.version}` : "Updated";
         case "repair":
             return entry.version ? `v${entry.version} — files repaired` : "Files repaired";
+        case "uninstall":
+            return entry.version ? `v${entry.version} removed` : "Uninstalled";
     }
 }
 

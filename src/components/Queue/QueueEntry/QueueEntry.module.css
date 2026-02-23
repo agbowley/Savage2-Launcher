@@ -1,25 +1,30 @@
 .item {
     display: flex;
-    padding: 15px;
+    padding: 12px 15px;
     justify-content: space-between;
     align-items: center;
     align-self: stretch;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-    background: rgba(0, 0, 0, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.item:last-child {
+    border-bottom: none;
 }
 
 .main {
     display: flex;
-    width: 350px;
     align-items: center;
     gap: 10px;
+    flex: 1;
+    min-width: 0;
 }
 
 .extra {
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    gap: 15px;
+    gap: 10px;
 }
 
 .icon {
@@ -30,6 +35,7 @@
     gap: 10px;
     border-radius: 8px;
     background: #000410;
+    flex-shrink: 0;
 }
 
 .icon > * {
@@ -42,42 +48,79 @@
     flex-direction: column;
     justify-content: center;
     align-items: flex-start;
+    gap: 2px;
+    min-width: 0;
 
-    color: rgba(0, 0, 0, 0.50);
-    font-size: 12px;
+    color: rgba(255, 255, 255, 0.50);
+    font-size: 11px;
     font-style: normal;
     font-weight: 400;
     line-height: normal;
 }
 
 .info_header {
-    color: #000;
-    font-size: 14px;
+    color: #fff;
+    font-size: 13px;
     font-style: normal;
-    font-weight: 500;
+    font-weight: 600;
     line-height: normal;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.badge {
+    display: inline-flex;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    line-height: normal;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.badge_download {
+    background: rgba(59, 130, 246, 0.15);
+    color: rgb(96, 165, 250);
+}
+
+.badge_update {
+    background: rgba(34, 197, 94, 0.15);
+    color: rgb(74, 222, 128);
+}
+
+.badge_uninstall {
+    background: rgba(239, 68, 68, 0.15);
+    color: rgb(252, 129, 129);
+}
+
+.badge_repair {
+    background: rgba(251, 191, 36, 0.15);
+    color: rgb(252, 211, 77);
 }
 
 .remove_button {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     border: none;
     border-radius: 6px;
-    background: rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 0.06);
     cursor: pointer;
     transition: background 0.15s;
     padding: 0;
 }
 
 .remove_button:hover {
-    background: rgba(200, 50, 50, 0.25);
+    background: rgba(200, 50, 50, 0.3);
 }
 
 .remove_button > svg {
-    width: 14px;
-    height: 14px;
-    color: rgba(0, 0, 0, 0.5);
+    width: 12px;
+    height: 12px;
+    color: rgba(255, 255, 255, 0.4);
 }

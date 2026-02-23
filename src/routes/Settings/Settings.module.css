@@ -1,0 +1,97 @@
+.page {
+    padding: 24px 32px;
+}
+
+.heading {
+    font-size: 20px;
+    font-weight: 700;
+    color: white;
+    margin: 0 0 24px;
+}
+
+/* ── Section ── */
+.section {
+    margin-bottom: 24px;
+}
+
+.section_title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(255, 255, 255, 0.35);
+    margin-bottom: 10px;
+}
+
+/* ── Setting row ── */
+.row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.row_text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.row_label {
+    font-size: 13px;
+    font-weight: 500;
+    color: white;
+}
+
+.row_description {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* ── Toggle switch ── */
+.toggle {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.slider {
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.12);
+    transition: background 0.2s;
+}
+
+.slider::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    transition: transform 0.2s, background 0.2s;
+}
+
+.toggle input:checked + .slider {
+    background: rgb(255, 192, 20);
+}
+
+.toggle input:checked + .slider::after {
+    transform: translateX(16px);
+    background: #1a1a1a;
+}
