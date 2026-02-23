@@ -32,7 +32,8 @@ function NewsPage() {
     const banner = getNewsBanner(article.id);
 
     return <>
-        <div className={styles.page} style={{ "--bannerURL": `url(${banner.url})`, "--bannerColor": banner.color } as CSSProperties}>
+        <div className={styles.page} style={{ "--bannerColor": banner.color } as CSSProperties}>
+            <img src={banner.url} className={styles.banner_image} alt="" />
             <div className={styles.header}>
                 <div onClick={() => navigate(-1)} className={styles.header_back}>
                     <BackIcon />

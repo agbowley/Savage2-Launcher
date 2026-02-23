@@ -8,7 +8,6 @@ import { intlFormatDistance } from "date-fns";
 import { useNewsAuthorSettings } from "@app/hooks/useNewsAuthor";
 import { useQueries } from "@tanstack/react-query";
 import { getNewsBanner } from "@app/assets/NewsBanners";
-import { CSSProperties } from "react";
 
 interface Props {
     article: ArticleData;
@@ -23,10 +22,8 @@ const NewsEntry: React.FC<Props> = ({ article }: Props) => {
     const banner = getNewsBanner(article.id);
 
     return <Link to={`/news/${article.id}`} key={article.id} style={{ width: "100%" }}>
-        <div
-            className={styles.container}
-            style={{ "--bannerURL": `url(${banner.url})` } as CSSProperties}
-        >
+        <div className={styles.container}>
+            <img src={banner.url} className={styles.banner_image} alt="" />
             <div className={styles.main}>
                 <div className={styles.top_container}>
                     <div className={styles.top}>

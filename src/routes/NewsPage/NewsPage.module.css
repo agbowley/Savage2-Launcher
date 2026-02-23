@@ -11,17 +11,15 @@
     background-position: top;
 }
 
-.page::before {
-    content: '';
+.banner_image {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     aspect-ratio: 16 / 9;
-    background-image: var(--bannerURL);
-    background-position: right top;
-    background-size: cover;
-    background-repeat: no-repeat;
+    width: 100%;
+    object-fit: cover;
+    object-position: right top;
     mask-image:
         linear-gradient(to bottom left, black 0%, black 15%, transparent 80%),
         linear-gradient(to bottom, black 0%, black 70%, transparent 90%);

@@ -15,14 +15,14 @@
     transition: background 0.1s;
 }
 
-.container::before {
-    content: '';
+.banner_image {
     position: absolute;
-    inset: 0;
-    background-image: var(--bannerURL);
-    background-position: right center;
-    background-size: cover;
-    background-repeat: no-repeat;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: right center;
     mask-image: linear-gradient(45deg, transparent 30%, black 70%);
     -webkit-mask-image: linear-gradient(45deg, transparent 30%, black 70%);
     opacity: 0.4;
@@ -30,7 +30,7 @@
     transition: opacity 0.1s;
 }
 
-.container:hover::before {
+.container:hover > .banner_image {
     opacity: 0.6;
 }
 
