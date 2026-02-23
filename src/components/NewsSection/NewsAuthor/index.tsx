@@ -1,5 +1,5 @@
 import styles from "./NewsAuthor.module.css";
-import UnknownUserIcon from "@app/assets/Icons/UnknownUser.svg";
+import LauncherIcon from "@app/assets/SourceIcons/Official.png";
 import { AuthorData } from "@app/hooks/useNewsAuthor";
 import { Img } from "react-image";
 import adminAvatar from "@app/assets/Avatars/Admin.webp";
@@ -18,7 +18,7 @@ const NewsAuthor: React.FC<Props> = ({author}: Props) => {
                 height={48}
                 alt={`${author.displayName}'s avatar ${author.avatar}`}
                 // src={[`${newsBaseURL}/images/avatars/${author.avatar}`, UnknownUserIcon]}
-                src={[`${avatars[author.avatar || ""]}`, UnknownUserIcon]}
+                src={[`${avatars[author.avatar || ""]}`, LauncherIcon]}
             />
         </div>
         <div className={styles.authorInformation}>

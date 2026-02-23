@@ -2,29 +2,42 @@ import { appWindow } from "@tauri-apps/api/window";
 
 import styles from "./titlebar.module.css";
 import { CloseIcon, MinimizeIcon } from "@app/assets/Icons";
+import LauncherIcon from "@app/assets/SourceIcons/Official.png";
+
+let clickCount = 0;
+let clickTimer: ReturnType<typeof setTimeout> | null = null;
 
 const TitleBar: React.FC = () => {
-    async function handleDrag(e: React.MouseEvent) {
-        // Only start dragging from the titlebar background, not from buttons
+    async function handleMouseDown(e: React.MouseEvent) {
         if ((e.target as HTMLElement).closest(`.${styles.buttons}`)) return;
-        await appWindow.startDragging();
-    }
 
-    async function handleDoubleClick(e: React.MouseEvent) {
-        if ((e.target as HTMLElement).closest(`.${styles.buttons}`)) return;
-        const maximized = await appWindow.isMaximized();
-        if (maximized) {
-            await appWindow.unmaximize();
+        clickCount++;
+
+        if (clickCount === 2) {
+            // Double-click detected — maximize/restore
+            if (clickTimer) clearTimeout(clickTimer);
+            clickCount = 0;
+
+            const maximized = await appWindow.isMaximized();
+            if (maximized) {
+                await appWindow.unmaximize();
+            } else {
+                await appWindow.maximize();
+            }
         } else {
-            await appWindow.maximize();
+            // Wait briefly to see if a second click comes
+            clickTimer = setTimeout(async () => {
+                clickCount = 0;
+                await appWindow.startDragging();
+            }, 130);
         }
     }
 
     return <div
-        onMouseDown={handleDrag}
-        onDoubleClick={handleDoubleClick}
+        onMouseDown={handleMouseDown}
         className={styles.title_bar}>
         <div className={styles.text}>
+            <img src={LauncherIcon} height={18} alt="Savage 2" />
             Savage 2 Launcher
         </div>
 

@@ -2,12 +2,13 @@ import styles from "./NewsEntry.module.css";
 import NewsBadge from "../NewsBadge";
 import { ArticleData } from "@app/hooks/useNews";
 import { Link } from "react-router-dom";
-import { Img } from "react-image";
-import UnknownUserIcon from "@app/assets/Icons/UnknownUser.svg";
+import LauncherIcon from "@app/assets/SourceIcons/Official.png";
 import { TimeIcon } from "@app/assets/Icons";
 import { intlFormatDistance } from "date-fns";
 import { useNewsAuthorSettings } from "@app/hooks/useNewsAuthor";
 import { useQueries } from "@tanstack/react-query";
+import { getNewsBanner } from "@app/assets/NewsBanners";
+import { CSSProperties } from "react";
 
 interface Props {
     article: ArticleData;
@@ -19,8 +20,13 @@ const NewsEntry: React.FC<Props> = ({ article }: Props) => {
         queries: [useNewsAuthorSettings(article.author)]
     });
 
+    const banner = getNewsBanner(article.id);
+
     return <Link to={`/news/${article.id}`} key={article.id} style={{ width: "100%" }}>
-        <div className={styles.container}>
+        <div
+            className={styles.container}
+            style={{ "--bannerURL": `url(${banner.url})` } as CSSProperties}
+        >
             <div className={styles.main}>
                 <div className={styles.top_container}>
                     <div className={styles.top}>
@@ -34,27 +40,24 @@ const NewsEntry: React.FC<Props> = ({ article }: Props) => {
                             ) : ""
                         }
                     </div>
-                    {article.title}
                 </div>
                 <div className={styles.bottom_container}>
-                    {
-                        authors
-                            .filter(({data}) => data)
-                            .map(({data}) => (<Img
-                                key={`${data?.displayName}`}
-                                height={24}
-                                alt={`${data?.displayName}'s avatar`}
-                                src={[UnknownUserIcon]}
-                                style={{ borderRadius: "50%" }}
-                            />))
-                    }
-                    <div>
-                        By: <span className={styles.author}>{
-                            authors
-                                .map(({data}) => data?.displayName)
-                                .filter(authorName => authorName)
-                                .join(", ")
-                        }</span>
+                    <span className={styles.title}>{article.title}</span>
+                    <div className={styles.byline}>
+                        <img
+                            height={20}
+                            alt="Savage 2"
+                            src={LauncherIcon}
+                            style={{ borderRadius: "50%" }}
+                        />
+                        <div>
+                            By: <span className={styles.author}>{
+                                authors
+                                    .map(({data}) => data?.displayName)
+                                    .filter(authorName => authorName)
+                                    .join(", ")
+                            }</span>
+                        </div>
                     </div>
                 </div>
             </div>

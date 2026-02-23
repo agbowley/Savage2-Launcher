@@ -284,10 +284,28 @@ async fn patch_update(
 }
 
 #[tauri::command(async)]
-fn uninstall(
-    state: tauri::State<State>,
+async fn verify_files(
+    state: tauri::State<'_, State>,
+    app_handle: AppHandle,
     app_name: String,
-    profile: String
+    profile: String,
+    manifest_url: String,
+) -> Result<bool, String> {
+    let app_profile = create_app_profile(
+        app_name,
+        &state,
+        profile
+    )?;
+
+    app_profile.verify_files(&app_handle, &manifest_url).await
+}
+
+#[tauri::command(async)]
+async fn uninstall(
+    state: tauri::State<'_, State>,
+    app_name: String,
+    profile: String,
+    manifest_url: String,
 ) -> Result<(), String> {
     let app_profile = create_app_profile(
         app_name,
@@ -295,7 +313,7 @@ fn uninstall(
         profile.clone()
     )?;
 
-    app_profile.uninstall()?;
+    app_profile.uninstall(&manifest_url).await?;
 
     // Clear the cached installed version since the game is now removed
     let mut state_guard = state.0.write().unwrap();
@@ -595,6 +613,7 @@ fn main() {
 
             download_and_install,
             patch_update,
+            verify_files,
             uninstall,
             exists,
             launch,

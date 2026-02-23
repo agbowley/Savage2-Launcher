@@ -8,11 +8,13 @@ import { S2Download, S2PatchUpdate, S2Uninstall } from "@app/tasks/Processors/S2
 import { showErrorDialog, showInstallFolderDialog } from "@app/dialogs/dialogUtil";
 import { addTask, cancelTask, useTask } from "@app/tasks";
 import { usePayload, TaskPayload } from "@app/tasks/payload";
+import { useDownloadHistory } from "@app/stores/DownloadHistoryStore";
 
 export enum S2States {
     "AVAILABLE",
     "DOWNLOADING",
     "UPDATING",
+    "REPAIRING",
     "ERROR",
     "PLAYING",
     "LOADING",
@@ -145,7 +147,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         (async () => {
             if (!releaseData) return;
             // Skip if we're in a transient state (downloading, playing, etc.)
-            if (state === S2States.DOWNLOADING || state === S2States.UPDATING || state === S2States.PLAYING || state === S2States.LOADING) return;
+            if (state === S2States.DOWNLOADING || state === S2States.UPDATING || state === S2States.REPAIRING || state === S2States.PLAYING || state === S2States.LOADING) return;
 
             try {
                 const exists = await invoke("exists", {
@@ -191,6 +193,52 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         setState(S2States.LOADING);
 
         try {
+            // Verify game files against the manifest before launching.
+            // If any files are missing or corrupted, repair them first.
+            if (releaseData.manifest_url) {
+                let needsRepair = false;
+                try {
+                    needsRepair = await invoke("verify_files", {
+                        appName: "Savage 2",
+                        profile,
+                        manifestUrl: releaseData.manifest_url
+                    }) as boolean;
+                } catch (e) {
+                    // If verification fails (e.g. no network), skip and launch anyway
+                    console.warn("File verification failed, launching anyway:", e);
+                }
+
+                if (needsRepair) {
+                    // Files need repair — route through the task queue so
+                    // progress is visible in the downloads list.
+                    setState(S2States.REPAIRING);
+
+                    await new Promise<void>((resolve, reject) => {
+                        const repairTask = new S2PatchUpdate(
+                            releaseData.manifest_url,
+                            releaseData.channel,
+                            profile,
+                            () => {
+                                // Log repair to download history
+                                useDownloadHistory.getState().addEntry({
+                                    game: "Savage 2",
+                                    channel: releaseData.name,
+                                    type: "repair",
+                                    version: installedVersion,
+                                    previousVersion: null,
+                                });
+                                resolve();
+                            }
+                        );
+                        repairTask.onError = (err) => reject(err);
+                        repairTask.onCancel = () => reject("CANCELLED");
+                        addTask(repairTask);
+                    });
+
+                    setState(S2States.LOADING);
+                }
+            }
+
             await invoke("launch", {
                 appName: "Savage 2",
                 profile
@@ -202,14 +250,19 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
                 setState(S2States.AVAILABLE);
             }, 10 * 1000);
         } catch (e) {
+            const errMsg = e as string;
+            if (errMsg === "CANCELLED") {
+                setState(S2States.AVAILABLE);
+                return;
+            }
             setState(S2States.ERROR);
-            showErrorDialog(e as string);
+            showErrorDialog(errMsg);
             console.error(e);
         }
     };
 
     const download = async () => {
-        if (!releaseData || state === S2States.DOWNLOADING || state === S2States.UPDATING) return;
+        if (!releaseData || state === S2States.DOWNLOADING || state === S2States.UPDATING || state === S2States.REPAIRING) return;
 
         if (!await showInstallFolderDialog()) {
             return;
@@ -254,6 +307,16 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
                         console.error("Failed to save installed version:", e);
                     }
                 }
+
+                // Log to download history
+                useDownloadHistory.getState().addEntry({
+                    game: "Savage 2",
+                    channel: releaseData.name,
+                    type: gameExists ? "update" : "install",
+                    version: latestVersion,
+                    previousVersion: gameExists ? previousVersion : null,
+                });
+
                 setState(S2States.AVAILABLE);
                 setInstalledVersion(latestVersion);
             };
@@ -280,6 +343,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
             // (UPDATE_AVAILABLE state), and a manifest URL is available.
             // Falls back to full download if the manifest isn't hosted yet.
             const gameExists = await invoke("exists", { appName: "Savage 2", profile });
+            const previousVersion = installedVersion;
             let task: S2Download | S2PatchUpdate;
 
             if (gameExists && releaseData.manifest_url) {
@@ -320,6 +384,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
 
         try {
             const downloader = new S2Uninstall(
+                releaseData.manifest_url,
                 releaseData.channel,
                 profile,
                 () => {
@@ -434,7 +499,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
     };
 
     const cancel = async () => {
-        if (state !== S2States.DOWNLOADING && state !== S2States.UPDATING) return;
+        if (state !== S2States.DOWNLOADING && state !== S2States.UPDATING && state !== S2States.REPAIRING) return;
         if (!task) return;
         await cancelTask(task);
     };

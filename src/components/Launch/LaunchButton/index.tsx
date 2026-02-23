@@ -1,11 +1,12 @@
 import { S2States, S2Version } from "@app/hooks/useS2Version";
 import { ButtonColor } from "../../Button";
-import { ErrorIcon, InstallingIcon, PlayIcon, UpdateIcon, UpgradeIcon } from "@app/assets/Icons";
+import { ErrorIcon, PlayIcon, UpdateIcon, UpgradeIcon } from "@app/assets/Icons";
 import { calculatePayloadPercentage } from "@app/tasks/payload";
 import PayloadProgress from "../../PayloadProgress";
 import Button from "@app/components/Button";
 import { DropdownButton, DropdownItem } from "@app/components/DropdownButton";
-import { ClipLoader } from "react-spinners";
+import Spinner from "@app/components/Spinner";
+import { useNavigate } from "react-router-dom";
 
 interface LaunchButtonProps extends React.PropsWithChildren {
     version: S2Version,
@@ -15,6 +16,7 @@ interface LaunchButtonProps extends React.PropsWithChildren {
 
 export function LaunchButton(props: LaunchButtonProps) {
     const { version, playName } = props;
+    const navigate = useNavigate();
 
     if (version.state === S2States.NEW_UPDATE) {
         const buttonChildren = <>
@@ -69,7 +71,7 @@ export function LaunchButton(props: LaunchButtonProps) {
 
     if (version.state === S2States.DOWNLOADING) {
         const buttonChildren = <>
-            <InstallingIcon />
+            <Spinner size={16} />
             <PayloadProgress payload={version.payload} />
         </>;
 
@@ -83,6 +85,7 @@ export function LaunchButton(props: LaunchButtonProps) {
             style={props.style}
             progress={calculatePayloadPercentage(version.payload)}
             color={ButtonColor.YELLOW}
+            onClick={() => navigate("/queue")}
             dropdownChildren={dropdownChildren}>
 
             {buttonChildren}
@@ -91,7 +94,7 @@ export function LaunchButton(props: LaunchButtonProps) {
 
     if (version.state === S2States.UPDATING) {
         const buttonChildren = <>
-            <ClipLoader size={16} color={"currentColor"} />
+            <Spinner size={16} />
             <PayloadProgress payload={version.payload} defaultText="Updating" />
         </>;
 
@@ -105,6 +108,30 @@ export function LaunchButton(props: LaunchButtonProps) {
             style={props.style}
             progress={calculatePayloadPercentage(version.payload)}
             color={ButtonColor.YELLOW}
+            onClick={() => navigate("/queue")}
+            dropdownChildren={dropdownChildren}>
+
+            {buttonChildren}
+        </DropdownButton>;
+    }
+
+    if (version.state === S2States.REPAIRING) {
+        const buttonChildren = <>
+            <Spinner size={16} />
+            <PayloadProgress payload={version.payload} defaultText="Repairing" />
+        </>;
+
+        const dropdownChildren = <>
+            <DropdownItem onClick={() => version.cancel()}>
+                Cancel
+            </DropdownItem>
+        </>;
+
+        return <DropdownButton
+            style={props.style}
+            progress={calculatePayloadPercentage(version.payload)}
+            color={ButtonColor.YELLOW}
+            onClick={() => navigate("/queue")}
             dropdownChildren={dropdownChildren}>
 
             {buttonChildren}
@@ -144,6 +171,20 @@ export function LaunchButton(props: LaunchButtonProps) {
     if (version.state === S2States.PLAYING) {
         const buttonChildren = <>
             Opening Savage 2
+        </>;
+
+        return <Button
+            color={ButtonColor.GRAY}
+            style={props.style}>
+
+            {buttonChildren}
+        </Button>;
+    }
+
+    if (version.state === S2States.LOADING) {
+        const buttonChildren = <>
+            <Spinner size={16} />
+            Verifying
         </>;
 
         return <Button

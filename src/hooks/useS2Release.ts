@@ -41,8 +41,8 @@ const releaseDefinitions: Record<ReleaseChannels, ReleaseData> = {
                 download_url: `${DOWNLOAD_BASE}/wb6/i686/latest/Savage2CEInstall.exe`,
             },
             {
-                name: "savage2-linux.tar.gz",
-                download_url: `${DOWNLOAD_BASE}/lr1/x86_64/latest/savage2-linux.tar.gz`,
+                name: "Savage2CE.tar.gz",
+                download_url: `${DOWNLOAD_BASE}/lr1/x86_64/latest/Savage2CE.tar.gz`,
             },
         ],
     },
@@ -58,8 +58,8 @@ const releaseDefinitions: Record<ReleaseChannels, ReleaseData> = {
                 download_url: `${DOWNLOAD_BASE}/wb6/i686/legacy/Savage2-2.1.1.1-windows-installer.exe`,
             },
             {
-                name: "savage2-linux.tar.gz",
-                download_url: `${DOWNLOAD_BASE}/lr1/x86_64/legacy/savage2-linux.tar.gz`,
+                name: "Savage2CE.tar.gz",
+                download_url: `${DOWNLOAD_BASE}/lr1/x86_64/legacy/Savage2CE.tar.gz`,
             },
         ],
     },
@@ -75,8 +75,8 @@ const releaseDefinitions: Record<ReleaseChannels, ReleaseData> = {
                 download_url: `${DOWNLOAD_BASE}/wb6/i686/beta/Savage2CEInstall.exe`,
             },
             {
-                name: "savage2-linux.tar.gz",
-                download_url: `${DOWNLOAD_BASE}/lr1/x86_64/beta/savage2-linux.tar.gz`,
+                name: "Savage2CE.tar.gz",
+                download_url: `${DOWNLOAD_BASE}/lr1/x86_64/beta/Savage2CE.tar.gz`,
             },
         ],
     },
@@ -103,7 +103,7 @@ export const getS2ReleaseDownload = (releaseData: ReleaseData, platformType: OsT
     const filePerPlatform: { [key in OsType]: string } = {
         "Windows_NT": "Savage2CEInstall.exe",
         "Darwin": "Savage2CEInstall.exe",
-        "Linux": "savage2-linux.tar.gz",
+        "Linux": "Savage2CE.tar.gz",
     };
 
     const expectedName = filePerPlatform[platformType];

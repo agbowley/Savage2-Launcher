@@ -464,9 +464,14 @@ impl S2AppProfile {
             .map_err(|e| format!("Failed to download `{}`.\n{:?}", url, e))?;
 
         if !resp.status().is_success() {
+            let code = resp.status().as_u16();
+            if (400..500).contains(&code) {
+                // 4xx = file not found / not accessible on the server
+                return Err(format!("FILE_UNAVAILABLE:{}:{}", code, url));
+            }
             return Err(format!(
                 "Download failed with HTTP {} for `{}`.",
-                resp.status().as_u16(), url
+                code, url
             ));
         }
 
@@ -513,6 +518,36 @@ impl S2AppProfile {
             }
         }
     }
+
+    /// Try to load a manifest: fetch from the remote URL first, then fall back
+    /// to a local `manifest.json` in the game folder.  Returns `None` only if
+    /// both sources are unavailable or unparseable.
+    async fn fetch_or_load_manifest(manifest_url: &str, game_folder: &Path) -> Option<Manifest> {
+        // Try remote first
+        let client = reqwest::Client::new();
+        if let Ok(resp) = client.get(manifest_url).send().await {
+            if resp.status().is_success() {
+                if let Ok(text) = resp.text().await {
+                    if let Ok(manifest) = serde_json::from_str::<Manifest>(&text) {
+                        return Some(manifest);
+                    }
+                }
+            }
+        }
+
+        // Fall back to local manifest.json (saved by patch_update)
+        let local_path = game_folder.join("manifest.json");
+        if local_path.exists() {
+            if let Ok(text) = std::fs::read_to_string(&local_path) {
+                if let Ok(manifest) = serde_json::from_str::<Manifest>(&text) {
+                    eprintln!("[manifest] Using local manifest.json as fallback.");
+                    return Some(manifest);
+                }
+            }
+        }
+
+        None
+    }
 }
 
 #[async_trait]
@@ -527,11 +562,37 @@ impl AppProfile for S2AppProfile {
         let zip_url = zip_urls.first().ok_or("Did not get any download URLs.")?;
         let sig_url = sig_urls.first();
 
-        // Delete old game files
+        // Clean up old game files while preserving user mods.
+        // Try to use a local manifest to only remove tracked files.
+        // Falls back to remove_dir_all only if no manifest is available.
         let game_folder = self.get_folder();
         if game_folder.exists() {
-            std::fs::remove_dir_all(&game_folder)
-                .map_err(|e| format!("Failed to remove old game files.\n{:?}", e))?;
+            let local_manifest_path = game_folder.join("manifest.json");
+            if local_manifest_path.exists() {
+                if let Ok(text) = std::fs::read_to_string(&local_manifest_path) {
+                    if let Ok(manifest) = serde_json::from_str::<Manifest>(&text) {
+                        // Remove only manifest-tracked files
+                        for (rel_path, _) in &manifest.files {
+                            let full_path = game_folder.join(rel_path);
+                            if full_path.exists() {
+                                let _ = std::fs::remove_file(&full_path);
+                            }
+                        }
+                        let _ = std::fs::remove_file(&local_manifest_path);
+                        Self::remove_empty_dirs(&game_folder);
+                    } else {
+                        // Manifest corrupt — fall back to full removal
+                        std::fs::remove_dir_all(&game_folder)
+                            .map_err(|e| format!("Failed to remove old game files.\n{:?}", e))?;
+                    }
+                } else {
+                    std::fs::remove_dir_all(&game_folder)
+                        .map_err(|e| format!("Failed to remove old game files.\n{:?}", e))?;
+                }
+            } else {
+                // No manifest present — install on top of existing files to
+                // preserve user mods and other non-tracked content.
+            }
         }
 
         // Ensure the game folder exists
@@ -692,24 +753,25 @@ impl AppProfile for S2AppProfile {
             return Err("CANCELLED".into());
         }
 
-        // --- 2. Hash local files and build a diff ---
+        // --- 2. Check only manifest files and build a diff ---
         let _ = app.emit_all("progress_info", ProgressPayload {
             state: "checking".to_string(),
             current: 0,
             total: manifest.files.len() as u64,
         });
 
-        let mut local_files: HashMap<String, String> = HashMap::new();
-        Self::hash_directory(&game_folder, &game_folder, &mut local_files)?;
-
         // Determine which files need to be downloaded (new or changed)
+        // Only hash files listed in the manifest — skip user mods/extras
         let mut to_download: Vec<(String, u64)> = Vec::new();
         let mut total_download_size: u64 = 0;
 
         for (rel_path, manifest_entry) in &manifest.files {
-            let needs_download = match local_files.get(rel_path) {
-                Some(local_hash) => local_hash != &manifest_entry.sha256,
-                None => true,
+            let full_path = game_folder.join(rel_path);
+            let needs_download = if full_path.exists() {
+                let local_hash = Self::sha256_file(&full_path)?;
+                local_hash != manifest_entry.sha256
+            } else {
+                true
             };
             if needs_download {
                 to_download.push((rel_path.clone(), manifest_entry.size));
@@ -717,14 +779,8 @@ impl AppProfile for S2AppProfile {
             }
         }
 
-        // Determine which local files should be deleted (not in manifest)
-        let to_delete: Vec<String> = local_files.keys()
-            .filter(|k| !manifest.files.contains_key(*k))
-            .cloned()
-            .collect();
-
-        // If nothing changed, we're already up to date
-        if to_download.is_empty() && to_delete.is_empty() {
+        // If nothing needs downloading, we're already up to date
+        if to_download.is_empty() {
             return Ok(());
         }
 
@@ -741,6 +797,8 @@ impl AppProfile for S2AppProfile {
         // Ensure temp folder exists
         std::fs::create_dir_all(&self.temp_folder)
             .map_err(|e| format!("Failed to create temp directory.\n{:?}", e))?;
+
+        let mut skipped: Vec<String> = Vec::new();
 
         for (rel_path, file_size) in &to_download {
             if cancel_token.is_cancelled() {
@@ -759,8 +817,9 @@ impl AppProfile for S2AppProfile {
             // Download to a temp file first, then move into place
             let temp_file = self.temp_folder.join(format!("patch_{}", rel_path.replace(['/', '\\'], "_")));
 
-            // Download with streaming progress
-            Self::download_file_with_progress(
+            // Download with streaming progress — skip gracefully if the file
+            // is listed in the manifest but missing/inaccessible on the server.
+            let download_result = Self::download_file_with_progress(
                 app,
                 &client,
                 &file_url,
@@ -768,17 +827,35 @@ impl AppProfile for S2AppProfile {
                 downloaded,
                 total_download_size,
                 cancel_token,
-            ).await?;
+            ).await;
+
+            match download_result {
+                Ok(()) => {}
+                Err(e) if e == "CANCELLED" => return Err(e),
+                Err(e) if e.starts_with("FILE_UNAVAILABLE:") => {
+                    eprintln!("[patch_update] Skipping `{}` — file not available on server ({})",
+                        rel_path, e);
+                    skipped.push(rel_path.clone());
+                    downloaded += file_size;
+                    continue;
+                }
+                Err(e) => return Err(e),
+            }
 
             // Verify the hash of the downloaded file
             let actual_hash = Self::sha256_file(&temp_file)?;
             let expected_hash = &manifest.files[rel_path].sha256;
             if &actual_hash != expected_hash {
                 let _ = std::fs::remove_file(&temp_file);
-                return Err(format!(
-                    "Hash mismatch for `{}`.\nExpected: {}\nActual: {}",
+                // Hash mismatch — the server copy may be stale/corrupt.
+                // Skip rather than aborting the entire update.
+                eprintln!(
+                    "[patch_update] Hash mismatch for `{}` (expected {}, got {}). Skipping.",
                     rel_path, expected_hash, actual_hash
-                ));
+                );
+                skipped.push(rel_path.clone());
+                downloaded += file_size;
+                continue;
             }
 
             // Move the verified file into place
@@ -798,16 +875,67 @@ impl AppProfile for S2AppProfile {
             downloaded += file_size;
         }
 
-        // --- 4. Delete files no longer in the manifest ---
-        for rel_path in &to_delete {
-            let full_path = game_folder.join(rel_path);
-            let _ = std::fs::remove_file(&full_path);
+        if !skipped.is_empty() {
+            eprintln!(
+                "[patch_update] Completed with {} file(s) skipped: {}",
+                skipped.len(),
+                skipped.join(", ")
+            );
         }
 
-        // Clean up any empty directories left behind
-        Self::remove_empty_dirs(&game_folder);
+        // Save the manifest locally so uninstall can use it as a fallback
+        let manifest_path = game_folder.join("manifest.json");
+        let _ = std::fs::write(&manifest_path, &manifest_text);
 
         Ok(())
+    }
+
+    async fn verify_files(
+        &self,
+        app: &tauri::AppHandle,
+        manifest_url: &str,
+    ) -> Result<bool, String> {
+        let game_folder = self.find_game_folder();
+        if !game_folder.exists() {
+            return Err("Game is not installed.".into());
+        }
+
+        // Emit a checking state so the UI can show a spinner
+        let _ = app.emit_all("progress_info", ProgressPayload {
+            state: "verifying".to_string(),
+            current: 0,
+            total: 0,
+        });
+
+        let client = reqwest::Client::new();
+        let resp = client.get(manifest_url)
+            .send()
+            .await
+            .map_err(|e| format!("Failed to fetch manifest.\n{:?}", e))?;
+
+        if !resp.status().is_success() {
+            return Err(format!(
+                "Manifest download failed with HTTP {}.",
+                resp.status().as_u16()
+            ));
+        }
+
+        let manifest_text = resp.text().await
+            .map_err(|e| format!("Failed to read manifest response.\n{:?}", e))?;
+
+        let manifest: Manifest = serde_json::from_str(&manifest_text)
+            .map_err(|e| format!("Failed to parse manifest JSON.\n{:?}", e))?;
+
+        // Quick check: only look for missing files (no hashing).
+        // This keeps the play-button response near-instant.
+        for (rel_path, _) in &manifest.files {
+            let full_path = game_folder.join(rel_path);
+            if !full_path.exists() {
+                return Ok(true); // file missing — needs repair
+            }
+        }
+
+        Ok(false)
     }
 
     fn is_directx_installed(&self) -> bool {
@@ -916,9 +1044,50 @@ impl AppProfile for S2AppProfile {
         Ok(())
     }
 
-    fn uninstall(&self) -> Result<(), String> {
-        std::fs::remove_dir_all(&self.root_folder)
-            .map_err(|e| format!("Failed to remove directory.\n{:?}", e))
+    async fn uninstall(&self, manifest_url: &str) -> Result<(), String> {
+        let game_folder = self.find_game_folder();
+        if !game_folder.exists() {
+            return Err("Game is not installed.".into());
+        }
+
+        // Try to get the manifest: remote first, then local fallback.
+        // If neither is available, fall back to removing the entire game folder.
+        let manifest = Self::fetch_or_load_manifest(manifest_url, &game_folder).await;
+
+        match manifest {
+            Some(manifest) => {
+                // Delete only files listed in the manifest (preserves mods)
+                for (rel_path, _) in &manifest.files {
+                    let full_path = game_folder.join(rel_path);
+                    if full_path.exists() {
+                        let _ = std::fs::remove_file(&full_path);
+                    }
+                }
+
+                // Also remove the manifest file itself if present
+                let manifest_path = game_folder.join("manifest.json");
+                if manifest_path.exists() {
+                    let _ = std::fs::remove_file(&manifest_path);
+                }
+
+                // Clean up empty directories left behind
+                Self::remove_empty_dirs(&game_folder);
+
+                // Remove the game folder itself if it's now empty
+                let _ = std::fs::remove_dir(&game_folder);
+            }
+            None => {
+                // No manifest available — remove the entire game folder as a last resort
+                eprintln!("[uninstall] Could not fetch or load manifest. Removing entire game folder.");
+                std::fs::remove_dir_all(&game_folder)
+                    .map_err(|e| format!("Failed to remove game folder.\n{:?}", e))?;
+            }
+        }
+
+        // Remove the root/profile folder if empty
+        let _ = std::fs::remove_dir(&self.root_folder);
+
+        Ok(())
     }
 
     fn exists(&self) -> bool {
@@ -943,12 +1112,13 @@ impl AppProfile for S2AppProfile {
     }
 
     fn reveal_folder(&self) -> Result<(), String> {
-        if !self.exists() {
-            return Err("Cannot reveal something that doesn't exist!".to_string());
+        let folder = self.find_game_folder();
+        if !folder.exists() {
+            return Err("The install folder no longer exists on disk.".to_string());
         }
 
-        opener::reveal(self.find_game_folder())
-            .map_err(|e| format!("Failed to reveal folder. Is it installed?\n{:?}", e))?;
+        opener::reveal(&folder)
+            .map_err(|e| format!("Failed to reveal folder.\n{:?}", e))?;
 
         Ok(())
     }

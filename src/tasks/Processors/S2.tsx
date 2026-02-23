@@ -52,14 +52,18 @@ export class S2Download extends S2Task implements IBaseTask {
 }
 
 export class S2Uninstall extends S2Task implements IBaseTask {
-    constructor(channel: ReleaseChannels, profile: string, onFinish: () => void) {
+    manifestUrl: string;
+
+    constructor(manifestUrl: string, channel: ReleaseChannels, profile: string, onFinish: () => void) {
         super(channel, profile, onFinish);
+        this.manifestUrl = manifestUrl;
     }
 
     async start(): Promise<void> {
         return await invoke("uninstall", {
             appName: "Savage 2",
-            profile: this.profile
+            profile: this.profile,
+            manifestUrl: this.manifestUrl,
         });
     }
 }

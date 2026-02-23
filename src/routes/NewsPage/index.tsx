@@ -10,6 +10,7 @@ import { intlFormatDistance } from "date-fns";
 import { useQueries } from "@tanstack/react-query";
 import { useNewsAuthorSettings } from "@app/hooks/useNewsAuthor";
 import NewsAuthor from "@app/components/NewsSection/NewsAuthor";
+import { getNewsBanner } from "@app/assets/NewsBanners";
 
 function NewsPage() {
     const { id } = useParams();
@@ -28,9 +29,11 @@ function NewsPage() {
     if (!article) return "Loading...";
 
     const content = article.content;
+    const banner = getNewsBanner(article.id);
 
     return <>
-        <div className={styles.header} style={{ "--bannerURL": "" } as CSSProperties}>
+        <div className={styles.page} style={{ "--bannerURL": `url(${banner.url})`, "--bannerColor": banner.color } as CSSProperties}>
+            <div className={styles.header}>
             <div onClick={() => navigate(-1)} className={styles.header_back}>
                 <BackIcon />
                     RETURN
@@ -65,6 +68,7 @@ function NewsPage() {
             <SanitizedHTML 
                 dirtyHTML={ marked.parse(content, {async: false}) as string } 
             />
+            </div>
         </div>
     </>;
 }

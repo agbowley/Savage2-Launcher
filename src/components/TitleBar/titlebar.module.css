@@ -17,8 +17,14 @@
 .text {
     display: flex;
     gap: 10px;
+    align-items: center;
     font-weight: 700;
     color: var(--titleBar_accent);
+    text-shadow:
+        -1px -1px 0 rgba(0, 0, 0, 0.6),
+         1px -1px 0 rgba(0, 0, 0, 0.6),
+        -1px  1px 0 rgba(0, 0, 0, 0.6),
+         1px  1px 0 rgba(0, 0, 0, 0.6);
 }
 
 .text span:first-of-type {

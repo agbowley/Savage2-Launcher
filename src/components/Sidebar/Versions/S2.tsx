@@ -54,6 +54,8 @@ const S2Version: React.FC<Props> = ({ channel }: Props) => {
                 return "installed";
             case S2States.DOWNLOADING:
             case S2States.UPDATING:
+            case S2States.LOADING:
+            case S2States.REPAIRING:
                 return "downloading";
             case S2States.UPDATE_AVAILABLE:
                 return "update-available";

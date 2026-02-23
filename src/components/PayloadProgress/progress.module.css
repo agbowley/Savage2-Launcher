@@ -1,3 +1,43 @@
 .spinner {
     margin-right: 4px;
 }
+
+.download_info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    gap: 12px;
+}
+
+.download_left {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    white-space: nowrap;
+}
+
+.download_right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    white-space: nowrap;
+}
+
+.download_size {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.download_speed {
+    color: #2ED9FF;
+    font-size: 12px;
+    font-weight: 600;
+    min-width: 80px;
+    text-align: right;
+}
+
+.download_compact {
+    white-space: nowrap;
+}

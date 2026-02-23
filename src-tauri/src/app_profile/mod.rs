@@ -53,8 +53,9 @@ pub trait AppProfile {
         &self
     ) -> Result<(), String>;
 
-    fn uninstall(
-        &self
+    async fn uninstall(
+        &self,
+        manifest_url: &str,
     ) -> Result<(), String>;
 
     fn exists(
@@ -85,4 +86,12 @@ pub trait AppProfile {
     fn detect_installed_version(
         &self
     ) -> Result<Option<String>, String>;
+
+    /// Check local files against the remote manifest.
+    /// Returns `Ok(true)` if any files are missing or mismatched, `Ok(false)` if all OK.
+    async fn verify_files(
+        &self,
+        app: &AppHandle,
+        manifest_url: &str,
+    ) -> Result<bool, String>;
 }

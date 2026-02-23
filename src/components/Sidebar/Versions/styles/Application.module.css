@@ -107,8 +107,23 @@
     flex-shrink: 0;
 }
 
-/* Downloading — yellow */
+/* Downloading — yellow with spinner */
 .selector > .version[data-status="downloading"] {
     background: rgba(255, 206, 46, 0.15);
     color: #ffce2e;
+}
+
+.selector > .version[data-status="downloading"]::after {
+    content: "";
+    width: 12px;
+    height: 12px;
+    border: 2px solid rgba(255, 206, 46, 0.3);
+    border-top-color: #ffce2e;
+    border-radius: 50%;
+    flex-shrink: 0;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }

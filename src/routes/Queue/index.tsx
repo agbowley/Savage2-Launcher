@@ -1,19 +1,25 @@
 import styles from "./Queue.module.css";
 import QueueSection from "@app/components/Queue/QueueSection";
 import PayloadProgress from "@app/components/PayloadProgress";
+import HistoryEntryComponent from "@app/components/Queue/HistoryEntry";
 import * as Progress from "@radix-ui/react-progress";
 import { useState } from "react";
-import { QueueListIcon } from "@app/assets/Icons";
+import { QueueIcon, QueueListIcon, TimeIcon } from "@app/assets/Icons";
 import QueueStore from "@app/tasks/queue";
 import { usePayload } from "@app/tasks/payload";
 import { useCurrentTask, cancelTask } from "@app/tasks";
+import { useDownloadHistory } from "@app/stores/DownloadHistoryStore";
+import { intlFormatDistance } from "date-fns";
+import { useNavigate } from "react-router-dom";
 
 function Queue() {
     const [lastWasEmpty, setLastWasEmpty] = useState(false);
+    const navigate = useNavigate();
 
     const queue = QueueStore.useQueue();
     const currentTask = useCurrentTask();
     const payload = usePayload(currentTask?.taskUUID);
+    const { entries: historyEntries, clearHistory } = useDownloadHistory();
 
     function getProgressValue() {
         if (payload?.state === "downloading") {
@@ -31,7 +37,18 @@ function Queue() {
 
             return <div className={styles.banner}>
                 <div className={styles.banner_header}>
-                    {currentTask?.getQueueEntry(true)}
+                    <div
+                        className={styles.banner_entry_link}
+                        onClick={() => {
+                            const tag = currentTask.taskTag;
+                            const profile = currentTask.profile;
+                            if (tag === "Savage 2") {
+                                navigate(`/s2/${profile}`);
+                            }
+                        }}
+                    >
+                        {currentTask?.getQueueEntry(true)}
+                    </div>
                     <button
                         className={styles.cancel_button}
                         onClick={() => cancelTask(currentTask)}
@@ -60,7 +77,7 @@ function Queue() {
 
             return <div className={styles.empty_banner}>
                 <h1 className={styles.empty_banner_header}>
-                    DOWNLOADS
+                    <QueueIcon /> DOWNLOADS
                 </h1>
             </div>;
         }
@@ -69,13 +86,30 @@ function Queue() {
     return <>
         {getBanner()}
         <div className={styles.main}>
-            <QueueSection icon={<QueueListIcon />} title="QUEUE">
-                {
-                    queue.size > 1 ?
-                        Array.from(queue).splice(1).map(downloader =>
-                            downloader.getQueueEntry(false, () => cancelTask(downloader))
-                        ) :
-                        <div className={styles.empty_queue}>There are no downloads in the queue.</div>
+            {queue.size > 1 && (
+                <QueueSection icon={<QueueListIcon />} title="QUEUED DOWNLOADS">
+                    {Array.from(queue).splice(1).map(downloader =>
+                        downloader.getQueueEntry(false, () => cancelTask(downloader))
+                    )}
+                </QueueSection>
+            )}
+            <QueueSection
+                icon={<TimeIcon />}
+                title="HISTORY"
+                rightContent={historyEntries.length > 0
+                    ? intlFormatDistance(new Date(historyEntries[0].timestamp), new Date())
+                    : undefined
+                }
+            >
+                {historyEntries.length > 0 ? <>
+                    {historyEntries.map(entry =>
+                        <HistoryEntryComponent key={entry.id} entry={entry} />
+                    )}
+                    <button className={styles.clear_history} onClick={clearHistory}>
+                        Clear History
+                    </button>
+                </> :
+                    <div className={styles.empty_queue}>No download history yet.</div>
                 }
             </QueueSection>
         </div>

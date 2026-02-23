@@ -5,11 +5,29 @@
     align-self: stretch;
     padding: 0px 12px 0px 12px;
     margin: 8px 0px 8px 0px;
+    position: relative;
+    overflow: hidden;
 
     background: rgba(0, 0, 0, 0);
     border-radius: 20px; /* 8px (internal border-radius) + 12px (padding) */
 
     transition: background 0.1s;
+}
+
+.container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--bannerURL) right center / cover no-repeat;
+    mask-image: linear-gradient(45deg, transparent 30%, black 70%);
+    -webkit-mask-image: linear-gradient(45deg, transparent 30%, black 70%);
+    opacity: 0.4;
+    pointer-events: none;
+    transition: opacity 0.1s;
+}
+
+.container:hover::before {
+    opacity: 0.6;
 }
 
 .container:hover {
@@ -24,6 +42,9 @@
     align-items: flex-start;
     flex: 1 0 0;
     align-self: stretch;
+    min-height: 120px;
+    position: relative;
+    z-index: 1;
 }
 
 .top_container {
@@ -43,7 +64,8 @@
 .bottom_container {
     display: flex;
     padding-top: 10px;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
     gap: 5px;
     align-self: stretch;
 
@@ -53,6 +75,19 @@
     font-style: normal;
     font-weight: 500;
     line-height: normal;
+}
+
+.title {
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.byline {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    align-self: flex-end;
 }
 
 .bottom_container > * > .author {
