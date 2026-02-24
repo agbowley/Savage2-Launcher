@@ -48,7 +48,7 @@ const NewsEntry: React.FC<Props> = ({ article }: Props) => {
                             style={{ borderRadius: "50%" }}
                         />
                         <div>
-                            By: <span className={styles.author}>{
+                            by: <span className={styles.author}>{
                                 authors
                                     .map(({data}) => data?.displayName)
                                     .filter(authorName => authorName)

@@ -16,6 +16,7 @@ tauri-build = { version = "1.5.0", features = [] }
 [dependencies]
 log = "^0.4"
 tauri-plugin-log = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
+tauri-plugin-single-instance = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
 tauri = { version = "1.5.2", features = [ "http-all",
     "os-all",
     "dialog-all",
