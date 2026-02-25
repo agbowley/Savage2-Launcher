@@ -107,6 +107,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p artifacts
+          VERSION=$(node -p "require('./package.json').version")
 
           case "${{ matrix.platform_key }}" in
             windows-x86_64)
@@ -121,15 +122,15 @@ jobs:
               ;;
             darwin-x86_64)
               cp src-tauri/target/x86_64-apple-darwin/release/bundle/macos/*.app.tar.gz \
-                 "artifacts/Savage 2 Launcher_x86_64.app.tar.gz"
+                 "artifacts/Savage 2 Launcher_${VERSION}_x86_64.app.tar.gz"
               cp src-tauri/target/x86_64-apple-darwin/release/bundle/macos/*.app.tar.gz.sig \
-                 "artifacts/Savage 2 Launcher_x86_64.app.tar.gz.sig"
+                 "artifacts/Savage 2 Launcher_${VERSION}_x86_64.app.tar.gz.sig"
               ;;
             darwin-aarch64)
               cp src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz \
-                 "artifacts/Savage 2 Launcher_aarch64.app.tar.gz"
+                 "artifacts/Savage 2 Launcher_${VERSION}_aarch64.app.tar.gz"
               cp src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz.sig \
-                 "artifacts/Savage 2 Launcher_aarch64.app.tar.gz.sig"
+                 "artifacts/Savage 2 Launcher_${VERSION}_aarch64.app.tar.gz.sig"
               ;;
           esac
 
