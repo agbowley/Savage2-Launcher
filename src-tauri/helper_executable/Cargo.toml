@@ -1,7 +1,0 @@
-[package]
-name = "helper_executable"
-version = "0.1.0"
-edition = "2021"
-
-[target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["shellapi", "errhandlingapi", "handleapi", "winbase", "processthreadsapi", "winuser"] }
