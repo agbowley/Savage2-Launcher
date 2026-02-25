@@ -43,6 +43,9 @@
         "all": true,
         "request": true,
         "scope": ["https://savage2.net/**", "https://*.savage2.net/**", "https://masterserver1.talesofnewerth.com/**"]
+      },
+      "process": {
+        "relaunch": true
       }
     },
     "bundle": {
@@ -87,7 +90,7 @@
       "endpoints": [
         "https://savage2.net/api/launcherupdates/latest"
       ],
-      "dialog": true,
+      "dialog": false,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDU4NUNFQTVDMkUyODIxREUKUldUZUlTZ3VYT3BjV0tNblBZdmFQUHVUanpNcUNmcGQvT2U3RnkwWC9zODNZQnF5cWFHQnpNVWgK",
       "windows": {
         "installMode": "passive"

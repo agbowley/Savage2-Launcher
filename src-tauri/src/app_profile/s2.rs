@@ -1226,10 +1226,15 @@ impl AppProfile for S2AppProfile {
     }
 
     fn exists(&self) -> bool {
-        match self.get_exec() {
-            Ok(exec_path) => exec_path.exists(),
-            Err(_) => false,
+        // Consider the game installed if the executable exists OR if a
+        // manifest.json is present (meaning a previous install/patch completed).
+        // This way, deleting the exe triggers a repair rather than a full reinstall.
+        if let Ok(exec_path) = self.get_exec() {
+            if exec_path.exists() {
+                return true;
+            }
         }
+        self.find_game_folder().join("manifest.json").exists()
     }
 
     fn launch(&self) -> Result<(), String> {
