@@ -1,46 +1,174 @@
-name: 'publish'
+# ============================================================
+#  Savage 2 Launcher – Publish to Launcher API
+#
+#  Manual workflow that reads signed artifacts from a GitHub
+#  Release and POSTs to the savage2.net launcher update API
+#  so the in-app updater picks up the new version.
+#
+#  Typical flow:
+#    1. Push a v* tag  →  Release workflow builds & uploads
+#    2. Run this workflow  →  publishes to savage2.net API
+#
+#  Download source:
+#    github       – updater bundles served from GitHub Releases
+#    masterserver – updater bundles hosted on masterserver1
+#
+#  Authentication:
+#    Uses the S2_API_TOKEN repository secret by default.
+#    You can override it with the api_token input.
+# ============================================================
+name: Publish
 
 on:
   workflow_dispatch:
     inputs:
-        keyPassword:
-          description: "Key Password"
-          required: true
-          type: string
+      version:
+        description: 'Version tag to publish (e.g. v1.0.3)'
+        required: true
+        type: string
+      download_source:
+        description: 'Where updater bundles are hosted'
+        required: true
+        type: choice
+        options:
+          - github
+          - masterserver
+        default: github
+      notes:
+        description: 'Release notes (blank = "Release vX.Y.Z")'
+        required: false
+        type: string
+      api_token:
+        description: 'JWT for savage2.net API (blank = use S2_API_TOKEN secret)'
+        required: false
+        type: string
+
+env:
+  # masterserver1 base URLs per platform
+  MS_WIN_BASE: https://masterserver1.talesofnewerth.com/wb6/launcher/windows-x86_64
+  MS_LINUX_BASE: https://masterserver1.talesofnewerth.com/lr1/launcher/linux-x86_64
+  # macOS paths – update these when macOS hosting is set up
+  MS_DARWIN_X86_BASE: https://masterserver1.talesofnewerth.com/launcher/darwin-x86_64
+  MS_DARWIN_ARM_BASE: https://masterserver1.talesofnewerth.com/launcher/darwin-aarch64
 
 jobs:
-  build-tauri:
-    permissions:
-      contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        platform: [macos-latest, ubuntu-20.04, windows-latest]
+  publish:
+    runs-on: ubuntu-latest
 
-    runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v3
-      - name: setup node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
-      - name: install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-      - name: install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-20.04'
+      # Mask the JWT so it never appears in logs
+      - name: Mask sensitive inputs
+        if: inputs.api_token != ''
+        run: echo "::add-mask::${{ inputs.api_token }}"
+
+      - name: Validate version format
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
-      - name: install frontend dependencies
-        run: npm install
-      - uses: tauri-apps/tauri-action@v0
+          VERSION="${{ inputs.version }}"
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "❌ Version must start with 'v' followed by semver (e.g. v1.0.3)"
+            exit 1
+          fi
+          echo "Publishing ${VERSION}"
+
+      - name: Download signatures from GitHub Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_KEY_PASSWORD: ${{ inputs.keyPassword }}
-        with:
-          tagName: v__VERSION__
-          releaseName: 'Savage 2 Launcher v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
-          releaseDraft: true
-          prerelease: false
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p sigs
+          gh release download "${{ inputs.version }}" --pattern "*.sig" --dir sigs/
+          echo "::group::Downloaded signatures"
+          ls -la sigs/
+          echo "::endgroup::"
+
+      - name: Build and publish API payload
+        env:
+          TOKEN: ${{ inputs.api_token || secrets.S2_API_TOKEN }}
+          VERSION: ${{ inputs.version }}
+          NOTES: ${{ inputs.notes }}
+          DOWNLOAD_SOURCE: ${{ inputs.download_source }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          NOTES="${NOTES:-Release ${VERSION}}"
+          GITHUB_BASE="https://github.com/${REPO}/releases/download/${VERSION}"
+
+          urlencode() {
+            python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$1"
+          }
+
+          PLATFORMS='{}'
+
+          add_platform() {
+            local key="$1" sig_glob="$2" ms_base="$3"
+            local sig_file
+
+            sig_file=$(ls $sig_glob 2>/dev/null | head -1) || true
+
+            if [ -z "$sig_file" ]; then
+              echo "⏭  Skipping ${key} (no signature found)"
+              return 0
+            fi
+
+            local bundle_filename sig url
+            bundle_filename=$(basename "$sig_file" .sig)
+            sig=$(cat "$sig_file")
+
+            if [[ "$DOWNLOAD_SOURCE" == "github" ]]; then
+              url="${GITHUB_BASE}/$(urlencode "$bundle_filename")"
+            else
+              url="${ms_base}/$(urlencode "$bundle_filename")"
+            fi
+
+            PLATFORMS=$(echo "$PLATFORMS" | jq \
+              --arg k "$key" \
+              --arg u "$url" \
+              --arg s "$sig" \
+              '. + {($k): {signature: $s, url: $u}}')
+
+            echo "✔  ${key}  →  ${url}"
+          }
+
+          echo ""
+          echo "Registering platform updater URLs (source: ${DOWNLOAD_SOURCE}):"
+          add_platform "windows-x86_64"  "sigs/*.msi.zip.sig"            "$MS_WIN_BASE"
+          add_platform "linux-x86_64"    "sigs/*.AppImage.tar.gz.sig"    "$MS_LINUX_BASE"
+          add_platform "darwin-x86_64"   "sigs/*_x86_64.app.tar.gz.sig"  "$MS_DARWIN_X86_BASE"
+          add_platform "darwin-aarch64"  "sigs/*_aarch64.app.tar.gz.sig" "$MS_DARWIN_ARM_BASE"
+
+          if [ "$PLATFORMS" = '{}' ]; then
+            echo "❌ No platform signatures found – nothing to publish."
+            exit 1
+          fi
+
+          PAYLOAD=$(jq -n \
+            --arg    version  "${VERSION}" \
+            --arg    notes    "${NOTES}" \
+            --arg    pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --argjson platforms "$PLATFORMS" \
+            '{version: $version, notes: $notes, pub_date: $pub_date, platforms: $platforms}')
+
+          echo ""
+          echo "::group::API Payload"
+          echo "$PAYLOAD" | jq .
+          echo "::endgroup::"
+
+          HTTP_CODE=$(curl -s -o /tmp/api_resp.json -w '%{http_code}' \
+            -X POST "https://savage2.net/api/launcherupdates" \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+
+          echo ""
+          cat /tmp/api_resp.json | jq . 2>/dev/null || cat /tmp/api_resp.json
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo ""
+            echo "✅ Published ${VERSION} to launcher API (HTTP ${HTTP_CODE})"
+          else
+            echo ""
+            echo "❌ Failed to publish to launcher API (HTTP ${HTTP_CODE})"
+            exit 1
+          fi

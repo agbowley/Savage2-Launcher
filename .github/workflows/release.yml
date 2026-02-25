@@ -1,10 +1,16 @@
 # ============================================================
-#  Savage 2 Launcher - Release Build
+#  Savage 2 Launcher – Release Build
 #
-#  Triggered by pushing a version tag (e.g. v1.0.2).
-#  Builds signed Tauri bundles for every platform, uploads them
-#  to a GitHub Release, then calls the savage2.net launcher API
-#  so the in-app updater picks up the new version automatically.
+#  Triggered by pushing a version tag (e.g. v1.0.3).
+#  Builds signed Tauri bundles for every platform and uploads
+#  them to a GitHub Release.
+#
+#  To publish the update to the savage2.net launcher API,
+#  run the separate "Publish" workflow after this completes.
+#
+#  Required secrets:
+#    TAURI_PRIVATE_KEY  – minisign private key
+#    TAURI_KEY_PASSWORD – password for the private key
 # ============================================================
 name: Release
 
@@ -39,6 +45,9 @@ jobs:
             rust_targets: ''
             tauri_args: ''
 
+          # macOS builds – ready for when macOS support is added.
+          # Produces unsigned bundles; proper distribution requires
+          # Apple Developer certs (APPLE_CERTIFICATE / APPLE_CERTIFICATE_PASSWORD).
           - os: macos-latest
             platform_key: darwin-x86_64
             rust_targets: x86_64-apple-darwin
@@ -71,7 +80,6 @@ jobs:
           workspaces: src-tauri -> target
           key: ${{ matrix.platform_key }}
 
-      # -- Linux-only: install webkit2gtk & friends -----------------
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
@@ -88,16 +96,13 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
-      # -- Build ----------------------------------------------------
       - name: Build Tauri app
         shell: bash
         run: npx tauri build ${{ matrix.tauri_args }}
 
-      # -- Collect the updater artefacts we care about --------------
       - name: Collect artifacts
         shell: bash
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
           mkdir -p artifacts
 
           case "${{ matrix.platform_key }}" in
@@ -137,9 +142,9 @@ jobs:
           retention-days: 5
 
   # -----------------------------------------------------------
-  #  Publish – GitHub Release + launcher API update
+  #  Create GitHub Release with all platform artifacts
   # -----------------------------------------------------------
-  publish:
+  release:
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -151,7 +156,6 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "tag=${GITHUB_REF_NAME}"   >> "$GITHUB_OUTPUT"
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -166,7 +170,6 @@ jobs:
           ls -lah release/
           echo "::endgroup::"
 
-      # -- GitHub Release -------------------------------------------
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -174,85 +177,3 @@ jobs:
           name: "Savage 2 Launcher v${{ steps.meta.outputs.version }}"
           generate_release_notes: true
           files: release/*
-
-      # -- Update savage2.net launcher API --------------------------
-      - name: Update Launcher API
-        env:
-          S2_API_TOKEN: ${{ secrets.S2_API_TOKEN }}
-          VERSION: ${{ steps.meta.outputs.version }}
-          REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-
-          BASE="https://github.com/${REPO}/releases/download/v${VERSION}"
-
-          # URL-encode a filename (handles spaces, etc.)
-          urlencode() {
-            python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$1"
-          }
-
-          # ---- build the "platforms" JSON object -------------------
-          PLATFORMS='{}'
-
-          add_platform() {
-            local key="$1" updater_glob="$2" sig_glob="$3"
-            local updater_file sig_file
-
-            updater_file=$(ls $updater_glob 2>/dev/null | head -1) || true
-            sig_file=$(ls $sig_glob 2>/dev/null | head -1)         || true
-
-            if [ -z "$updater_file" ] || [ -z "$sig_file" ]; then
-              echo "⏭  Skipping ${key} (artifacts not found)"
-              return 0
-            fi
-
-            local filename sig url
-            filename=$(basename "$updater_file")
-            sig=$(cat "$sig_file")
-            url="${BASE}/$(urlencode "$filename")"
-
-            PLATFORMS=$(echo "$PLATFORMS" | jq \
-              --arg k "$key" \
-              --arg u "$url" \
-              --arg s "$sig" \
-              '. + {($k): {url: $u, signature: $s}}')
-
-            echo "✔  ${key}  →  ${url}"
-          }
-
-          echo ""
-          echo "Registering platform updater URLs:"
-          add_platform "windows-x86_64"  "release/*.msi.zip"              "release/*.msi.zip.sig"
-          add_platform "linux-x86_64"    "release/*.AppImage.tar.gz"      "release/*.AppImage.tar.gz.sig"
-          add_platform "darwin-x86_64"   "release/*_x86_64.app.tar.gz"    "release/*_x86_64.app.tar.gz.sig"
-          add_platform "darwin-aarch64"  "release/*_aarch64.app.tar.gz"   "release/*_aarch64.app.tar.gz.sig"
-
-          # ---- assemble the full payload ---------------------------
-          PAYLOAD=$(jq -n \
-            --arg    version  "v${VERSION}" \
-            --arg    notes    "Release v${VERSION}" \
-            --arg    pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --argjson platforms "$PLATFORMS" \
-            '{version: $version, notes: $notes, pub_date: $pub_date, platforms: $platforms}')
-
-          echo ""
-          echo "::group::API Payload"
-          echo "$PAYLOAD" | jq .
-          echo "::endgroup::"
-
-          # ---- POST to the API -------------------------------------
-          HTTP_CODE=$(curl -s -o /tmp/api_resp.json -w '%{http_code}' \
-            -X POST "https://savage2.net/api/launcherupdates" \
-            -H "Authorization: Bearer ${S2_API_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -d "$PAYLOAD")
-
-          echo ""
-          cat /tmp/api_resp.json | jq . 2>/dev/null || cat /tmp/api_resp.json
-
-          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-            echo "✅ Launcher API updated successfully (HTTP ${HTTP_CODE})"
-          else
-            echo "❌ Failed to update Launcher API (HTTP ${HTTP_CODE})"
-            exit 1
-          fi
