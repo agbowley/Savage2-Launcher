@@ -23,6 +23,7 @@ function LegacyS2Page() {
                 websiteUrl="https://savage2.net"
                 icon={LegacyS2Icon}
                 banner={LegacyS2Banner}
+                channel="legacy"
             />
         </>);
     }

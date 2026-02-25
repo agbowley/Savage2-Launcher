@@ -14,6 +14,8 @@ type ReleaseData = {
     description: string;
     version_url: string;
     manifest_urls: { [key in OsType]: string };
+    channel_changelog_urls: { [key in OsType]: string };
+    changelog_urls: { [key in OsType]: string };
     assets: ReleaseAsset[];
 };
 
@@ -39,6 +41,16 @@ const releaseDefinitions: Record<ReleaseChannels, ReleaseData> = {
             "Linux": `${DOWNLOAD_BASE}/lr1/x86_64/latest/manifest.json`,
             "Darwin": `${DOWNLOAD_BASE}/wb6/i686/latest/manifest.json`,
         },
+        channel_changelog_urls: {
+            "Windows_NT": `${DOWNLOAD_BASE}/wb6/i686/latest/change_log.txt`,
+            "Linux": `${DOWNLOAD_BASE}/lr1/x86_64/latest/change_log.txt`,
+            "Darwin": `${DOWNLOAD_BASE}/wb6/i686/latest/change_log.txt`,
+        },
+        changelog_urls: {
+            "Windows_NT": `${DOWNLOAD_BASE}/wb6/i686/change_log.txt`,
+            "Linux": `${DOWNLOAD_BASE}/lr1/x86_64/change_log.txt`,
+            "Darwin": `${DOWNLOAD_BASE}/wb6/i686/change_log.txt`,
+        },
         assets: [
             {
                 name: "Savage2CEInstall.exe",
@@ -60,6 +72,16 @@ const releaseDefinitions: Record<ReleaseChannels, ReleaseData> = {
             "Linux": `${DOWNLOAD_BASE}/lr1/x86_64/legacy/manifest.json`,
             "Darwin": `${DOWNLOAD_BASE}/wb6/i686/legacy/manifest.json`,
         },
+        channel_changelog_urls: {
+            "Windows_NT": `${DOWNLOAD_BASE}/wb6/i686/legacy/change_log.txt`,
+            "Linux": `${DOWNLOAD_BASE}/lr1/x86_64/legacy/change_log.txt`,
+            "Darwin": `${DOWNLOAD_BASE}/wb6/i686/legacy/change_log.txt`,
+        },
+        changelog_urls: {
+            "Windows_NT": `${DOWNLOAD_BASE}/wb6/i686/change_log.txt`,
+            "Linux": `${DOWNLOAD_BASE}/lr1/x86_64/change_log.txt`,
+            "Darwin": `${DOWNLOAD_BASE}/wb6/i686/change_log.txt`,
+        },
         assets: [
             {
                 name: "Savage2CEInstall.exe",
@@ -80,6 +102,16 @@ const releaseDefinitions: Record<ReleaseChannels, ReleaseData> = {
             "Windows_NT": `${DOWNLOAD_BASE}/wb6/i686/beta/manifest.json`,
             "Linux": `${DOWNLOAD_BASE}/lr1/x86_64/beta/manifest.json`,
             "Darwin": `${DOWNLOAD_BASE}/wb6/i686/beta/manifest.json`,
+        },
+        channel_changelog_urls: {
+            "Windows_NT": `${DOWNLOAD_BASE}/wb6/i686/beta/change_log.txt`,
+            "Linux": `${DOWNLOAD_BASE}/lr1/x86_64/beta/change_log.txt`,
+            "Darwin": `${DOWNLOAD_BASE}/wb6/i686/beta/change_log.txt`,
+        },
+        changelog_urls: {
+            "Windows_NT": `${DOWNLOAD_BASE}/wb6/i686/change_log.txt`,
+            "Linux": `${DOWNLOAD_BASE}/lr1/x86_64/change_log.txt`,
+            "Darwin": `${DOWNLOAD_BASE}/wb6/i686/change_log.txt`,
         },
         assets: [
             {
@@ -113,6 +145,14 @@ export const useS2Release = (channel: ReleaseChannels) => {
 
 export const getS2ManifestUrl = (releaseData: ReleaseData, platformType: OsType): string => {
     return releaseData.manifest_urls[platformType];
+};
+
+export const getS2ChannelChangelogUrl = (releaseData: ReleaseData, platformType: OsType): string => {
+    return releaseData.channel_changelog_urls[platformType];
+};
+
+export const getS2ChangelogUrl = (releaseData: ReleaseData, platformType: OsType): string => {
+    return releaseData.changelog_urls[platformType];
 };
 
 export const getS2ReleaseDownload = (releaseData: ReleaseData, platformType: OsType): string => {

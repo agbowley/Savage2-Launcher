@@ -144,6 +144,14 @@
     color: #77FFC3;
 }
 
+a.info_entry {
+    text-decoration: none;
+}
+
+a.info_entry:hover {
+    color: #77FFC3;
+}
+
 .path_text {
     overflow: hidden;
     text-overflow: ellipsis;

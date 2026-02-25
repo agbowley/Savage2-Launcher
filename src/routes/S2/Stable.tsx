@@ -23,6 +23,7 @@ function StableS2Page() {
                 websiteUrl="https://savage2.net"
                 icon={StableS2Icon}
                 banner={StableS2Banner}
+                channel="stable"
             />
         </>);
     }

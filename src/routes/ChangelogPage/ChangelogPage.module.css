@@ -1,0 +1,112 @@
+.page {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    background:
+        linear-gradient(125deg, #0C0C0CFF 45%, rgba(119, 255, 195, 0.08) 100%),
+        var(--malph-bg);
+    background-size: 120%;
+    background-attachment: fixed;
+    background-position: top;
+}
+
+.header {
+    display: flex;
+    padding: 25px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 50px;
+    align-self: stretch;
+    position: relative;
+}
+
+.header_back {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+    z-index: 1;
+
+    opacity: 0.9;
+
+    color: #ffffff;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 700;
+    line-height: normal;
+    text-transform: uppercase;
+
+    cursor: pointer;
+}
+
+.header_info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+    align-self: stretch;
+    position: relative;
+    z-index: 1;
+}
+
+.title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--primary);
+    font-size: 30px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.title svg {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.channel_badge {
+    display: inline-flex;
+    padding: 3px 10px;
+    border-radius: 50px;
+    background: #0e5336;
+    color: #77FFC3;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: normal;
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 25px 50px 50px 50px;
+    color: #ffffff;
+    min-height: calc(100% - 187px);
+    position: relative;
+}
+
+.changelog_text {
+    white-space: pre-wrap;
+    font-family: 'Inter', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #d4d4d4;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 10px;
+    padding: 20px 25px;
+    overflow-x: auto;
+}
+
+.loading {
+    color: #acacac;
+    font-size: 14px;
+    padding: 20px;
+}
+
+.error {
+    color: #ff6b6b;
+    font-size: 14px;
+    padding: 20px;
+}

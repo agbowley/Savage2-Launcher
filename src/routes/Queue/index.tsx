@@ -25,9 +25,12 @@ function Queue() {
         if (payload?.state === "downloading") {
             return payload.current / payload.total * 100.0;
         } else {
-            return 100;
+            return null;
         }
     }
+
+    const progressValue = getProgressValue();
+    const isIndeterminate = currentTask != null && progressValue === null;
 
     function getBanner() {
         if (currentTask) {
@@ -61,10 +64,10 @@ function Queue() {
                     <div className={styles.progress_info}>
                         <PayloadProgress payload={payload} fullMode />
                     </div>
-                    <Progress.Root className={styles.progress_bar_root} value={getProgressValue()}>
+                    <Progress.Root className={styles.progress_bar_root} value={progressValue}>
                         <Progress.Indicator
-                            className={styles.progress_bar_indicator}
-                            style={{ width: `${getProgressValue()}%` }}
+                            className={`${styles.progress_bar_indicator} ${isIndeterminate ? styles.progress_bar_indeterminate : ""}`}
+                            style={progressValue !== null ? { width: `${progressValue}%` } : undefined}
                         />
                     </Progress.Root>
                 </div>

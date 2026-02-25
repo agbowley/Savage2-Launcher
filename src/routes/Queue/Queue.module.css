@@ -152,6 +152,7 @@
     align-self: stretch;
     border-radius: 50px;
     background: #000;
+    overflow: hidden;
 }
 
 .progress_bar_indicator {
@@ -159,6 +160,20 @@
     border-radius: 50px;
     background: #2ED9FF;
     transition: width 50ms;
+}
+
+.progress_bar_indeterminate {
+    width: 30% !important;
+    animation: indeterminate 1.5s ease-in-out infinite;
+}
+
+@keyframes indeterminate {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(calc(100% / 0.3));
+    }
 }
 
 .clear_history {

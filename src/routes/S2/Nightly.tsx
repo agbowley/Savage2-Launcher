@@ -23,6 +23,7 @@ function NightlyS2Page() {
                 websiteUrl="https://savage2.net"
                 icon={NightlyS2Icon}
                 banner={NightlyS2Banner}
+                channel="nightly"
             />
         </>);
     }

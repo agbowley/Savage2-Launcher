@@ -8,6 +8,7 @@ import LegacyS2Page from "./S2/Legacy";
 // import OfficialSetlistPage from "./Setlist/Official";
 import Queue from "@app/routes/Queue";
 import NewsPage from "./NewsPage";
+import ChangelogPage from "./ChangelogPage";
 
 const Router = createBrowserRouter([
     {
@@ -52,6 +53,11 @@ const Router = createBrowserRouter([
             {
                 path: "/news/:id",
                 element: <NewsPage />
+            },
+
+            {
+                path: "/changelog/:channel",
+                element: <ChangelogPage />
             }
         ]
     },

@@ -1,11 +1,13 @@
 import { S2Version } from "@app/hooks/useS2Version";
 import styles from "./styles.module.css";
 import { GenericBox, GenericBoxHeader } from "../../GenericBox";
-import { DateIcon, DriveIcon, InformationIcon, LinkIcon, UpdateIcon } from "@app/assets/Icons";
+import { ChangelogIcon, DateIcon, DriveIcon, InformationIcon, LinkIcon, UpdateIcon } from "@app/assets/Icons";
 import TooltipWrapper from "../../TooltipWrapper";
 import { intlFormatDistance } from "date-fns";
 import NewsSection from "../../NewsSection";
 import { LaunchButton } from "../LaunchButton";
+import { ReleaseChannels } from "@app/hooks/useS2Release";
+import { Link } from "react-router-dom";
 
 const INITIAL_RELEASE_DATE = new Date("2023-03-09T05:00:00.000Z");
 
@@ -16,9 +18,10 @@ interface Props {
     websiteUrl: string,
     icon: string,
     banner: string,
+    channel: ReleaseChannels,
 }
 
-const LaunchPage: React.FC<Props> = ({ version, playName, description, websiteUrl, icon, banner }: Props) => {
+const LaunchPage: React.FC<Props> = ({ version, playName, description, websiteUrl, icon, banner, channel }: Props) => {
     // If there isn't a version, something went wrong
     if (!version) {
         return <p>Error: No version.</p>;
@@ -95,6 +98,10 @@ const LaunchPage: React.FC<Props> = ({ version, playName, description, websiteUr
                                 day: "numeric",
                             }).format(CreatedDate)}
                         </TooltipWrapper>
+                        <Link to={`/changelog/${channel}`} className={`${styles.info_entry} ${styles.clickable}`}>
+                            <ChangelogIcon />
+                            View Changelog
+                        </Link>
                         <a className={styles.info_entry} href={websiteUrl} target="_blank" rel="noreferrer">
                             <LinkIcon />
                             Official Website

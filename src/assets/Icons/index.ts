@@ -31,6 +31,7 @@ import UpdateIcon from "./Update.svg?react";
 import DriveIcon from "./Drive.svg?react";
 import UnknownUserIcon from "./UnknownUser.svg?react";
 import BackIcon from "./Back.svg?react";
+import ChangelogIcon from "./Changelog.svg?react";
 import WarningIcon from "./Warning.svg?react";
 import DropdownIcon from "./Dropdown.svg?react";
 import PlayIcon from "./Play.svg?react";
@@ -64,6 +65,7 @@ export {
     DriveIcon,
     UnknownUserIcon,
     BackIcon,
+    ChangelogIcon,
     WarningIcon,
     DropdownIcon,
     PlayIcon,
