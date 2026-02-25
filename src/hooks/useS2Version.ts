@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ExtendedReleaseData, getS2ManifestUrl, getS2ReleaseDownload, ReleaseChannels } from "./useS2Release";
 import { invoke } from "@tauri-apps/api/tauri";
 import { type } from "@tauri-apps/api/os";
@@ -68,6 +68,10 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
     const [downloadLocation, setDownloadLocation] = useState<string | null>(cached?.downloadLocation ?? null);
     const [releaseDate, setReleaseDate] = useState<string | null>(cached?.releaseDate ?? null);
     const [verificationWarning, setVerificationWarning] = useState<boolean>(false);
+
+    // Track the last version we sent an "Update Available" notification for
+    // so we don't spam the user with duplicate notifications.
+    const lastNotifiedVersion = useRef<string | null>(null);
 
     // Fetch installed version, remote version, and install path on mount / after state changes
     useEffect(() => {
@@ -166,10 +170,13 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
                     setState(S2States.NEW_UPDATE);
                 } else if (installedVersion && latestVersion && installedVersion !== latestVersion) {
                     setState(S2States.UPDATE_AVAILABLE);
-                    showToast(
-                        "Update Available",
-                        `Savage 2 — ${releaseData.name} ${latestVersion}`
-                    );
+                    if (lastNotifiedVersion.current !== latestVersion) {
+                        lastNotifiedVersion.current = latestVersion;
+                        showToast(
+                            "Update Available",
+                            `Savage 2 — ${releaseData.name} ${latestVersion}`
+                        );
+                    }
                 } else {
                     setState(S2States.AVAILABLE);
                 }
@@ -179,6 +186,41 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
             }
         })();
     }, [releaseData, installedVersion, latestVersion]);
+
+    // Periodically poll for new game versions and notify the user
+    useEffect(() => {
+        if (!releaseData) return;
+
+        const POLL_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
+
+        const poll = async () => {
+            // Only poll when the game is installed and idle
+            if (state !== S2States.AVAILABLE) return;
+
+            try {
+                const remoteVersion = await invoke("fetch_remote_version", {
+                    versionUrl: releaseData.version_url
+                }) as string;
+
+                if (installedVersion && remoteVersion && installedVersion !== remoteVersion) {
+                    setLatestVersion(remoteVersion);
+                    setState(S2States.UPDATE_AVAILABLE);
+                    if (lastNotifiedVersion.current !== remoteVersion) {
+                        lastNotifiedVersion.current = remoteVersion;
+                        showToast(
+                            "Update Available",
+                            `Savage 2 — ${releaseData.name} ${remoteVersion}`
+                        );
+                    }
+                }
+            } catch (e) {
+                // Silently ignore poll failures (no network, etc.)
+            }
+        };
+
+        const interval = setInterval(poll, POLL_INTERVAL_MS);
+        return () => clearInterval(interval);
+    }, [releaseData, state, installedVersion]);
 
     if (!releaseData) {
         return {

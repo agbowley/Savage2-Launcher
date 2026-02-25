@@ -583,6 +583,14 @@ fn show_notification(app: AppHandle, title: String, body: String) {
                 .show();
         });
     }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = tauri::api::notification::Notification::new(&app.config().tauri.bundle.identifier)
+            .title(&title)
+            .body(&body)
+            .show();
+    }
 }
 
 /// Hidden-install mode: launched as an elevated child process by `run_elevated_and_wait`.
