@@ -38,6 +38,19 @@ const App: React.FC = () => {
         return () => { unlisten.then((fn) => fn()); };
     }, []);
 
+    // Listen for tray "Play" submenu clicks and launch the game directly
+    useEffect(() => {
+        const unlisten = listen<string>("tray-play", async (event) => {
+            const profile = event.payload;
+            try {
+                await invoke("launch", { appName: "Savage 2", profile });
+            } catch (e) {
+                console.error("Tray play failed:", e);
+            }
+        });
+        return () => { unlisten.then((fn) => fn()); };
+    }, []);
+
     // Check for launcher self-updates on startup and every 15 minutes
     useLauncherUpdater();
 

@@ -187,6 +187,12 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         })();
     }, [releaseData, installedVersion, latestVersion]);
 
+    // Sync the tray "Play" submenu item enabled state with install status
+    useEffect(() => {
+        const playable = state === S2States.AVAILABLE || state === S2States.UPDATE_AVAILABLE;
+        invoke("set_tray_play_enabled", { profile, enabled: playable }).catch(() => {});
+    }, [state, profile]);
+
     // Periodically poll for new game versions and notify the user
     useEffect(() => {
         if (!releaseData) return;

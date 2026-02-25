@@ -374,30 +374,34 @@ impl S2AppProfile {
     /// Run an NSIS installer silently with /S flag and install to the game folder.
     /// Uses the Windows ShellExecuteEx API directly for UAC elevation.
     async fn run_nsis_installer(&self, app: &tauri::AppHandle, installer_path: &Path) -> Result<(), String> {
-        let install_dir = self.get_folder();
-        let installer_str = installer_path.to_str().ok_or("Invalid installer path")?;
-        let install_dir_str = install_dir.to_str().ok_or("Invalid install directory path")?;
-
-        let _ = app.emit_all(
-            "progress_info",
-            ProgressPayload {
-                state: "installing".to_string(),
-                current: 0,
-                total: 0,
-            },
-        );
-
-        // NSIS silent install: /S for silent, /D= to set install directory
-        // /D= must be the last parameter and must NOT be wrapped in quotes
-        let args = format!("/S /D={}", install_dir_str);
+        #[cfg(not(target_os = "windows"))]
+        {
+            let _ = (app, installer_path);
+            return Err("NSIS installers are only supported on Windows.".into());
+        }
 
         #[cfg(target_os = "windows")]
-        run_elevated_and_wait(installer_str, &args)?;
+        {
+            let install_dir = self.get_folder();
+            let installer_str = installer_path.to_str().ok_or("Invalid installer path")?;
+            let install_dir_str = install_dir.to_str().ok_or("Invalid install directory path")?;
 
-        #[cfg(not(target_os = "windows"))]
-        return Err("NSIS installers are only supported on Windows.".into());
+            let _ = app.emit_all(
+                "progress_info",
+                ProgressPayload {
+                    state: "installing".to_string(),
+                    current: 0,
+                    total: 0,
+                },
+            );
 
-        Ok(())
+            // NSIS silent install: /S for silent, /D= to set install directory
+            // /D= must be the last parameter and must NOT be wrapped in quotes
+            let args = format!("/S /D={}", install_dir_str);
+            run_elevated_and_wait(installer_str, &args)?;
+
+            Ok(())
+        }
     }
 
     /// Launch the legacy installer with UAC elevation on the **visible** desktop
@@ -506,10 +510,11 @@ impl S2AppProfile {
     }
 
     async fn run_installer_with_elevation(&self, installer_path: &Path) -> Result<(), String> {
-        let installer_str = installer_path.to_str().ok_or("Invalid path")?;
-
         #[cfg(target_os = "windows")]
-        run_elevated_and_wait(installer_str, "/silent")?;
+        {
+            let installer_str = installer_path.to_str().ok_or("Invalid path")?;
+            run_elevated_and_wait(installer_str, "/silent")?;
+        }
 
         #[cfg(not(target_os = "windows"))]
         {

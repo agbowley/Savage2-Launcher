@@ -15,7 +15,7 @@ use std::path::PathBuf;
 use std::sync::{RwLock, atomic::{AtomicBool, Ordering}};
 
 static NOTIFICATIONS_ENABLED: AtomicBool = AtomicBool::new(true);
-use tauri::{AppHandle, Manager, CustomMenuItem, SystemTray, SystemTrayMenu, SystemTrayMenuItem, SystemTrayEvent};
+use tauri::{AppHandle, Manager, CustomMenuItem, SystemTray, SystemTrayMenu, SystemTrayMenuItem, SystemTraySubmenu, SystemTrayEvent};
 use utils::{clear_folder, CancelToken};
 use window_shadows::set_shadow;
 
@@ -561,6 +561,18 @@ fn set_tray_notifications_label(app: AppHandle, enabled: bool) {
     let _ = app.tray_handle().get_item("notifications").set_selected(enabled);
 }
 
+/// Enable or disable a tray "Play" submenu item for a given profile.
+#[tauri::command]
+fn set_tray_play_enabled(app: AppHandle, profile: String, enabled: bool) {
+    let item_id = match profile.as_str() {
+        "latest" | "stable" => "play_stable",
+        "beta" | "nightly" => "play_nightly",
+        "legacy" => "play_legacy",
+        _ => return,
+    };
+    let _ = app.tray_handle().get_item(item_id).set_enabled(enabled);
+}
+
 #[tauri::command]
 fn show_notification(app: AppHandle, title: String, body: String) {
     #[cfg(target_os = "windows")]
@@ -786,8 +798,21 @@ fn main() {
     let show = CustomMenuItem::new("show", "Open");
     let notifications = CustomMenuItem::new("notifications", "Notifications").selected();
     let quit = CustomMenuItem::new("quit", "Quit");
+
+    // Play submenu — items start disabled; the frontend enables them once it
+    // detects which profiles are installed.
+    let play_ce = CustomMenuItem::new("play_stable", "Community Edition").disabled();
+    let play_beta = CustomMenuItem::new("play_nightly", "Beta Test Client").disabled();
+    let play_legacy = CustomMenuItem::new("play_legacy", "Legacy Client").disabled();
+    let play_menu = SystemTrayMenu::new()
+        .add_item(play_ce)
+        .add_item(play_beta)
+        .add_item(play_legacy);
+    let play_submenu = SystemTraySubmenu::new("Play", play_menu);
+
     let tray_menu = SystemTrayMenu::new()
         .add_item(show)
+        .add_submenu(play_submenu)
         .add_native_item(SystemTrayMenuItem::Separator)
         .add_item(notifications)
         .add_native_item(SystemTrayMenuItem::Separator)
@@ -829,6 +854,15 @@ fn main() {
                         let _ = window.unminimize();
                         let _ = window.set_focus();
                     }
+                }
+                id @ ("play_stable" | "play_nightly" | "play_legacy") => {
+                    let profile = match id {
+                        "play_stable" => "latest",
+                        "play_nightly" => "beta",
+                        "play_legacy" => "legacy",
+                        _ => unreachable!(),
+                    };
+                    let _ = app.emit_all("tray-play", profile);
                 }
                 "notifications" => {
                     let prev = NOTIFICATIONS_ENABLED.load(Ordering::SeqCst);
@@ -881,6 +915,7 @@ fn main() {
             set_profile_location,
             cancel_task,
             set_tray_notifications_label,
+            set_tray_play_enabled,
             show_notification
         ])
         .setup(|app| {
