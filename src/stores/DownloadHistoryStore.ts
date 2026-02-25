@@ -9,12 +9,14 @@ export interface HistoryEntry {
     game: string;
     /** e.g. "Community Edition", "Beta Test Client", "Legacy Client" */
     channel: string;
-    /** "install", "update", or "repair" */
+    /** "install", "update", "repair", or "uninstall" */
     type: HistoryEntryType;
     /** The version that was installed/updated to */
     version: string | null;
     /** For updates: the version that was replaced */
     previousVersion: string | null;
+    /** For repairs: the list of files that were repaired */
+    repairedFiles?: string[];
     /** ISO timestamp */
     timestamp: string;
 }

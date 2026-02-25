@@ -3,13 +3,16 @@ use minisign::{PublicKeyBox, SignatureBox};
 use regex::Regex;
 use sha2::{Sha256, Digest};
 use tauri::Manager;
-use std::collections::HashMap;
 use std::{fs::{self, remove_file, File}, io::Read, path::{Path, PathBuf}, process::Command};
 
 use crate::utils::*;
 use crate::utils::CancelToken;
 
 use super::*;
+
+/// Content written to game/autoexec.cfg by the launcher.
+/// Used to compare on uninstall so we only delete the file if unmodified.
+const LAUNCHER_AUTOEXEC: &str = "set upd_checkForUpdates false\n";
 
 /// Run an executable with UAC elevation on a hidden desktop.
 ///
@@ -540,37 +543,6 @@ impl S2AppProfile {
         Ok(format!("{:x}", hasher.finalize()))
     }
 
-    /// Recursively walk a directory and compute SHA-256 for every file.
-    /// Keys in the map are forward-slash relative paths (e.g. "game/resources0.s2z").
-    fn hash_directory(
-        dir: &Path,
-        root: &Path,
-        out: &mut HashMap<String, String>,
-    ) -> Result<(), String> {
-        let entries = fs::read_dir(dir)
-            .map_err(|e| format!("Failed to read directory `{}`.\n{:?}", dir.display(), e))?;
-
-        for entry in entries {
-            let entry = entry.map_err(|e| format!("Error reading dir entry.\n{:?}", e))?;
-            let path = entry.path();
-            if path.is_dir() {
-                Self::hash_directory(&path, root, out)?;
-            } else {
-                let rel = path.strip_prefix(root)
-                    .map_err(|_| format!("Path `{}` is not under root `{}`", path.display(), root.display()))?;
-                let key = rel.to_string_lossy().replace('\\', "/");
-                // Skip the manifest and generator scripts — they live alongside
-                // the game files but must not be tracked/patched.
-                if matches!(key.as_str(), "manifest.json" | "generate_manifest.py" | "generate-manifest.bat") {
-                    continue;
-                }
-                let hash = Self::sha256_file(&path)?;
-                out.insert(key, hash);
-            }
-        }
-        Ok(())
-    }
-
     /// Download a single file via streaming with cumulative progress reporting.
     async fn download_file_with_progress(
         app: &tauri::AppHandle,
@@ -867,7 +839,7 @@ impl AppProfile for S2AppProfile {
         app: &tauri::AppHandle,
         manifest_url: String,
         cancel_token: &CancelToken
-    ) -> Result<(), String> {
+    ) -> Result<PatchResult, String> {
         let game_folder = self.find_game_folder();
         if !game_folder.exists() {
             return Err("Game is not installed. Use a full install instead.".into());
@@ -931,7 +903,7 @@ impl AppProfile for S2AppProfile {
 
         // If nothing needs downloading, we're already up to date
         if to_download.is_empty() {
-            return Ok(());
+            return Ok(PatchResult::default());
         }
 
         // --- 3. Download changed / new files ---
@@ -948,6 +920,7 @@ impl AppProfile for S2AppProfile {
         std::fs::create_dir_all(&self.temp_folder)
             .map_err(|e| format!("Failed to create temp directory.\n{:?}", e))?;
 
+        let mut repaired: Vec<String> = Vec::new();
         let mut skipped: Vec<String> = Vec::new();
 
         for (rel_path, file_size) in &to_download {
@@ -1022,6 +995,7 @@ impl AppProfile for S2AppProfile {
                     Ok::<(), String>(())
                 })?;
 
+            repaired.push(rel_path.clone());
             downloaded += file_size;
         }
 
@@ -1037,7 +1011,7 @@ impl AppProfile for S2AppProfile {
         let manifest_path = game_folder.join("manifest.json");
         let _ = std::fs::write(&manifest_path, &manifest_text);
 
-        Ok(())
+        Ok(PatchResult { repaired, skipped })
     }
 
     async fn verify_files(
@@ -1220,6 +1194,17 @@ impl AppProfile for S2AppProfile {
                     let _ = std::fs::remove_file(&manifest_path);
                 }
 
+                // Remove autoexec.cfg only if it still contains exactly
+                // what the launcher wrote (i.e. the user hasn't modified it).
+                let autoexec_path = game_folder.join("game").join("autoexec.cfg");
+                if autoexec_path.exists() {
+                    if let Ok(contents) = std::fs::read_to_string(&autoexec_path) {
+                        if contents == LAUNCHER_AUTOEXEC {
+                            let _ = std::fs::remove_file(&autoexec_path);
+                        }
+                    }
+                }
+
                 // Clean up empty directories left behind
                 Self::remove_empty_dirs(&game_folder);
 
@@ -1250,6 +1235,18 @@ impl AppProfile for S2AppProfile {
     fn launch(&self) -> Result<(), String> {
         let game_path = self.get_exec()?;
         let game_folder = self.find_game_folder();
+
+        // Disable the game's built-in updater since the launcher manages updates.
+        //
+        // The engine load order is: command-line args → startup.cfg → autoexec.cfg
+        // Since startup.cfg can override command-line args, we write the cvar to
+        // autoexec.cfg in the game/game/ subfolder so it takes effect last.
+        let autoexec_dir = game_folder.join("game");
+        std::fs::create_dir_all(&autoexec_dir)
+            .map_err(|e| format!("Failed to create game/ directory: {:?}", e))?;
+        let autoexec_path = autoexec_dir.join("autoexec.cfg");
+        std::fs::write(&autoexec_path, LAUNCHER_AUTOEXEC)
+            .map_err(|e| format!("Failed to write autoexec.cfg: {:?}", e))?;
 
         self.log_message(&format!("Launching game from: {}", game_path.display()));
 

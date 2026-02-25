@@ -3,6 +3,8 @@ import { HistoryEntry as HistoryEntryData, HistoryEntryType } from "@app/stores/
 import StableS2Icon from "@app/assets/s2icon-stable.png";
 import NightlyS2Icon from "@app/assets/s2icon-nightly.png";
 import LegacyS2Icon from "@app/assets/s2icon-legacy.png";
+import { InformationIcon } from "@app/assets/Icons";
+import TooltipWrapper from "@app/components/TooltipWrapper";
 
 interface Props {
     entry: HistoryEntryData;
@@ -17,27 +19,27 @@ const channelIcons: Record<string, string> = {
     "legacy": LegacyS2Icon,
 };
 
-function getBadgeClass(type: HistoryEntryType): string {
-    switch (type) {
+function getBadgeClass(entry: HistoryEntryData): string {
+    switch (entry.type) {
         case "install":
             return styles.badge_install;
         case "update":
             return styles.badge_update;
         case "repair":
-            return styles.badge_repair;
+            return (entry.repairedFiles?.length ?? 0) > 0 ? styles.badge_repair : styles.badge_verify;
         case "uninstall":
             return styles.badge_uninstall;
     }
 }
 
-function getBadgeLabel(type: HistoryEntryType): string {
-    switch (type) {
+function getBadgeLabel(entry: HistoryEntryData): string {
+    switch (entry.type) {
         case "install":
             return "Installed";
         case "update":
             return "Updated";
         case "repair":
-            return "Repaired";
+            return (entry.repairedFiles?.length ?? 0) > 0 ? "Repaired" : "Verified";
         case "uninstall":
             return "Uninstalled";
     }
@@ -52,8 +54,13 @@ function getDetail(entry: HistoryEntryData): string {
                 return `v${entry.previousVersion} → v${entry.version}`;
             }
             return entry.version ? `Updated to v${entry.version}` : "Updated";
-        case "repair":
-            return entry.version ? `v${entry.version} — files repaired` : "Files repaired";
+        case "repair": {
+            const count = entry.repairedFiles?.length ?? 0;
+            const prefix = entry.version ? `v${entry.version} — ` : "";
+            return count > 0
+                ? `${prefix}${count} file${count !== 1 ? "s" : ""} repaired`
+                : `${prefix}All files verified and up-to-date`;
+        }
         case "uninstall":
             return entry.version ? `v${entry.version} removed` : "Uninstalled";
     }
@@ -81,6 +88,7 @@ function formatTimestamp(iso: string): string {
 
 const HistoryEntry: React.FC<Props> = ({ entry }: Props) => {
     const icon = channelIcons[entry.channel] || StableS2Icon;
+    const hasRepairedFiles = entry.type === "repair" && entry.repairedFiles && entry.repairedFiles.length > 0;
 
     return (
         <div className={styles.item}>
@@ -94,12 +102,17 @@ const HistoryEntry: React.FC<Props> = ({ entry }: Props) => {
                     </span>
                     <span className={styles.info_detail}>
                         {getDetail(entry)}
+                        {hasRepairedFiles && (
+                            <TooltipWrapper text={entry.repairedFiles!.join("\n")}>
+                                <InformationIcon className={styles.info_icon} width={12} height={12} />
+                            </TooltipWrapper>
+                        )}
                     </span>
                 </div>
             </div>
             <div className={styles.meta}>
-                <span className={getBadgeClass(entry.type)}>
-                    {getBadgeLabel(entry.type)}
+                <span className={getBadgeClass(entry)}>
+                    {getBadgeLabel(entry)}
                 </span>
                 <span className={styles.timestamp}>
                     {formatTimestamp(entry.timestamp)}

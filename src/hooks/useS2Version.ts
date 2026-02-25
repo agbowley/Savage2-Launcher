@@ -34,6 +34,8 @@ export type S2Version = {
     revealFolder: () => Promise<void>,
     checkForUpdates: () => Promise<void>,
     changeInstallLocation: () => Promise<void>,
+    verifyInstallation: () => Promise<void>,
+    verificationWarning: boolean,
     installedVersion: string | null,
     latestVersion: string | null,
     installPath: string | null,
@@ -65,6 +67,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
     const [installPath, setInstallPath] = useState<string | null>(cached?.installPath ?? null);
     const [downloadLocation, setDownloadLocation] = useState<string | null>(cached?.downloadLocation ?? null);
     const [releaseDate, setReleaseDate] = useState<string | null>(cached?.releaseDate ?? null);
+    const [verificationWarning, setVerificationWarning] = useState<boolean>(false);
 
     // Fetch installed version, remote version, and install path on mount / after state changes
     useEffect(() => {
@@ -187,6 +190,8 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
             revealFolder: async () => {},
             checkForUpdates: async () => {},
             changeInstallLocation: async () => {},
+            verifyInstallation: async () => {},
+            verificationWarning: false,
             installedVersion: null,
             latestVersion: null,
             installPath: null,
@@ -223,27 +228,38 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
                     // progress is visible in the downloads list.
                     setState(S2States.REPAIRING);
 
+                    const repairTask = new S2PatchUpdate(
+                        manifestUrl,
+                        releaseData.channel,
+                        profile,
+                        () => {}
+                    );
+
                     await new Promise<void>((resolve, reject) => {
-                        const repairTask = new S2PatchUpdate(
-                            manifestUrl,
-                            releaseData.channel,
-                            profile,
-                            () => {
-                                // Log repair to download history
-                                useDownloadHistory.getState().addEntry({
-                                    game: "Savage 2",
-                                    channel: releaseData.name,
-                                    type: "repair",
-                                    version: installedVersion,
-                                    previousVersion: null,
-                                });
-                                resolve();
-                            }
-                        );
+                        repairTask.onFinish = () => resolve();
                         repairTask.onError = (err) => reject(err);
                         repairTask.onCancel = () => reject("CANCELLED");
                         addTask(repairTask);
                     });
+
+                    // Log repair to download history
+                    useDownloadHistory.getState().addEntry({
+                        game: "Savage 2",
+                        channel: releaseData.name,
+                        type: "repair",
+                        version: installedVersion,
+                        previousVersion: null,
+                        repairedFiles: repairTask.repairedFiles,
+                    });
+
+                    // If any files were skipped during repair, show a warning
+                    // but still allow launching.
+                    if (repairTask.skippedFiles.length > 0) {
+                        setVerificationWarning(true);
+                        console.warn("Repair completed with skipped files:", repairTask.skippedFiles);
+                    } else {
+                        setVerificationWarning(false);
+                    }
 
                     setState(S2States.LOADING);
                 }
@@ -483,6 +499,75 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         }
     };
 
+    const verifyInstallation = async () => {
+        if (!releaseData) return;
+        if (state === S2States.DOWNLOADING || state === S2States.UPDATING || state === S2States.REPAIRING || state === S2States.UNINSTALLING) return;
+
+        setState(S2States.LOADING);
+
+        try {
+            const platformType = await type();
+            const manifestUrl = getS2ManifestUrl(releaseData, platformType);
+            if (!manifestUrl) {
+                setState(S2States.AVAILABLE);
+                return;
+            }
+
+            // Run a full patch_update which will hash-check all files
+            // and re-download any that are missing or mismatched.
+            setState(S2States.REPAIRING);
+
+            const repairTask = new S2PatchUpdate(
+                manifestUrl,
+                releaseData.channel,
+                profile,
+                () => {}
+            );
+
+            await new Promise<void>((resolve, reject) => {
+                repairTask.onFinish = () => resolve();
+                repairTask.onError = (err) => reject(err);
+                repairTask.onCancel = () => reject("CANCELLED");
+                addTask(repairTask);
+            });
+
+            // Log repair to download history
+            useDownloadHistory.getState().addEntry({
+                game: "Savage 2",
+                channel: releaseData.name,
+                type: "repair",
+                version: installedVersion,
+                previousVersion: null,
+                repairedFiles: repairTask.repairedFiles,
+            });
+
+            if (repairTask.skippedFiles.length > 0) {
+                setVerificationWarning(true);
+                showToast(
+                    "Verification Warning",
+                    `${repairTask.skippedFiles.length} file(s) could not be verified`
+                );
+            } else {
+                setVerificationWarning(false);
+                showToast(
+                    "Verification Complete",
+                    "All files verified successfully"
+                );
+            }
+
+            setState(S2States.AVAILABLE);
+        } catch (e) {
+            const errMsg = e as string;
+            if (errMsg === "CANCELLED") {
+                setState(S2States.AVAILABLE);
+                return;
+            }
+            setState(S2States.ERROR);
+            showErrorDialog(errMsg);
+            console.error(e);
+        }
+    };
+
     const changeInstallLocation = async () => {
         try {
             // Get the current profile location to use as default directory
@@ -544,6 +629,8 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         revealFolder,
         checkForUpdates,
         changeInstallLocation,
+        verifyInstallation,
+        verificationWarning,
         installedVersion,
         latestVersion,
         installPath,

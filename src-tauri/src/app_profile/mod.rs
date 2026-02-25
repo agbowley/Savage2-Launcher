@@ -30,6 +30,14 @@ pub struct Manifest {
     pub files: HashMap<String, ManifestFile>,
 }
 
+/// Result returned by `patch_update` containing the files that were
+/// successfully repaired and the ones that had to be skipped.
+#[derive(Clone, Debug, Default, serde::Serialize)]
+pub struct PatchResult {
+    pub repaired: Vec<String>,
+    pub skipped: Vec<String>,
+}
+
 #[async_trait]
 pub trait AppProfile {
     async fn download_and_install(
@@ -42,12 +50,13 @@ pub trait AppProfile {
 
     /// Patch-update the existing installation using a remote manifest.
     /// Only downloads files that are new or changed compared to the local install.
+    /// Returns a [`PatchResult`] listing repaired and skipped file paths.
     async fn patch_update(
         &self,
         app: &AppHandle,
         manifest_url: String,
         cancel_token: &CancelToken
-    ) -> Result<(), String>;
+    ) -> Result<PatchResult, String>;
 
     async fn install(
         &self

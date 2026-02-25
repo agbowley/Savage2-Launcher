@@ -68,8 +68,15 @@ export class S2Uninstall extends S2Task implements IBaseTask {
     }
 }
 
+interface PatchResult {
+    repaired: string[];
+    skipped: string[];
+}
+
 export class S2PatchUpdate extends S2Task implements IBaseTask {
     manifestUrl: string;
+    repairedFiles: string[] = [];
+    skippedFiles: string[] = [];
 
     constructor(manifestUrl: string, channel: ReleaseChannels,
         profile: string, onFinish: () => void) {
@@ -79,10 +86,12 @@ export class S2PatchUpdate extends S2Task implements IBaseTask {
     }
 
     async start(): Promise<void> {
-        return await invoke("patch_update", {
+        const result = await invoke<PatchResult>("patch_update", {
             appName: "Savage 2",
             profile: this.profile,
             manifestUrl: this.manifestUrl,
         });
+        this.repairedFiles = result.repaired;
+        this.skippedFiles = result.skipped;
     }
 }

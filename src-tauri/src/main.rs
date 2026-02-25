@@ -261,7 +261,7 @@ async fn patch_update(
     app_name: String,
     profile: String,
     manifest_url: String,
-) -> Result<(), String> {
+) -> Result<app_profile::PatchResult, String> {
     let (app_profile, cancel_token) = {
         let state_guard = state.0.read().unwrap();
         state_guard.cancel_token.reset();
@@ -280,9 +280,7 @@ async fn patch_update(
         &app_handle,
         manifest_url,
         &cancel_token
-    ).await?;
-
-    Ok(())
+    ).await
 }
 
 #[tauri::command(async)]

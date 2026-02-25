@@ -1,9 +1,10 @@
 # ============================================================
 #  Savage 2 Launcher – Release Build
 #
-#  Triggered by pushing a version tag (e.g. v1.0.3).
-#  Builds signed Tauri bundles for every platform and uploads
-#  them to a GitHub Release.
+#  Triggered on every branch push and version tags (e.g. v1.0.3).
+#  Builds signed Tauri bundles for every platform.
+#  When triggered by a version tag, uploads artifacts to a
+#  GitHub Release.
 #
 #  To publish the update to the savage2.net launcher API,
 #  run the separate "Publish" workflow after this completes.
@@ -16,6 +17,8 @@ name: Release
 
 on:
   push:
+    branches:
+      - '**'
     tags:
       - 'v*'
 
@@ -146,6 +149,7 @@ jobs:
   # -----------------------------------------------------------
   release:
     needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write

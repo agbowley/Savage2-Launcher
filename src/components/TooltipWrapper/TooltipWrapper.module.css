@@ -7,6 +7,10 @@
     animation-duration: 400ms;
     animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
     will-change: transform, opacity;
+    white-space: pre-line;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 9999;
 
     background-color: black;
     box-shadow: hsl(206 22% 7% / 35%) 0px 10px 38px -10px, hsl(206 22% 7% / 20%) 0px 10px 20px -15px;

@@ -1,6 +1,6 @@
 import { S2States, S2Version } from "@app/hooks/useS2Version";
 import { ButtonColor } from "../../Button";
-import { ErrorIcon, PlayIcon, TimeIcon, UpdateIcon, UpgradeIcon } from "@app/assets/Icons";
+import { ErrorIcon, PlayIcon, TimeIcon, UpdateIcon, UpgradeIcon, WarningIcon } from "@app/assets/Icons";
 import { calculatePayloadPercentage } from "@app/tasks/payload";
 import PayloadProgress from "../../PayloadProgress";
 import Button from "@app/components/Button";
@@ -74,6 +74,9 @@ export function LaunchButton(props: LaunchButtonProps) {
         const dropdownChildren = <>
             <DropdownItem onClick={() => version.play()}>
                 Play Anyway
+            </DropdownItem>
+            <DropdownItem onClick={() => version.verifyInstallation()}>
+                Verify Installation
             </DropdownItem>
             <DropdownItem onClick={() => version.changeInstallLocation()}>
                 Change Install Location
@@ -191,9 +194,13 @@ export function LaunchButton(props: LaunchButtonProps) {
     if (version.state === S2States.AVAILABLE) {
         const buttonChildren = <>
             <PlayIcon /> Play {playName}
+            {version.verificationWarning && <WarningIcon width={16} height={16} style={{ marginLeft: 4 }} title="Some files could not be verified" />}
         </>;
 
         const dropdownChildren = <>
+            <DropdownItem onClick={() => version.verifyInstallation()}>
+                Verify Installation
+            </DropdownItem>
             <DropdownItem onClick={() => version.checkForUpdates()}>
                 Check for Updates
             </DropdownItem>

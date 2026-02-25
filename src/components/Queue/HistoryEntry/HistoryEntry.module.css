@@ -59,6 +59,19 @@
     font-size: 11px;
     font-weight: 400;
     line-height: normal;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.info_icon {
+    color: rgba(255, 255, 255, 0.4);
+    cursor: help;
+    flex-shrink: 0;
+}
+
+.info_icon:hover {
+    color: rgba(255, 255, 255, 0.7);
 }
 
 .meta {
@@ -95,6 +108,12 @@
     composes: badge;
     background: rgba(255, 130, 46, 0.15);
     color: #FF8E2E;
+}
+
+.badge_verify {
+    composes: badge;
+    background: rgba(46, 255, 130, 0.15);
+    color: #2EFF82;
 }
 
 .badge_uninstall {
