@@ -59,6 +59,7 @@ jobs:
             tauri_args: '--target aarch64-apple-darwin'
 
     runs-on: ${{ matrix.os }}
+    environment: tauri
 
     steps:
       - uses: actions/checkout@v4

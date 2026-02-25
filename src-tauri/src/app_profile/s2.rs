@@ -1258,7 +1258,14 @@ impl AppProfile for S2AppProfile {
             .spawn();
 
         match result {
-            Ok(_) => Ok(()),
+            Ok(mut child) => {
+                // Reap the child process in a background thread so it doesn't
+                // become a zombie on Linux after it exits.
+                std::thread::spawn(move || {
+                    let _ = child.wait();
+                });
+                Ok(())
+            }
             #[cfg(target_os = "windows")]
             Err(ref e) if e.raw_os_error() == Some(740) => {
                 // ERROR_ELEVATION_REQUIRED (740) — the legacy game executable
