@@ -9,7 +9,7 @@
     will-change: transform, opacity;
     white-space: pre-line;
     max-height: 300px;
-    overflow-y: auto;
+    overflow: hidden;
     z-index: 9999;
 
     background-color: black;

@@ -15,8 +15,6 @@ import LoadingScreen from "./components/LoadingScreen";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/tauri";
 import { useToastStore } from "./stores/ToastStore";
-import { useLauncherUpdater } from "./hooks/useLauncherUpdater";
-
 window.addEventListener("error", event => {
     logError(JSON.stringify(serializeError(event)));
 });
@@ -50,9 +48,6 @@ const App: React.FC = () => {
         });
         return () => { unlisten.then((fn) => fn()); };
     }, []);
-
-    // Check for launcher self-updates on startup and every 15 minutes
-    useLauncherUpdater();
 
     // Show error screen
     if (error) {

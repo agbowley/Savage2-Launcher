@@ -30,13 +30,37 @@ impl CancelToken {
     }
 }
 
+/// Enrich a generic I/O error message with Windows-specific guidance when the
+/// underlying error indicates a permissions problem (access denied, sharing
+/// violation, etc.).  On non-Windows this just returns the base message.
+pub fn enrich_io_error(base_msg: &str, err: &std::io::Error) -> String {
+    #[cfg(target_os = "windows")]
+    {
+        // 5 = ERROR_ACCESS_DENIED, 32 = ERROR_SHARING_VIOLATION
+        let raw = err.raw_os_error().unwrap_or(0);
+        if raw == 5 || raw == 32 {
+            return format!(
+                "{}\n{:?}\n\n\
+                The launcher does not have permission to write to this folder.\n\
+                Possible causes:\n\
+                • Windows Controlled Folder Access (ransomware protection) is blocking writes\n\
+                • The folder is in a protected location (e.g. Program Files)\n\
+                • Another program has the file locked\n\n\
+                Try adding the Savage 2 Launcher to the Controlled Folder Access allow-list \
+                in Windows Security, or choose an install location under your user directory.",
+                base_msg, err
+            );
+        }
+    }
+    format!("{}\n{:?}", base_msg, err)
+}
+
 pub fn clear_folder(path: &Path) -> Result<(), String> {
     std::fs::remove_dir_all(path).ok();
     std::fs::create_dir_all(path).map_err(|e| {
-        format!(
-            "Failed to re-create folder `{}`.\n{:?}",
-            path.to_string_lossy(),
-            e
+        enrich_io_error(
+            &format!("Failed to re-create folder `{}`.", path.to_string_lossy()),
+            &e
         )
     })?;
 
@@ -72,10 +96,9 @@ pub async fn download(
 
     // Create the file to download into
     let mut file = File::create(output_path).map_err(|e| {
-        format!(
-            "Failed to create file `{}`.\n{:?}",
-            &output_path.display(),
-            e
+        enrich_io_error(
+            &format!("Failed to create file `{}`.", &output_path.display()),
+            &e
         )
     })?;
     let mut current_downloaded: u64 = 0;

@@ -541,6 +541,30 @@ async fn set_profile_location(
     profile: String,
     path: String,
 ) -> Result<(), String> {
+    // Validate that the path is writable before saving.
+    // This catches protected locations (Program Files) and Controlled Folder
+    // Access before files are actually downloaded.
+    if !path.is_empty() {
+        let target = std::path::Path::new(&path);
+        // Create the directory so the probe doesn't fail on "not found"
+        let _ = std::fs::create_dir_all(target);
+        let probe = target.join(".s2_write_test");
+        match std::fs::write(&probe, b"probe") {
+            Ok(_) => { let _ = std::fs::remove_file(&probe); }
+            Err(e) => {
+                return Err(format!(
+                    "Cannot write to the selected folder:\n{}\n\n\
+                    {}\n\n\
+                    This can happen if the folder is in a protected location (e.g. Program Files), \
+                    or if Windows Controlled Folder Access is blocking the launcher.\n\
+                    Try choosing a folder under your user directory, or add an exclusion in \
+                    Windows Security > Virus & threat protection > Ransomware protection.",
+                    path, e
+                ));
+            }
+        }
+    }
+
     let mut state_guard = state.0.write().unwrap();
     state_guard.settings.profile_locations.insert(profile, path);
     state_guard.settings.initialized = true;

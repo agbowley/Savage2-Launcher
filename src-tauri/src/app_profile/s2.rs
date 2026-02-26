@@ -57,9 +57,11 @@ fn run_elevated_and_wait(exe_path: &str, args: &str) -> Result<(), String> {
         fn WaitForSingleObject(hHandle: isize, dwMilliseconds: u32) -> u32;
         fn CloseHandle(hObject: isize) -> i32;
         fn GetExitCodeProcess(hProcess: isize, lpExitCode: *mut u32) -> i32;
+        fn GetLastError() -> u32;
     }
 
     const SEE_MASK_NOCLOSEPROCESS: u32 = 0x00000040;
+    const SEE_MASK_FLAG_NO_UI: u32 = 0x00000400;
     const SW_HIDE: i32 = 0;
     const INFINITE: u32 = 0xFFFFFFFF;
 
@@ -81,16 +83,23 @@ fn run_elevated_and_wait(exe_path: &str, args: &str) -> Result<(), String> {
     unsafe {
         let mut sei: SHELLEXECUTEINFOW = mem::zeroed();
         sei.cbSize = mem::size_of::<SHELLEXECUTEINFOW>() as u32;
-        sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+        sei.fMask = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_FLAG_NO_UI;
         sei.lpVerb = verb.as_ptr();
         sei.lpFile = file.as_ptr();
         sei.lpParameters = params.as_ptr();
         sei.nShow = SW_HIDE;
 
         if ShellExecuteExW(&mut sei) == 0 {
+            let err = GetLastError();
+            if err == 1223 {
+                // ERROR_CANCELLED — user clicked "No" on the UAC prompt
+                return Err(
+                    "Installation was cancelled — administrator permission is required to install.".into()
+                );
+            }
             return Err(format!(
-                "Failed to launch with elevation.\nPath: {}\nArgs: {}",
-                exe_path, args
+                "Failed to launch with elevation (Windows error {}).\nPath: {}\nArgs: {}",
+                err, exe_path, args
             ));
         }
 
@@ -398,7 +407,13 @@ impl S2AppProfile {
             // NSIS silent install: /S for silent, /D= to set install directory
             // /D= must be the last parameter and must NOT be wrapped in quotes
             let args = format!("/S /D={}", install_dir_str);
-            run_elevated_and_wait(installer_str, &args)?;
+
+            // Offload the blocking WaitForSingleObject to a dedicated thread
+            // so we don't starve the async executor during long installs.
+            let owned_exe = installer_str.to_string();
+            tauri::async_runtime::spawn_blocking(move || {
+                run_elevated_and_wait(&owned_exe, &args)
+            }).await.map_err(|e| format!("Task join error: {:?}", e))??;
 
             Ok(())
         }
@@ -446,6 +461,7 @@ impl S2AppProfile {
         extern "system" {
             fn WaitForSingleObject(hHandle: isize, dwMilliseconds: u32) -> u32;
             fn CloseHandle(hObject: isize) -> i32;
+            fn GetLastError() -> u32;
         }
 
         const SEE_MASK_NOCLOSEPROCESS: u32 = 0x00000040;
@@ -479,9 +495,15 @@ impl S2AppProfile {
             sei.nShow = SW_SHOWNORMAL;
 
             if ShellExecuteExW(&mut sei) == 0 {
+                let err = GetLastError();
+                if err == 1223 {
+                    return Err(
+                        "Installation was cancelled — administrator permission is required.".into()
+                    );
+                }
                 return Err(format!(
-                    "Failed to launch the legacy installer with elevation.\nPath: {}",
-                    installer_str
+                    "Failed to launch the legacy installer with elevation (Windows error {}).\nPath: {}",
+                    err, installer_str
                 ));
             }
 
@@ -509,17 +531,23 @@ impl S2AppProfile {
         Ok(())
     }
 
-    async fn run_installer_with_elevation(&self, installer_path: &Path) -> Result<(), String> {
+    async fn run_installer_with_elevation(&self, installer_path: &Path, args: &str) -> Result<(), String> {
         #[cfg(target_os = "windows")]
         {
-            let installer_str = installer_path.to_str().ok_or("Invalid path")?;
-            run_elevated_and_wait(installer_str, "/silent")?;
+            let owned_exe = installer_path.to_str().ok_or("Invalid path")?.to_string();
+            let owned_args = args.to_string();
+
+            // Offload the blocking WaitForSingleObject to a dedicated thread
+            // so we don't starve the async executor during long installs.
+            tauri::async_runtime::spawn_blocking(move || {
+                run_elevated_and_wait(&owned_exe, &owned_args)
+            }).await.map_err(|e| format!("Task join error: {:?}", e))??;
         }
 
         #[cfg(not(target_os = "windows"))]
         {
             let status = Command::new(installer_path)
-                .arg("/silent")
+                .args(args.split_whitespace())
                 .status()
                 .map_err(|e| format!("Failed to start installer: {}", e))?;
 
@@ -697,7 +725,7 @@ impl AppProfile for S2AppProfile {
 
         // Ensure the game folder exists
         std::fs::create_dir_all(&game_folder)
-            .map_err(|e| format!("Failed to create game directory.\n{:?}", e))?;
+            .map_err(|e| enrich_io_error("Failed to create game directory.", &e))?;
 
         let is_exe_installer = zip_url.ends_with(".exe");
         // The CE installer (Savage2CEInstall.exe) is NSIS and supports silent
@@ -776,6 +804,11 @@ impl AppProfile for S2AppProfile {
 
             // Clean up installer
             let _ = remove_file(installer_path);
+
+            // Ensure runtime dependencies (DirectX, VC++, .NET) are installed.
+            // The NSIS installer may have handled these itself, but install()
+            // checks before installing so this is safe to call unconditionally.
+            self.install().await?;
         } else {
             // === Zip/Tar.gz Flow (Linux/macOS) ===
             let folder = self.get_folder();
@@ -790,30 +823,36 @@ impl AppProfile for S2AppProfile {
             let zip_path = &self.temp_folder.join(archive_name);
             download(Some(app), &zip_url, &zip_path, Some(cancel_token)).await?;
 
-            // Verify (if signature is provided)
+            // Verify (if signature is provided and a public key is configured)
             if let Some(sig_url) = sig_url {
-                let _ = app.emit_all(
-                    "progress_info",
-                    ProgressPayload {
-                        state: "verifying".to_string(),
-                        current: 0,
-                        total: 0,
-                    },
-                );
+                if PUB_KEY.is_empty() {
+                    eprintln!("[download_and_install] Signature URL provided but PUB_KEY is empty — skipping verification.");
+                } else {
+                    let _ = app.emit_all(
+                        "progress_info",
+                        ProgressPayload {
+                            state: "verifying".to_string(),
+                            current: 0,
+                            total: 0,
+                        },
+                    );
 
-                let sig_path = &self.temp_folder.join("update.sig");
-                download(None, &sig_url, &sig_path, None).await?;
+                    let sig_path = &self.temp_folder.join("update.sig");
+                    download(None, &sig_url, &sig_path, None).await?;
 
-                let pk_box = PublicKeyBox::from_string(PUB_KEY).unwrap();
-                let pk = pk_box.into_public_key().unwrap();
+                    let pk_box = PublicKeyBox::from_string(PUB_KEY)
+                        .map_err(|e| format!("Invalid public key configuration.\n{:?}", e))?;
+                    let pk = pk_box.into_public_key()
+                        .map_err(|e| format!("Failed to parse public key.\n{:?}", e))?;
 
-                let sig_box = SignatureBox::from_file(sig_path)
-                    .map_err(|e| format!("Invalid signature file! Try reinstalling.\n{:?}", e))?;
+                    let sig_box = SignatureBox::from_file(sig_path)
+                        .map_err(|e| format!("Invalid signature file! Try reinstalling.\n{:?}", e))?;
 
-                let zip_file = File::open(zip_path)
-                    .map_err(|e| format!("Failed to open archive while verifying.\n{:?}", e))?;
-                minisign::verify(&pk, &sig_box, zip_file, true, false, false)
-                    .map_err(|_| "Failed to verify downloaded file! Try reinstalling.")?;
+                    let zip_file = File::open(zip_path)
+                        .map_err(|e| format!("Failed to open archive while verifying.\n{:?}", e))?;
+                    minisign::verify(&pk, &sig_box, zip_file, true, false, false)
+                        .map_err(|_| "Failed to verify downloaded file! Try reinstalling.")?;
+                }
             }
 
             let _ = app.emit_all(
@@ -939,7 +978,10 @@ impl AppProfile for S2AppProfile {
             // Create parent directories
             if let Some(parent) = target_path.parent() {
                 std::fs::create_dir_all(parent)
-                    .map_err(|e| format!("Failed to create directory `{}`.\n{:?}", parent.display(), e))?;
+                    .map_err(|e| enrich_io_error(
+                        &format!("Failed to create directory `{}`.", parent.display()),
+                        &e
+                    ))?;
             }
 
             // Download to a temp file first, then move into place
@@ -995,7 +1037,10 @@ impl AppProfile for S2AppProfile {
                 .or_else(|_| {
                     // rename can fail across filesystems — fall back to copy + delete
                     std::fs::copy(&temp_file, &target_path)
-                        .map_err(|e| format!("Failed to copy `{}` into place.\n{:?}", rel_path, e))?;
+                        .map_err(|e| enrich_io_error(
+                            &format!("Failed to copy `{}` into place.", rel_path),
+                            &e
+                        ))?;
                     let _ = std::fs::remove_file(&temp_file);
                     Ok::<(), String>(())
                 })?;
@@ -1085,17 +1130,19 @@ impl AppProfile for S2AppProfile {
             let registry_key_path_x86 = r"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x86";
             let registry_key_path_x64 = r"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64";
 
-            let output_x86 = Command::new("reg")
+            let x86_ok = Command::new("reg")
                 .args(&["query", registry_key_path_x86])
                 .output()
-                .expect("Failed to check VC++ Redistributable (x86)");
+                .map(|o| o.status.success())
+                .unwrap_or(false);
 
-            let output_x64 = Command::new("reg")
+            let x64_ok = Command::new("reg")
                 .args(&["query", registry_key_path_x64])
                 .output()
-                .expect("Failed to check VC++ Redistributable (x64)");
+                .map(|o| o.status.success())
+                .unwrap_or(false);
 
-            return output_x86.status.success() || output_x64.status.success();
+            return x86_ok || x64_ok;
         }
         #[cfg(not(target_os = "windows"))]
         {
@@ -1107,12 +1154,11 @@ impl AppProfile for S2AppProfile {
         #[cfg(target_os = "windows")]
         {
             let registry_key_path = r"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full";
-            let output = Command::new("reg")
+            return Command::new("reg")
                 .args(&["query", registry_key_path])
                 .output()
-                .expect("Failed to check .NET Framework");
-
-            return output.status.success();
+                .map(|o| o.status.success())
+                .unwrap_or(false);
         }
         #[cfg(not(target_os = "windows"))]
         {
@@ -1121,47 +1167,99 @@ impl AppProfile for S2AppProfile {
     }
 
     async fn install(&self) -> Result<(), String> {
-        self.log_message("Starting installation...");
+        self.log_message("Starting runtime dependency installation...");
 
         let install_folder = self.get_folder();
-
-        self.log_message("Install folder: ");
-        self.log_message(&install_folder.display().to_string());
+        self.log_message(&format!("Install folder: {}", install_folder.display()));
 
         #[cfg(target_os = "windows")]
         {
-            let directx_installer = install_folder.join("directxredist/DXSETUP.exe");
-            let vcredist_installer = install_folder.join("vcredist_x86.exe");
-            let dotnetfx_installer = install_folder.join("dotnetfx.exe");
-
+            // ── DirectX June 2010 End-User Runtime ──────────────────────────
             if !self.is_directx_installed() {
-                self.log_message("DirectX not installed. Installing...");
-                match self.run_installer_with_elevation(&directx_installer).await {
-                    Ok(_) => self.log_message("DirectX installation successful."),
-                    Err(e) => self.log_message(&format!("DirectX installation failed: {}", e)),
+                // Prefer pre-extracted DXSETUP.exe; fall back to self-extracting archive
+                let dxsetup_extracted = install_folder.join("directxredist/DXSETUP.exe");
+                let dx_redist_packed = install_folder.join("directx_Jun2010_redist.exe");
+
+                if dxsetup_extracted.exists() {
+                    self.log_message("Installing DirectX (DXSETUP.exe)...");
+                    match self.run_installer_with_elevation(&dxsetup_extracted, "/silent").await {
+                        Ok(_) => self.log_message("DirectX installation successful."),
+                        Err(e) => self.log_message(&format!("DirectX installation failed: {}", e)),
+                    }
+                } else if dx_redist_packed.exists() {
+                    self.log_message("Installing DirectX (directx_Jun2010_redist.exe)...");
+                    // The redistributable is a self-extracting cab archive.
+                    // Extract to temp, then run DXSETUP.exe /silent from the extracted folder.
+                    let dx_temp = self.temp_folder.join("directx_redist");
+                    let _ = std::fs::create_dir_all(&dx_temp);
+                    let extract_args = format!("/Q /C /T:{}", dx_temp.display());
+                    match self.run_installer_with_elevation(&dx_redist_packed, &extract_args).await {
+                        Ok(_) => {
+                            let extracted_setup = dx_temp.join("DXSETUP.exe");
+                            if extracted_setup.exists() {
+                                match self.run_installer_with_elevation(&extracted_setup, "/silent").await {
+                                    Ok(_) => self.log_message("DirectX installation successful."),
+                                    Err(e) => self.log_message(&format!("DirectX DXSETUP failed: {}", e)),
+                                }
+                            } else {
+                                self.log_message("DXSETUP.exe not found after extraction. DirectX may not have been installed.");
+                            }
+                            let _ = std::fs::remove_dir_all(&dx_temp);
+                        }
+                        Err(e) => self.log_message(&format!("DirectX extraction failed: {}", e)),
+                    }
+                } else {
+                    self.log_message("DirectX installer not found in game folder. Skipping.");
                 }
             } else {
-                self.log_message("DirectX already installed. Skipping installation.");
+                self.log_message("DirectX already installed. Skipping.");
             }
 
+            // ── VC++ Redistributable (2015–2022) ────────────────────────────
             if !self.is_vcredist_installed() {
-                self.log_message("VC++ Redistributable not installed. Installing...");
-                match self.run_installer_with_elevation(&vcredist_installer).await {
-                    Ok(_) => self.log_message("VC++ Redistributable installation successful."),
-                    Err(e) => self.log_message(&format!("VC++ Redistributable installation failed: {}", e)),
+                // Support both common redistributable filenames
+                let vcredist_x64 = install_folder.join("VC_redist.x64.exe");
+                let vcredist_x86_new = install_folder.join("VC_redist.x86.exe");
+                let vcredist_x86_legacy = install_folder.join("vcredist_x86.exe");
+
+                let vcredist = if vcredist_x64.exists() { Some(vcredist_x64) }
+                    else if vcredist_x86_new.exists() { Some(vcredist_x86_new) }
+                    else if vcredist_x86_legacy.exists() { Some(vcredist_x86_legacy) }
+                    else { None };
+
+                if let Some(installer) = vcredist {
+                    let name = installer.file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .to_string();
+                    self.log_message(&format!("Installing VC++ Redistributable ({})...", name));
+                    // VC++ Redistributable uses /install /quiet /norestart (NOT /silent)
+                    match self.run_installer_with_elevation(&installer, "/install /quiet /norestart").await {
+                        Ok(_) => self.log_message("VC++ Redistributable installation successful."),
+                        Err(e) => self.log_message(&format!("VC++ Redistributable installation failed: {}", e)),
+                    }
+                } else {
+                    self.log_message("VC++ Redistributable installer not found in game folder. Skipping.");
                 }
             } else {
-                self.log_message("VC++ Redistributable already installed. Skipping installation.");
+                self.log_message("VC++ Redistributable already installed. Skipping.");
             }
 
+            // ── .NET Framework ──────────────────────────────────────────────
             if !self.is_dotnetfx_installed() {
-                self.log_message(".NET Framework not installed. Installing...");
-                match self.run_installer_with_elevation(&dotnetfx_installer).await {
-                    Ok(_) => self.log_message(".NET Framework installation successful."),
-                    Err(e) => self.log_message(&format!(".NET Framework installation failed: {}", e)),
+                let dotnet = install_folder.join("dotnetfx.exe");
+                if dotnet.exists() {
+                    self.log_message("Installing .NET Framework...");
+                    // .NET Framework installer uses /q /norestart (NOT /silent)
+                    match self.run_installer_with_elevation(&dotnet, "/q /norestart").await {
+                        Ok(_) => self.log_message(".NET Framework installation successful."),
+                        Err(e) => self.log_message(&format!(".NET Framework installation failed: {}", e)),
+                    }
+                } else {
+                    self.log_message(".NET Framework installer not found. Skipping.");
                 }
             } else {
-                self.log_message(".NET Framework already installed. Skipping installation.");
+                self.log_message(".NET Framework already installed. Skipping.");
             }
         }
 
@@ -1310,6 +1408,11 @@ impl AppProfile for S2AppProfile {
                     fn ShellExecuteExW(pExecInfo: *mut SHELLEXECUTEINFOW) -> i32;
                 }
 
+                #[link(name = "kernel32")]
+                extern "system" {
+                    fn GetLastError() -> u32;
+                }
+
                 const SW_SHOWNORMAL: i32 = 1;
 
                 fn to_wide(s: &str) -> Vec<u16> {
@@ -1329,7 +1432,11 @@ impl AppProfile for S2AppProfile {
                     sei.nShow = SW_SHOWNORMAL;
 
                     if ShellExecuteExW(&mut sei) == 0 {
-                        return Err("Failed to launch the game with elevation.".to_string());
+                        let err = GetLastError();
+                        return Err(format!(
+                            "Failed to launch the game with elevation (Windows error {}).",
+                            err
+                        ));
                     }
                 }
 

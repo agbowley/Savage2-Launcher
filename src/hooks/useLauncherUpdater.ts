@@ -1,20 +1,28 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { checkUpdate, installUpdate } from "@tauri-apps/api/updater";
 import { relaunch } from "@tauri-apps/api/process";
-import { ask } from "@tauri-apps/api/dialog";
 
 /** How often to poll for launcher updates (ms). */
 const CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 
+export interface LauncherUpdateState {
+    /** The version string of the available update, or null if up-to-date. */
+    updateVersion: string | null;
+    /** Whether an update is currently being downloaded / installed. */
+    isUpdating: boolean;
+    /** Kick off the update install + relaunch.  Pass `true` to simulate
+     *  the install (dev mock mode) — waits 2 s then relaunches. */
+    startUpdate: (mock?: boolean) => Promise<void>;
+}
+
 /**
  * Programmatically checks for launcher self-updates on startup and
- * periodically, prompts the user, installs, and relaunches.
- *
- * This replaces Tauri's built-in "dialog: true" updater mode so we
- * can control polling frequency and ensure the app restarts after
- * installing on Windows.
+ * periodically.  Instead of showing a dialog, it exposes the update
+ * state so the UI can render an unobtrusive indicator.
  */
-export function useLauncherUpdater() {
+export function useLauncherUpdater(): LauncherUpdateState {
+    const [updateVersion, setUpdateVersion] = useState<string | null>(null);
+    const [isUpdating, setIsUpdating] = useState(false);
     const checking = useRef(false);
 
     useEffect(() => {
@@ -24,17 +32,9 @@ export function useLauncherUpdater() {
 
             try {
                 const { shouldUpdate, manifest } = await checkUpdate();
-                if (!shouldUpdate || !manifest) return;
-
-                const yes = await ask(
-                    `A new launcher update is available (${manifest.version}).\n\nWould you like to install it and restart?`,
-                    { title: "Launcher Update Available", type: "info" }
-                );
-
-                if (!yes) return;
-
-                await installUpdate();
-                await relaunch();
+                if (shouldUpdate && manifest) {
+                    setUpdateVersion(manifest.version);
+                }
             } catch (e) {
                 console.warn("Launcher update check failed:", e);
             } finally {
@@ -49,4 +49,23 @@ export function useLauncherUpdater() {
         const interval = setInterval(check, CHECK_INTERVAL_MS);
         return () => clearInterval(interval);
     }, []);
+
+    const startUpdate = useCallback(async (mock = false) => {
+        if (isUpdating) return;
+        setIsUpdating(true);
+        try {
+            if (mock) {
+                // Simulate download + install delay, then restart
+                await new Promise(r => setTimeout(r, 2000));
+            } else {
+                await installUpdate();
+            }
+            await relaunch();
+        } catch (e) {
+            console.warn("Launcher update failed:", e);
+            setIsUpdating(false);
+        }
+    }, [isUpdating]);
+
+    return { updateVersion, isUpdating, startUpdate };
 }

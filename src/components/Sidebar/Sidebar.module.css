@@ -20,11 +20,50 @@
     align-items: center;
 }
 
-.footer > .credits {
+.credits {
     font-size: 12px;
     font-weight: 700;
     text-shadow: 1px 1px 1px black;
     color: #fff;
+    user-select: none;
+    cursor: default;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    transition: color 0.2s;
+}
+
+.credits > svg {
+    height: 10px;
+    width: 10px;
+    flex-shrink: 0;
+}
+
+.credits.credits_update {
+    color: #f5c542;
+    cursor: pointer;
+}
+
+.credits.credits_update:hover {
+    color: #ffd966;
+}
+
+.updateLink {
+    height: 20px;
+    cursor: pointer;
+    color: #57d28d;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+}
+
+.updateLink:hover {
+    color: #7aea7a;
+}
+
+.updateLink svg {
+    height: 20px;
+    width: 20px;
 }
 
 .footer > .socials {
