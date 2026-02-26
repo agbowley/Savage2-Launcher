@@ -40,7 +40,10 @@ env:
   TAILSCALE_TAILNET: "tailf1bc2a.ts.net"
   NA2_HOST: "100.96.144.82"
   NA2_USER: "savage2"
-  NA2_BASE_PATH: "/uploads/launcher"
+  # Absolute paths on the NA2 server per OS family
+  NA2_WIN_ROOT:    "/appdata/patches/wb6/launcher"
+  NA2_LINUX_ROOT:  "/appdata/patches/lr1/launcher"
+  NA2_DARWIN_ROOT: "/appdata/patches/mr1/launcher"
 
 jobs:
   # ===========================================================
@@ -177,14 +180,21 @@ jobs:
       - name: Deploy artifacts to NA2
         shell: bash
         run: |
+          # Map each platform_key to its server root
+          declare -A PLATFORM_ROOT
+          PLATFORM_ROOT["windows-x86_64"]="${{ env.NA2_WIN_ROOT }}"
+          PLATFORM_ROOT["linux-x86_64"]="${{ env.NA2_LINUX_ROOT }}"
+          PLATFORM_ROOT["darwin-x86_64"]="${{ env.NA2_DARWIN_ROOT }}"
+          PLATFORM_ROOT["darwin-aarch64"]="${{ env.NA2_DARWIN_ROOT }}"
+
           PLATFORMS=("windows-x86_64" "linux-x86_64" "darwin-x86_64" "darwin-aarch64")
           FAILED=0
 
           for PLATFORM in "${PLATFORMS[@]}"; do
             SRC="artifacts/${PLATFORM}"
-            BASE="${{ env.NA2_BASE_PATH }}/${PLATFORM}"
-            ARCHIVE_DEST="${BASE}"
-            LATEST_DEST="${BASE}/latest"
+            ROOT="${PLATFORM_ROOT[$PLATFORM]}"
+            ARCHIVE_DEST="${ROOT}/${PLATFORM}"
+            LATEST_DEST="${ROOT}/${PLATFORM}/latest"
 
             if [ ! -d "$SRC" ]; then
               echo "⏭  Skipping ${PLATFORM} (no artifacts found)"
@@ -247,5 +257,5 @@ jobs:
         run: |
           echo "::group::Remote file listing"
           tailscale ssh "${{ env.NA2_USER }}@${{ env.NA2_HOST }}" \
-            "find ${{ env.NA2_BASE_PATH }} -type f | sort"
+            "find ${{ env.NA2_WIN_ROOT }} ${{ env.NA2_LINUX_ROOT }} ${{ env.NA2_DARWIN_ROOT }} -type f 2>/dev/null | sort"
           echo "::endgroup::"
