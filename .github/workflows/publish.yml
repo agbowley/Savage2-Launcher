@@ -44,12 +44,11 @@ on:
         type: string
 
 env:
-  # masterserver1 base URLs per platform
-  MS_WIN_BASE: https://masterserver1.talesofnewerth.com/wb6/launcher/windows-x86_64
-  MS_LINUX_BASE: https://masterserver1.talesofnewerth.com/lr1/launcher/linux-x86_64
-  # macOS paths – update these when macOS hosting is set up
-  MS_DARWIN_X86_BASE: https://masterserver1.talesofnewerth.com/launcher/darwin-x86_64
-  MS_DARWIN_ARM_BASE: https://masterserver1.talesofnewerth.com/launcher/darwin-aarch64
+  # masterserver1 base URLs per platform (served from /uploads/launcher/… on NA2)
+  MS_WIN_BASE: https://masterserver1.talesofnewerth.com/launcher/windows-x86_64/latest
+  MS_LINUX_BASE: https://masterserver1.talesofnewerth.com/launcher/linux-x86_64/latest
+  MS_DARWIN_X86_BASE: https://masterserver1.talesofnewerth.com/launcher/darwin-x86_64/latest
+  MS_DARWIN_ARM_BASE: https://masterserver1.talesofnewerth.com/launcher/darwin-aarch64/latest
 
 jobs:
   publish:
