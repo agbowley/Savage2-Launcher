@@ -209,9 +209,9 @@ jobs:
 
             # 1) Archive: upload original files (with version in filename)
             rsync -avz \
-              -e "tailscale ssh" \
+              -e "tailscale ssh ${{ env.NA2_USER }}@${{ env.NA2_HOST }}" \
               "${SRC}/" \
-              "${{ env.NA2_USER }}@${{ env.NA2_HOST }}:${ARCHIVE_DEST}/"
+              ":${ARCHIVE_DEST}/"
 
             if [ $? -ne 0 ]; then
               echo "::error::Failed to deploy ${PLATFORM} archive files"
@@ -233,9 +233,9 @@ jobs:
             done
 
             rsync -avz --delete \
-              -e "tailscale ssh" \
+              -e "tailscale ssh ${{ env.NA2_USER }}@${{ env.NA2_HOST }}" \
               "latest-staging/${PLATFORM}/" \
-              "${{ env.NA2_USER }}@${{ env.NA2_HOST }}:${LATEST_DEST}/"
+              ":${LATEST_DEST}/"
 
             if [ $? -eq 0 ]; then
               echo "  ✔  Latest (renamed) deployed to ${LATEST_DEST}"
