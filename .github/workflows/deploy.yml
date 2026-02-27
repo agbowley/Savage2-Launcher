@@ -208,7 +208,7 @@ jobs:
               "mkdir -p '${ARCHIVE_DEST}' '${LATEST_DEST}'"
 
             # 1) Archive: upload original files (with version in filename)
-            rsync -avz \
+            rsync -rltzvh --omit-dir-times --chmod=F644,D755 \
               -e "tailscale ssh ${{ env.NA2_USER }}@${{ env.NA2_HOST }}" \
               "${SRC}/" \
               ":${ARCHIVE_DEST}/"
@@ -232,7 +232,7 @@ jobs:
               cp "$FILE" "latest-staging/${PLATFORM}/${RENAMED}"
             done
 
-            rsync -avz --delete \
+            rsync -rltzvh --delete --omit-dir-times --chmod=F644,D755 \
               -e "tailscale ssh ${{ env.NA2_USER }}@${{ env.NA2_HOST }}" \
               "latest-staging/${PLATFORM}/" \
               ":${LATEST_DEST}/"
