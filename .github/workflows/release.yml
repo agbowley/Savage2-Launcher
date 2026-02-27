@@ -331,11 +331,14 @@ jobs:
             tailscale ssh "${{ env.NA2_USER }}@${{ env.NA2_HOST }}" \
               "mkdir -p '${ARCHIVE_DEST}' '${LATEST_DEST}'"
 
+            TEMP_DIR=".deploy-${{ github.run_id }}"
+
             # 1) Archive: upload original files (with version in filename)
-            #    Uses tar piping over tailscale ssh to avoid rsync permission issues
+            #    Extract into a temp dir owned by deployer, then mv -f into place
+            #    (mv -f can replace files owned by others when we own the directory)
             tar cf - -C "${SRC}" . | \
               tailscale ssh "${{ env.NA2_USER }}@${{ env.NA2_HOST }}" \
-                "tar xf - -C '${ARCHIVE_DEST}'"
+                "mkdir -p '${ARCHIVE_DEST}/${TEMP_DIR}' && tar xf - -C '${ARCHIVE_DEST}/${TEMP_DIR}' && cd '${ARCHIVE_DEST}/${TEMP_DIR}' && mv -f * '${ARCHIVE_DEST}/' && cd / && rmdir '${ARCHIVE_DEST}/${TEMP_DIR}'"
 
             if [ $? -ne 0 ]; then
               echo "::error::Failed to deploy ${PLATFORM} archive files"
@@ -354,13 +357,10 @@ jobs:
               cp "$FILE" "latest-staging/${PLATFORM}/${RENAMED}"
             done
 
-            # Clean old files in latest/ then extract new ones
-            tailscale ssh "${{ env.NA2_USER }}@${{ env.NA2_HOST }}" \
-              "rm -f '${LATEST_DEST}'/*"
-
+            # Extract into temp dir, then mv -f into latest/
             tar cf - -C "latest-staging/${PLATFORM}" . | \
               tailscale ssh "${{ env.NA2_USER }}@${{ env.NA2_HOST }}" \
-                "tar xf - -C '${LATEST_DEST}'"
+                "mkdir -p '${LATEST_DEST}/${TEMP_DIR}' && tar xf - -C '${LATEST_DEST}/${TEMP_DIR}' && cd '${LATEST_DEST}/${TEMP_DIR}' && mv -f * '${LATEST_DEST}/' && cd / && rmdir '${LATEST_DEST}/${TEMP_DIR}'"
 
             if [ $? -eq 0 ]; then
               echo "  ✔  Latest (renamed) deployed to ${LATEST_DEST}"
