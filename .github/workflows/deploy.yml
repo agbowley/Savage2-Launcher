@@ -39,7 +39,7 @@ concurrency:
 env:
   TAILSCALE_TAILNET: "tailf1bc2a.ts.net"
   NA2_HOST: "100.96.144.82"
-  NA2_USER: "savage2"
+  NA2_USER: "deployer"
   # Absolute paths on the NA2 server per OS family
   NA2_WIN_ROOT:    "/appdata/patches/wb6/launcher"
   NA2_LINUX_ROOT:  "/appdata/patches/lr1/launcher"
