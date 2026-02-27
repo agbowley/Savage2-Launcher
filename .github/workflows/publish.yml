@@ -14,8 +14,9 @@
 #    masterserver – updater bundles hosted on masterserver1
 #
 #  Authentication:
-#    Uses the S2_API_TOKEN repository secret by default.
-#    You can override it with the api_token input.
+#    Automatically logs in via the savage2.net API using
+#    S2_API_EMAIL and S2_API_PASSWORD repository secrets.
+#    You can override with the api_token input to skip login.
 # ============================================================
 name: Publish
 
@@ -39,7 +40,7 @@ on:
         required: false
         type: string
       api_token:
-        description: 'JWT for savage2.net API (blank = use S2_API_TOKEN secret)'
+        description: 'JWT for savage2.net API (blank = auto-login with secrets)'
         required: false
         type: string
 
@@ -60,6 +61,38 @@ jobs:
       - name: Mask sensitive inputs
         if: inputs.api_token != ''
         run: echo "::add-mask::${{ inputs.api_token }}"
+
+      - name: Authenticate with savage2.net API
+        id: auth
+        if: inputs.api_token == ''
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          LOGIN_RESP=$(curl -s -o /tmp/login_resp.json -w '%{http_code}' \
+            -X POST "https://savage2.net/api/authentication/login" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg email    "${{ secrets.S2_API_EMAIL }}" \
+              --arg password "${{ secrets.S2_API_PASSWORD }}" \
+              '{email: $email, password: $password, rememberMe: false}')")
+
+          if [ "$LOGIN_RESP" -lt 200 ] || [ "$LOGIN_RESP" -ge 300 ]; then
+            echo "::error::Login failed (HTTP ${LOGIN_RESP})"
+            cat /tmp/login_resp.json 2>/dev/null
+            exit 1
+          fi
+
+          AUTH_TOKEN=$(jq -r '.authToken' /tmp/login_resp.json)
+          if [ -z "$AUTH_TOKEN" ] || [ "$AUTH_TOKEN" = "null" ]; then
+            echo "::error::Login succeeded but no authToken in response"
+            exit 1
+          fi
+
+          echo "::add-mask::${AUTH_TOKEN}"
+          echo "token=${AUTH_TOKEN}" >> "$GITHUB_OUTPUT"
+          echo "✔  Authenticated as $(jq -r '.user.username' /tmp/login_resp.json)"
+          rm -f /tmp/login_resp.json
 
       - name: Validate version format
         run: |
@@ -83,7 +116,7 @@ jobs:
 
       - name: Build and publish API payload
         env:
-          TOKEN: ${{ inputs.api_token || secrets.S2_API_TOKEN }}
+          TOKEN: ${{ inputs.api_token || steps.auth.outputs.token }}
           VERSION: ${{ inputs.version }}
           NOTES: ${{ inputs.notes }}
           DOWNLOAD_SOURCE: ${{ inputs.download_source }}
