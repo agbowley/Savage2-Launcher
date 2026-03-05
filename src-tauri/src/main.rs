@@ -792,6 +792,16 @@ fn hidden_install_main(installer_path: &str, installer_args: &str) -> i32 {
 }
 
 fn main() {
+    // ── WebKitGTK EGL workaround ─────────────────────────────────────
+    // Newer WebKitGTK versions crash with "Could not create default EGL
+    // display: EGL_BAD_PARAMETER" on systems with certain GPU drivers or
+    // inside VMs.  Setting this env var before GTK initialises disables
+    // the DMA-BUF renderer path and falls back to a compatible one.
+    #[cfg(target_os = "linux")]
+    {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+
     // ── Hidden-install dispatch ──────────────────────────────────────
     // When the launcher is re-launched elevated with "--hidden-install", skip
     // Tauri entirely and just run the installer on a hidden desktop.
