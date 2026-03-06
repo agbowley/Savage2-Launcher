@@ -117,6 +117,27 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev
 
+      - name: Patch wry for webkit2gtk 0.18.2 compatibility
+        if: runner.os == 'Linux'
+        working-directory: src-tauri
+        run: |
+          cargo fetch
+          CARGO_REG="${CARGO_HOME:-$HOME/.cargo}/registry/src"
+          WRY_MOD=$(find "$CARGO_REG" -path "*/wry-0.24.*/src/webview/webkitgtk/mod.rs" 2>/dev/null | head -1)
+          if [ -n "$WRY_MOD" ]; then
+            if ! grep -q 'use webkit2gtk::SettingsExt;' "$WRY_MOD"; then
+              sed -i '/^use webkit2gtk::{/i use webkit2gtk::SettingsExt;' "$WRY_MOD"
+              WRY_DIR=$(dirname "$(dirname "$(dirname "$(dirname "$WRY_MOD")")")")
+              python3 -c "
+          import json, sys
+          p = sys.argv[1]
+          with open(p) as f: data = json.load(f)
+          data['files'] = {}
+          with open(p, 'w') as f: json.dump(data, f)
+          " "$WRY_DIR/.cargo-checksum.json"
+            fi
+          fi
+
       - name: Install npm dependencies
         run: npm ci
 
