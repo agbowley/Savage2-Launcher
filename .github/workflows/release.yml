@@ -128,13 +128,16 @@ jobs:
             if ! grep -q 'use webkit2gtk::SettingsExt;' "$WRY_MOD"; then
               sed -i '/^use webkit2gtk::{/i use webkit2gtk::SettingsExt;' "$WRY_MOD"
               WRY_DIR=$(dirname "$(dirname "$(dirname "$(dirname "$WRY_MOD")")")")
-              python3 -c "
+              CHECKSUM="$WRY_DIR/.cargo-checksum.json"
+              if [ -f "$CHECKSUM" ]; then
+                python3 -c "
           import json, sys
           p = sys.argv[1]
           with open(p) as f: data = json.load(f)
           data['files'] = {}
           with open(p, 'w') as f: json.dump(data, f)
-          " "$WRY_DIR/.cargo-checksum.json"
+          " "$CHECKSUM"
+              fi
             fi
           fi
 
