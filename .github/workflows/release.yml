@@ -117,6 +117,11 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev
 
+      - name: Pin webkit2gtk for wry 0.24 compatibility
+        if: runner.os == 'Linux'
+        working-directory: src-tauri
+        run: cargo update -p webkit2gtk --precise 0.18.0
+
       - name: Install npm dependencies
         run: npm ci
 
