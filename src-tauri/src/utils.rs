@@ -119,10 +119,10 @@ pub async fn download(
         file.write_all(&chunk)
             .map_err(|e| format!("Error while writing to file.\n{:?}", e))?;
 
-        // Cap the downloaded at the total size
+        // Cap the downloaded at the total size (only when Content-Length is known)
         current_downloaded += chunk.len() as u64;
 
-        if current_downloaded > total_size {
+        if total_size > 0 && current_downloaded > total_size {
             current_downloaded = total_size;
         }
 

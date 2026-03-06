@@ -1,0 +1,463 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    min-height: 100%;
+    background: var(--malph-bg);
+    background-size: contain;
+    background-attachment: fixed;
+    background-position: top;
+    background-size: 120%;
+}
+
+/* ---- Back button ---- */
+.back_bar {
+    display: flex;
+    align-items: center;
+    padding: 14px 24px;
+    gap: 8px;
+}
+
+.back_button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 6px 12px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    text-decoration: none;
+}
+
+.back_button:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+}
+
+.back_button svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* ---- Content ---- */
+.content {
+    display: flex;
+    gap: 24px;
+    padding: 0 24px 24px;
+    align-items: flex-start;
+}
+
+.main_col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+}
+
+.side_col {
+    width: 280px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* ---- Header ---- */
+.header {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.2;
+}
+
+.subtitle {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.tags_row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.tag {
+    display: inline-flex;
+    padding: 2px 8px;
+    border-radius: 50px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* ---- Image gallery ---- */
+.gallery {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    cursor: grab;
+    user-select: none;
+}
+
+.gallery::-webkit-scrollbar {
+    height: 6px;
+}
+
+.gallery::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.gallery::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+}
+
+.gallery_image {
+    height: 180px;
+    border-radius: 8px;
+    cursor: pointer;
+    flex-shrink: 0;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: border-color 0.15s, opacity 0.15s;
+}
+
+.gallery_image:hover {
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* ---- Image lightbox ---- */
+.lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.lightbox img {
+    max-width: 90%;
+    max-height: 90%;
+    border-radius: 8px;
+    box-shadow: 0 4px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* ---- Description ---- */
+.description {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.75);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* ---- Side panel cards ---- */
+.side_card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.side_card_title {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ---- Action buttons ---- */
+.action_row {
+    display: flex;
+    gap: 6px;
+}
+
+.install_button {
+    flex: 1;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: none;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: background 0.15s, opacity 0.15s;
+}
+
+.install_button_primary {
+    background: var(--button_green);
+    color: var(--buttonText_green);
+}
+
+.install_button_primary:hover {
+    opacity: 0.9;
+}
+
+.install_button_danger {
+    background: rgba(255, 60, 60, 0.2);
+    color: #ff6666;
+    border: 1px solid rgba(255, 60, 60, 0.2);
+}
+
+.install_button_danger:hover {
+    background: rgba(255, 60, 60, 0.3);
+}
+
+.install_button_enabled {
+    background: rgba(80, 200, 120, 0.15);
+    color: #50c878;
+    border: 1px solid rgba(80, 200, 120, 0.25);
+}
+
+.install_button_enabled:hover {
+    background: rgba(80, 200, 120, 0.25);
+}
+
+.install_button_disabled_state {
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.install_button_disabled_state:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.install_button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.enable_toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+}
+
+.enable_toggle input {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.enable_toggle input:checked {
+    background: var(--green);
+    border-color: var(--green);
+}
+
+.enable_toggle input:checked::after {
+    content: "✓";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #000;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* ---- Info rows ---- */
+.info_row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+}
+
+.info_label {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.info_value {
+    color: #ffffff;
+    font-weight: 500;
+}
+
+/* ---- Version history ---- */
+.versions_section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.section_heading {
+    font-size: 15px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.version_card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.version_header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.version_name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.version_latest_badge {
+    display: inline-flex;
+    padding: 1px 6px;
+    border-radius: 50px;
+    background: var(--green-10);
+    color: var(--green);
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.version_meta {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.35);
+    display: flex;
+    gap: 10px;
+}
+
+.version_changelog {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+.version_install_button {
+    align-self: flex-end;
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 11px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.version_install_button:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+}
+
+.version_installed_badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(80, 200, 120, 0.12);
+    color: #50c878;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid rgba(80, 200, 120, 0.2);
+}
+
+.version_installed_badge svg {
+    width: 12px;
+    height: 12px;
+}
+
+/* ---- Files list ---- */
+.files_list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.file_entry {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    padding: 3px 0;
+}
+
+.file_icon {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.file_name {
+    font-family: monospace;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* ---- Loading / Error ---- */
+.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 14px;
+}
+
+/* ---- Clickable info row ---- */
+.clickable_row {
+    cursor: pointer;
+    color: #ffffff;
+    transition: color 0.15s ease;
+}
+
+.clickable_row:hover {
+    color: #77FFC3;
+}
+
+.clickable_row svg {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+}

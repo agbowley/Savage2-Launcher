@@ -41,7 +41,7 @@
 .list {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     align-self: stretch;
 }
 

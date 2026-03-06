@@ -9,6 +9,8 @@ import LegacyS2Page from "./S2/Legacy";
 import Queue from "@app/routes/Queue";
 import NewsPage from "./NewsPage";
 import ChangelogPage from "./ChangelogPage";
+import ModPage from "./ModPage";
+import CustomModPage from "./CustomModPage";
 
 const Router = createBrowserRouter([
     {
@@ -58,6 +60,16 @@ const Router = createBrowserRouter([
             {
                 path: "/changelog/:channel",
                 element: <ChangelogPage />
+            },
+
+            {
+                path: "/mods/custom/:modId",
+                element: <CustomModPage />
+            },
+
+            {
+                path: "/mods/:modId",
+                element: <ModPage />
             }
         ]
     },

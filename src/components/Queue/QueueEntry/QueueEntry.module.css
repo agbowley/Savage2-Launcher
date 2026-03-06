@@ -101,6 +101,24 @@
     color: rgb(252, 211, 77);
 }
 
+.badge_mod {
+    display: inline-flex;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    line-height: normal;
+    background: rgba(168, 85, 247, 0.15);
+    color: #C084FC;
+}
+
+.badges {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
 .remove_button {
     display: flex;
     align-items: center;

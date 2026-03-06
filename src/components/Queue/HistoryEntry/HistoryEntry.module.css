@@ -82,6 +82,12 @@
     flex-shrink: 0;
 }
 
+.badges {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
 .badge {
     display: inline-flex;
     padding: 2px 8px;
@@ -120,6 +126,12 @@
     composes: badge;
     background: rgba(239, 68, 68, 0.15);
     color: #FC8181;
+}
+
+.badge_mod {
+    composes: badge;
+    background: rgba(168, 85, 247, 0.15);
+    color: #C084FC;
 }
 
 .timestamp {

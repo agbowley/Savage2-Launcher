@@ -8,6 +8,7 @@ interface Props {
     versionChannel?: string;
     version?: string;
     taskType?: "download" | "update" | "uninstall" | "repair";
+    isMod?: boolean;
     bannerMode: boolean;
     onRemove?: () => void;
 }
@@ -32,7 +33,7 @@ function getBadgeClass(styles: typeof stylesNormal, taskType?: string): string {
     }
 }
 
-const BaseQueue: React.FC<Props> = ({ icon, name, versionChannel, version, taskType, bannerMode, onRemove }: Props) => {
+const BaseQueue: React.FC<Props> = ({ icon, name, versionChannel, version, taskType, isMod, bannerMode, onRemove }: Props) => {
     // Choose the right style
     let styles = stylesNormal;
     if (bannerMode) {
@@ -48,10 +49,15 @@ const BaseQueue: React.FC<Props> = ({ icon, name, versionChannel, version, taskT
             </div>
         </div>
         <div className={styles.extra}>
-            {!bannerMode && taskType && (
-                <span className={`${styles.badge} ${getBadgeClass(styles, taskType)}`}>
-                    {getTaskTypeLabel(taskType)}
-                </span>
+            {!bannerMode && (taskType || isMod) && (
+                <div className={styles.badges}>
+                    {isMod && <span className={styles.badge_mod}>Mod</span>}
+                    {taskType && (
+                        <span className={`${styles.badge} ${getBadgeClass(styles, taskType)}`}>
+                            {getTaskTypeLabel(taskType)}
+                        </span>
+                    )}
+                </div>
             )}
             {onRemove && (
                 <button className={styles.remove_button} onClick={onRemove} title="Remove">

@@ -3,6 +3,7 @@
 
 mod utils;
 mod app_profile;
+mod mods;
 
 use app_profile::AppProfile;
 // use app_profile::official_setlist::OfficialSetlistProfile;
@@ -950,7 +951,30 @@ fn main() {
             cancel_task,
             set_tray_notifications_label,
             set_tray_play_enabled,
-            show_notification
+            show_notification,
+
+            // Mod management
+            mods::get_mods_dir,
+            mods::scan_game_mods,
+            mods::load_mod_manifest,
+            mods::save_mod_manifest,
+            mods::download_mod_file,
+            mods::extract_mod_package,
+            mods::enable_mod,
+            mods::disable_mod,
+            mods::reorder_mod,
+            mods::hash_file,
+            mods::detect_unknown_mods,
+            mods::get_game_folder_path,
+            mods::uninstall_mod,
+            mods::reveal_mod_folder,
+            mods::get_mod_folder_path,
+            mods::import_mod_files,
+            mods::restore_mod_filenames,
+            mods::delete_mod_files,
+            mods::enable_map,
+            mods::disable_map,
+            mods::uninstall_map,
         ])
         .setup(|app| {
             let window = app.get_window("main").unwrap();

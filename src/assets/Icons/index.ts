@@ -37,6 +37,8 @@ import DropdownIcon from "./Dropdown.svg?react";
 import PlayIcon from "./Play.svg?react";
 import ErrorIcon from "./Error.svg?react";
 import UpgradeIcon from "./Upgrade.svg?react";
+import PuzzleIcon from "./Puzzle.svg?react";
+import DownloadIcon from "./Queue.svg?react";
 
 export {
     AddIcon,
@@ -70,5 +72,7 @@ export {
     DropdownIcon,
     PlayIcon,
     ErrorIcon,
-    UpgradeIcon
+    UpgradeIcon,
+    PuzzleIcon,
+    DownloadIcon
 };

@@ -1,5 +1,5 @@
 import styles from "./HistoryEntry.module.css";
-import { HistoryEntry as HistoryEntryData, HistoryEntryType } from "@app/stores/DownloadHistoryStore";
+import { HistoryEntry as HistoryEntryData } from "@app/stores/DownloadHistoryStore";
 import StableS2Icon from "@app/assets/s2icon-stable.png";
 import NightlyS2Icon from "@app/assets/s2icon-nightly.png";
 import LegacyS2Icon from "@app/assets/s2icon-legacy.png";
@@ -17,6 +17,12 @@ const channelIcons: Record<string, string> = {
     "stable": StableS2Icon,
     "nightly": NightlyS2Icon,
     "legacy": LegacyS2Icon,
+};
+
+const channelNames: Record<string, string> = {
+    "stable": "Community Edition",
+    "nightly": "Beta Test Client",
+    "legacy": "Legacy Client",
 };
 
 function getBadgeClass(entry: HistoryEntryData): string {
@@ -89,6 +95,11 @@ function formatTimestamp(iso: string): string {
 const HistoryEntry: React.FC<Props> = ({ entry }: Props) => {
     const icon = channelIcons[entry.channel] || StableS2Icon;
     const hasRepairedFiles = entry.type === "repair" && entry.repairedFiles && entry.repairedFiles.length > 0;
+    const channelLabel = channelNames[entry.channel] ?? entry.channel;
+
+    const title = entry.modName
+        ? `${channelLabel} — ${entry.modName}`
+        : `${entry.game} — ${channelLabel}`;
 
     return (
         <div className={styles.item}>
@@ -98,7 +109,7 @@ const HistoryEntry: React.FC<Props> = ({ entry }: Props) => {
                 </div>
                 <div className={styles.info}>
                     <span className={styles.info_header}>
-                        {entry.game} — {entry.channel}
+                        {title}
                     </span>
                     <span className={styles.info_detail}>
                         {getDetail(entry)}
@@ -111,9 +122,14 @@ const HistoryEntry: React.FC<Props> = ({ entry }: Props) => {
                 </div>
             </div>
             <div className={styles.meta}>
-                <span className={getBadgeClass(entry)}>
-                    {getBadgeLabel(entry)}
-                </span>
+                <div className={styles.badges}>
+                    {entry.modName && (
+                        <span className={styles.badge_mod}>Mod</span>
+                    )}
+                    <span className={getBadgeClass(entry)}>
+                        {getBadgeLabel(entry)}
+                    </span>
+                </div>
                 <span className={styles.timestamp}>
                     {formatTimestamp(entry.timestamp)}
                 </span>

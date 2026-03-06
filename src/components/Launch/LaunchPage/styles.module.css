@@ -214,3 +214,43 @@ a.info_entry:hover {
     direction: rtl;
     text-align: left;
 }
+
+/* ---- Content area with tab bar ---- */
+.content_area {
+    display: flex;
+    flex-direction: column;
+    flex: 1 0 0;
+    align-self: stretch;
+    gap: 14px;
+}
+
+.tab_bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    align-self: stretch;
+}
+
+.tab_button {
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.45);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: inherit;
+}
+
+.tab_button:hover {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.tab_active {
+    color: #ffffff;
+    border-bottom-color: var(--accent);
+}

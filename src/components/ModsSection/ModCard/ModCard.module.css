@@ -1,0 +1,239 @@
+.card {
+    display: flex;
+    flex-direction: column;
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+    position: relative;
+    min-height: 240px;
+}
+
+.card:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+.thumbnail {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.15);
+    font-size: 2em;
+    flex-shrink: 0;
+}
+
+.thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+
+.body {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 12px;
+    gap: 6px;
+    flex: 1;
+}
+
+.name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.name_row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.author {
+    font-size: 11px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.downloads {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.downloads svg {
+    width: 12px;
+    height: 12px;
+}
+
+.tags {
+    display: flex;
+    gap: 4px;
+    flex-wrap: nowrap;
+    overflow: hidden;
+}
+
+.tag {
+    display: inline-flex;
+    padding: 1px 6px;
+    border-radius: 50px;
+    font-size: 9px;
+    font-weight: 600;
+    line-height: normal;
+    white-space: nowrap;
+}
+
+.pinned_badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--accent);
+    color: #000;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    z-index: 1;
+}
+
+.installed_indicator {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+}
+
+.installed_indicator svg {
+    width: 14px;
+    height: 14px;
+    color: #000;
+}
+
+.version {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+/* ---- Card quick actions ---- */
+.card_actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.card_action_btn {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.6);
+    transition: background 0.15s, color 0.15s;
+    font-family: inherit;
+    white-space: nowrap;
+}
+
+.card_action_btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+}
+
+.card_action_btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.card_install_btn {
+    background: rgba(70, 231, 79, 0.12);
+    color: #46E74F;
+    border-color: rgba(70, 231, 79, 0.2);
+}
+
+.card_install_btn:hover:not(:disabled) {
+    background: rgba(70, 231, 79, 0.22);
+}
+
+.card_uninstall_btn {
+    background: rgba(255, 50, 50, 0.15);
+    color: #ff6666;
+    border-color: rgba(255, 50, 50, 0.25);
+}
+
+.card_uninstall_btn:hover {
+    background: rgba(255, 50, 50, 0.25);
+    color: #ff8888;
+    border-color: rgba(255, 50, 50, 0.4);
+}
+
+.card_enabled_btn {
+    background: rgba(70, 231, 79, 0.12);
+    color: #46E74F;
+    border-color: rgba(70, 231, 79, 0.2);
+}
+
+.card_enabled_btn:hover {
+    background: rgba(70, 231, 79, 0.22);
+}
+
+.card_disabled_btn {
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.35);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.card_disabled_btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.card_folder_btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: var(--button_green);
+    color: var(--buttonText_green);
+    border-color: var(--button_green);
+}
+
+.card_folder_btn:hover {
+    opacity: 0.9;
+}
+
+.card_folder_btn svg {
+    width: 10px;
+    height: 10px;
+}

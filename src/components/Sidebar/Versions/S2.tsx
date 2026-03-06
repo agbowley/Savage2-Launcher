@@ -4,7 +4,7 @@ import BaseVersion from "./Base";
 import NightlyS2Icon from "@app/assets/s2icon-nightly.png";
 import StableS2Icon from "@app/assets/s2icon-stable.png";
 import LegacyS2Icon from "@app/assets/s2icon-legacy.png";
-import { NavLink } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useCurrentTask } from "@app/tasks";
 
 interface Props {
@@ -13,7 +13,7 @@ interface Props {
 
 const S2Version: React.FC<Props> = ({ channel }: Props) => {
     const { data: releaseData } = useS2Release(channel);
-    const { state, installedVersion, latestVersion, task } = useS2Version(releaseData, channel);
+    const { state, installedVersion, latestVersion, task, play, download } = useS2Version(releaseData, channel);
     const currentTask = useCurrentTask();
 
     function getChannelIcon() {
@@ -73,8 +73,45 @@ const S2Version: React.FC<Props> = ({ channel }: Props) => {
         }
     }
 
+    const location = useLocation();
+
+    /** Determine if this S2 channel should appear active in the sidebar. */
+    function isActiveRoute(): boolean {
+        const path = location.pathname.toLowerCase();
+        // Direct S2 route
+        if (path === `/s2/${channel}`) return true;
+        // Home page is the stable channel
+        if (path === "/" && channel === "stable") return true;
+        // Mod detail page for this channel
+        if (path.startsWith("/mods/")) {
+            const params = new URLSearchParams(location.search);
+            return (params.get("channel") ?? "stable") === channel;
+        }
+        // Changelog page for this channel
+        if (path === `/changelog/${channel}`) return true;
+        return false;
+    }
+
+    /** Handle double-click: trigger the default action (launch/install/update). */
+    function handleDoubleClick(e: React.MouseEvent) {
+        e.preventDefault();
+        switch (state) {
+            case S2States.AVAILABLE:
+            case S2States.PLAYING:
+                play();
+                break;
+            case S2States.NEW_UPDATE:
+            case S2States.UPDATE_AVAILABLE:
+                download();
+                break;
+            // Already busy — do nothing
+            default:
+                break;
+        }
+    }
+
     return (
-        <NavLink to={"/S2/" + channel}>
+        <Link to={"/S2/" + channel} aria-current={isActiveRoute() ? "page" : undefined} onDoubleClick={handleDoubleClick}>
             <BaseVersion
                 icon={<img src={getChannelIcon()} alt="Savage 2" />}
                 programName={getProgramName()}
@@ -82,7 +119,7 @@ const S2Version: React.FC<Props> = ({ channel }: Props) => {
                 version={installedVersion ?? latestVersion ?? undefined}
                 status={getStatus()}
             />
-        </NavLink>
+        </Link>
     );
 };
 

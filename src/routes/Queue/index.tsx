@@ -11,6 +11,7 @@ import { useCurrentTask, cancelTask } from "@app/tasks";
 import { useDownloadHistory } from "@app/stores/DownloadHistoryStore";
 import { intlFormatDistance } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import { ModDownloadTask } from "@app/tasks/Processors/Mod";
 
 function Queue() {
     const [lastWasEmpty, setLastWasEmpty] = useState(false);
@@ -47,6 +48,9 @@ function Queue() {
                             const profile = currentTask.profile;
                             if (tag === "Savage 2") {
                                 navigate(`/s2/${profile}`);
+                            } else if (tag === "mod") {
+                                const modTask = currentTask as ModDownloadTask;
+                                navigate(`/mods/${modTask.modSlug}`);
                             }
                         }}
                     >
@@ -92,7 +96,9 @@ function Queue() {
             {queue.size > 1 && (
                 <QueueSection icon={<QueueListIcon />} title="QUEUED ACTIONS">
                     {Array.from(queue).splice(1).map(downloader =>
-                        downloader.getQueueEntry(false, () => cancelTask(downloader))
+                        <div key={downloader.taskUUID}>
+                            {downloader.getQueueEntry(false, () => cancelTask(downloader))}
+                        </div>
                     )}
                 </QueueSection>
             )}

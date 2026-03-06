@@ -17,6 +17,8 @@ export interface HistoryEntry {
     previousVersion: string | null;
     /** For repairs: the list of files that were repaired */
     repairedFiles?: string[];
+    /** For mods: the name of the mod */
+    modName?: string;
     /** ISO timestamp */
     timestamp: string;
 }

@@ -3,7 +3,7 @@ import { IBaseTask, TaskTag } from "./Processors/base";
 import QueueStore from "./queue";
 import { showErrorDialog } from "@app/dialogs/dialogUtil";
 import { invoke } from "@tauri-apps/api/tauri";
-import { removePayload } from "./payload";
+import { createPayload, removePayload } from "./payload";
 
 const CANCELLED = "CANCELLED";
 
@@ -45,7 +45,9 @@ const processNextTask = async () => {
 
     try {
         next.startedAt = new Date();
+        createPayload(next);
         await next.start();
+        removePayload(next);
         next.onFinish?.();
     } catch (e) {
         const errorStr = e as string;

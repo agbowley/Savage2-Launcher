@@ -5,9 +5,12 @@ import { ChangelogIcon, DateIcon, DriveIcon, InformationIcon, LinkIcon, UpdateIc
 import TooltipWrapper from "../../TooltipWrapper";
 import { intlFormatDistance } from "date-fns";
 import NewsSection from "../../NewsSection";
+import ModsSection from "../../ModsSection";
 import { LaunchButton } from "../LaunchButton";
 import { ReleaseChannels } from "@app/hooks/useS2Release";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import { useBrowsePrefsStore } from "@app/stores/BrowsePrefsStore";
 
 const INITIAL_RELEASE_DATE = new Date("2023-03-09T05:00:00.000Z");
 
@@ -27,7 +30,18 @@ const LaunchPage: React.FC<Props> = ({ version, playName, description, websiteUr
         return <p>Error: No version.</p>;
     }
 
+    const location = useLocation();
+    const activeTab = useBrowsePrefsStore((s) => s.activeTab);
+    const setActiveTab = useBrowsePrefsStore((s) => s.setActiveTab);
     const CreatedDate = version.releaseDate ? new Date(version.releaseDate) : INITIAL_RELEASE_DATE;
+
+    // Allow location.state override (e.g. back from mod detail page)
+    useEffect(() => {
+        const stateTab = (location.state as { activeTab?: string } | null)?.activeTab;
+        if (stateTab === "mods" || stateTab === "news") {
+            setActiveTab(stateTab);
+        }
+    }, [location.state, setActiveTab]);
 
     return <>
         <div className={styles.header} style={{backgroundImage: `url("${banner}")`}}>
@@ -45,7 +59,23 @@ const LaunchPage: React.FC<Props> = ({ version, playName, description, websiteUr
             <div className={styles.actions}>{playName}</div>
         </div>
         <div className={styles.main}>
-            <NewsSection />
+            <div className={styles.content_area}>
+                <div className={styles.tab_bar}>
+                    <button
+                        className={`${styles.tab_button} ${activeTab === "news" ? styles.tab_active : ""}`}
+                        onClick={() => setActiveTab("news")}
+                    >
+                        News
+                    </button>
+                    <button
+                        className={`${styles.tab_button} ${activeTab === "mods" ? styles.tab_active : ""}`}
+                        onClick={() => setActiveTab("mods")}
+                    >
+                        Mods
+                    </button>
+                </div>
+                {activeTab === "news" ? <NewsSection /> : <ModsSection channel={channel} />}
+            </div>
             <div className={styles.sidebar}>
                 <LaunchButton style={{ width: "100%" }} version={version} playName={""} />
                 <GenericBox style={{ background: "#ffffff33", borderRadius: 15 }}>

@@ -1,7 +1,6 @@
 import Button, { ButtonColor } from "@app/components/Button";
 import { BaseDialog } from "./BaseDialog";
 import { open } from "@tauri-apps/api/dialog";
-import baseStyles from "./BaseDialog.module.css";
 import styles from "./InstallFolderDialog.module.css";
 import { DriveIcon, WarningIcon } from "@app/assets/Icons";
 import { invoke } from "@tauri-apps/api";
