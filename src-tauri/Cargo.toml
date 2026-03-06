@@ -10,13 +10,13 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-tauri-build = { version = "1.5.0", features = [] }
+tauri-build = { version = "1.5", features = [] }
 
 [dependencies]
 log = "^0.4"
 tauri-plugin-log = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
 tauri-plugin-single-instance = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
-tauri = { version = "1.5.2", features = [ "process-relaunch", "http-all",
+tauri = { version = "1.8", features = [ "process-relaunch", "http-all",
     "notification",
     "os-all",
     "dialog-all",
