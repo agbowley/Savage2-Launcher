@@ -120,7 +120,9 @@ jobs:
       - name: Pin webkit2gtk for wry 0.24 compatibility
         if: runner.os == 'Linux'
         working-directory: src-tauri
-        run: cargo update -p webkit2gtk --precise 0.18.0
+        run: |
+          cargo update
+          cargo update -p webkit2gtk --precise 0.18.0
 
       - name: Install npm dependencies
         run: npm ci
