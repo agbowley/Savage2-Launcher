@@ -3,7 +3,7 @@ use minisign::{PublicKeyBox, SignatureBox};
 use regex::Regex;
 use sha2::{Sha256, Digest};
 use tauri::Manager;
-use std::{fs::{self, remove_file, File}, io::Read, path::{Path, PathBuf}, process::Command};
+use std::{collections::HashMap, fs::{self, remove_file, File}, io::Read, path::{Path, PathBuf}, process::Command};
 
 use crate::utils::*;
 use crate::utils::CancelToken;
@@ -1340,7 +1340,7 @@ impl AppProfile for S2AppProfile {
         self.find_game_folder().join("manifest.json").exists()
     }
 
-    fn launch(&self) -> Result<(), String> {
+    fn launch(&self, profile: String, on_exit: Box<dyn FnOnce() + Send>) -> Result<(), String> {
         let game_path = self.get_exec()?;
         let game_folder = self.find_game_folder();
 
@@ -1351,10 +1351,10 @@ impl AppProfile for S2AppProfile {
         // autoexec.cfg in the game/game/ subfolder so it takes effect last.
         let autoexec_dir = game_folder.join("game");
         std::fs::create_dir_all(&autoexec_dir)
-            .map_err(|e| format!("Failed to create game/ directory: {:?}", e))?;
+            .map_err(|e| format!("Failed to create game/ directory: {}", e))?;
         let autoexec_path = autoexec_dir.join("autoexec.cfg");
         std::fs::write(&autoexec_path, LAUNCHER_AUTOEXEC)
-            .map_err(|e| format!("Failed to write autoexec.cfg: {:?}", e))?;
+            .map_err(|e| format!("Failed to write autoexec.cfg: {}", e))?;
 
         self.log_message(&format!("Launching game from: {}", game_path.display()));
 
@@ -1364,10 +1364,19 @@ impl AppProfile for S2AppProfile {
 
         match result {
             Ok(mut child) => {
-                // Reap the child process in a background thread so it doesn't
-                // become a zombie on Linux after it exits.
+                // Store the PID so stop_game can kill the process.
+                let pid = child.id();
+                {
+                    let mut guard = crate::GAME_PROCESSES.lock().unwrap();
+                    let map = guard.get_or_insert_with(HashMap::new);
+                    map.insert(profile, crate::GameProcess::Child(pid));
+                }
+
+                // Wait for the child process in a background thread, then
+                // notify the frontend that the game has exited.
                 std::thread::spawn(move || {
                     let _ = child.wait();
+                    on_exit();
                 });
                 Ok(())
             }
@@ -1411,9 +1420,13 @@ impl AppProfile for S2AppProfile {
                 #[link(name = "kernel32")]
                 extern "system" {
                     fn GetLastError() -> u32;
+                    fn WaitForSingleObject(hHandle: isize, dwMilliseconds: u32) -> u32;
+                    fn CloseHandle(hObject: isize) -> i32;
                 }
 
                 const SW_SHOWNORMAL: i32 = 1;
+                const SEE_MASK_NOCLOSEPROCESS: u32 = 0x00000040;
+                const INFINITE: u32 = 0xFFFFFFFF;
 
                 fn to_wide(s: &str) -> Vec<u16> {
                     OsStr::new(s).encode_wide().chain(Some(0)).collect()
@@ -1426,6 +1439,7 @@ impl AppProfile for S2AppProfile {
                 unsafe {
                     let mut sei: SHELLEXECUTEINFOW = mem::zeroed();
                     sei.cbSize = mem::size_of::<SHELLEXECUTEINFOW>() as u32;
+                    sei.fMask = SEE_MASK_NOCLOSEPROCESS;
                     sei.lpVerb = verb.as_ptr();
                     sei.lpFile = file.as_ptr();
                     sei.lpDirectory = dir.as_ptr();
@@ -1438,11 +1452,24 @@ impl AppProfile for S2AppProfile {
                             err
                         ));
                     }
+
+                    // Wait for the elevated process to exit in a background thread.
+                    let h_process = sei.hProcess;
+                    {
+                        let mut guard = crate::GAME_PROCESSES.lock().unwrap();
+                        let map = guard.get_or_insert_with(HashMap::new);
+                        map.insert(profile, crate::GameProcess::Elevated(h_process as usize));
+                    }
+                    std::thread::spawn(move || {
+                        WaitForSingleObject(h_process, INFINITE);
+                        CloseHandle(h_process);
+                        on_exit();
+                    });
                 }
 
                 Ok(())
             }
-            Err(e) => Err(format!("Failed to launch game: {:?}", e)),
+            Err(e) => Err(format!("Failed to launch game: {}", e)),
         }
     }
 

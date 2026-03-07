@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { checkUpdate, installUpdate } from "@tauri-apps/api/updater";
 import { relaunch } from "@tauri-apps/api/process";
+import { invoke } from "@tauri-apps/api/tauri";
 
 /** How often to poll for launcher updates (ms). */
 const CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
@@ -58,6 +59,9 @@ export function useLauncherUpdater(): LauncherUpdateState {
                 // Simulate download + install delay, then restart
                 await new Promise(r => setTimeout(r, 2000));
             } else {
+                // Tell the backend to allow the window to close so the
+                // MSI installer's Restart Manager can replace the binary.
+                await invoke("set_updating_launcher");
                 await installUpdate();
             }
             await relaunch();

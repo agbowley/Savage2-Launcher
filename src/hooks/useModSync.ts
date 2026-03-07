@@ -63,6 +63,8 @@ export function useModSync(profile: string) {
                                 filename: file.filename,
                                 hash: file.hash,
                                 type: "s2z",
+                                enabled: true,
+                                size: file.size,
                             }],
                             isCustom: true,
                             isMap: false,

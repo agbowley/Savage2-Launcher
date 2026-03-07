@@ -25,12 +25,20 @@ use crate::InnerState;
 //  Types (serialised to/from frontend via JSON)
 // ============================================================
 
+fn default_true() -> bool { true }
+
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct InstalledModFile {
     pub filename: String,
     pub hash: String,
     #[serde(rename = "type")]
-    pub file_type: String, // "s2z" | "xml"
+    pub file_type: String, // "s2z" | "xml" | "other"
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    #[serde(default)]
+    pub size: u64,
+    #[serde(default)]
+    pub modified: bool,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -76,6 +84,7 @@ pub struct ScannedModFile {
 pub struct ExtractedFile {
     pub filename: String,
     pub file_type: String, // "s2z" | "xml" | "other"
+    pub size: u64,
 }
 
 #[derive(Clone, Debug, serde::Serialize)]
@@ -92,12 +101,12 @@ pub struct UnknownModFile {
 /// Compute SHA-256 hex digest of a file.
 fn sha256_file(path: &Path) -> Result<String, String> {
     let mut file = File::open(path)
-        .map_err(|e| format!("Failed to open file for hashing: {}\n{:?}", path.display(), e))?;
+        .map_err(|e| format!("Failed to open file for hashing: {}\n{}", path.display(), e))?;
     let mut hasher = Sha256::new();
     let mut buffer = [0u8; 8192];
     loop {
         let n = file.read(&mut buffer)
-            .map_err(|e| format!("Failed to read file for hashing: {}\n{:?}", path.display(), e))?;
+            .map_err(|e| format!("Failed to read file for hashing: {}\n{}", path.display(), e))?;
         if n == 0 { break; }
         hasher.update(&buffer[..n]);
     }
@@ -162,7 +171,7 @@ fn load_manifest_from_disk(mods_dir: &Path) -> ModManifest {
 fn save_manifest_to_disk(mods_dir: &Path, manifest: &ModManifest) -> Result<(), String> {
     let manifest_path = mods_dir.join("mods.json");
     let json = serde_json::to_string_pretty(manifest)
-        .map_err(|e| format!("Failed to serialise mods manifest.\n{:?}", e))?;
+        .map_err(|e| format!("Failed to serialise mods manifest.\n{}", e))?;
     fs::write(&manifest_path, json)
         .map_err(|e| enrich_io_error("Failed to write mods manifest.", &e))?;
     Ok(())
@@ -178,7 +187,7 @@ pub fn get_mods_dir(
     state: tauri::State<crate::State>,
     profile: String,
 ) -> Result<String, String> {
-    let inner = state.0.read().map_err(|e| format!("Lock error: {:?}", e))?;
+    let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
     let dir = get_mods_dir_path(&inner, &profile)?;
     Ok(dir.to_string_lossy().to_string())
 }
@@ -190,7 +199,7 @@ pub fn scan_game_mods(
     state: tauri::State<crate::State>,
     profile: String,
 ) -> Result<Vec<ScannedModFile>, String> {
-    let inner = state.0.read().map_err(|e| format!("Lock error: {:?}", e))?;
+    let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
     let game_folder = get_game_folder(&inner, &profile);
 
     if !game_folder.exists() {
@@ -199,7 +208,7 @@ pub fn scan_game_mods(
 
     let mut results = Vec::new();
     let entries = fs::read_dir(&game_folder)
-        .map_err(|e| format!("Failed to read game folder: {:?}", e))?;
+        .map_err(|e| format!("Failed to read game folder: {}", e))?;
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -215,7 +224,7 @@ pub fn scan_game_mods(
 
         if is_resources_file(&name) {
             let metadata = fs::metadata(&path)
-                .map_err(|e| format!("Failed to read metadata for {}: {:?}", name, e))?;
+                .map_err(|e| format!("Failed to read metadata for {}: {}", name, e))?;
             let hash = sha256_file(&path)?;
             results.push(ScannedModFile {
                 filename: name,
@@ -234,7 +243,7 @@ pub fn load_mod_manifest(
     state: tauri::State<crate::State>,
     profile: String,
 ) -> Result<ModManifest, String> {
-    let inner = state.0.read().map_err(|e| format!("Lock error: {:?}", e))?;
+    let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
     let mods_dir = get_mods_dir_path(&inner, &profile)?;
     Ok(load_manifest_from_disk(&mods_dir))
 }
@@ -246,7 +255,7 @@ pub fn save_mod_manifest(
     profile: String,
     manifest: ModManifest,
 ) -> Result<(), String> {
-    let inner = state.0.read().map_err(|e| format!("Lock error: {:?}", e))?;
+    let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
     let mods_dir = get_mods_dir_path(&inner, &profile)?;
     save_manifest_to_disk(&mods_dir, &manifest)
 }
@@ -263,7 +272,7 @@ pub async fn download_mod_file(
     filename: String,
 ) -> Result<String, String> {
     let (mods_dir, cancel_token) = {
-        let inner = state.0.read().map_err(|e| format!("Lock error: {:?}", e))?;
+        let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
         inner.cancel_token.reset();
         let dir = get_mods_dir_path(&inner, &profile)?;
         (dir, inner.cancel_token.clone())
@@ -296,7 +305,7 @@ pub fn extract_mod_package(
     archive_filename: String,
 ) -> Result<Vec<ExtractedFile>, String> {
     let mods_dir = {
-        let inner = state.0.read().map_err(|e| format!("Lock error: {:?}", e))?;
+        let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
         get_mods_dir_path(&inner, &profile)?
     };
 
@@ -311,17 +320,21 @@ pub fn extract_mod_package(
     let lower_name = archive_filename.to_lowercase();
     if lower_name.ends_with(".s2z") {
         // Already an s2z file, no extraction needed
+        let file_size = fs::metadata(&archive_path).map(|m| m.len()).unwrap_or(0);
         return Ok(vec![ExtractedFile {
             filename: archive_filename,
             file_type: "s2z".to_string(),
+            size: file_size,
         }]);
     }
 
     if !lower_name.ends_with(".zip") {
         // Not a zip — treat as an opaque file
+        let file_size = fs::metadata(&archive_path).map(|m| m.len()).unwrap_or(0);
         return Ok(vec![ExtractedFile {
             filename: archive_filename,
             file_type: "other".to_string(),
+            size: file_size,
         }]);
     }
 
@@ -331,9 +344,9 @@ pub fn extract_mod_package(
         .map_err(|e| enrich_io_error("Failed to create extraction directory.", &e))?;
 
     let file = File::open(&archive_path)
-        .map_err(|e| format!("Failed to open archive: {:?}", e))?;
+        .map_err(|e| format!("Failed to open archive: {}", e))?;
     zip_extract::extract(file, &extract_dir, true)
-        .map_err(|e| format!("Failed to extract archive: {:?}", e))?;
+        .map_err(|e| format!("Failed to extract archive: {}", e))?;
 
     // Recursively find all .s2z and .xml files
     let mut results = Vec::new();
@@ -350,7 +363,7 @@ pub fn extract_mod_package(
         let dest = mod_dir.join(&dest_name);
         if src != dest {
             fs::copy(&src, &dest)
-                .map_err(|e| format!("Failed to copy {} to mod dir: {:?}", item.filename, e))?;
+                .map_err(|e| format!("Failed to copy {} to mod dir: {}", item.filename, e))?;
         }
     }
 
@@ -368,6 +381,7 @@ pub fn extract_mod_package(
         ExtractedFile {
             filename: base,
             file_type: f.file_type.clone(),
+            size: f.size,
         }
     }).collect();
 
@@ -377,7 +391,7 @@ pub fn extract_mod_package(
 /// Recursively collect all files from a directory.
 fn collect_mod_files(base: &Path, dir: &Path, results: &mut Vec<ExtractedFile>) -> Result<(), String> {
     let entries = fs::read_dir(dir)
-        .map_err(|e| format!("Failed to read directory {}: {:?}", dir.display(), e))?;
+        .map_err(|e| format!("Failed to read directory {}: {}", dir.display(), e))?;
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -398,9 +412,14 @@ fn collect_mod_files(base: &Path, dir: &Path, results: &mut Vec<ExtractedFile>) 
                 .to_string_lossy()
                 .to_string();
 
+            let file_size = fs::metadata(&path)
+                .map(|m| m.len())
+                .unwrap_or(0);
+
             results.push(ExtractedFile {
                 filename: rel_path,
                 file_type: file_type.to_string(),
+                size: file_size,
             });
         }
     }
@@ -412,14 +431,17 @@ fn collect_mod_files(base: &Path, dir: &Path, results: &mut Vec<ExtractedFile>) 
 /// .s2z files are renamed with a load-order prefix (e.g. resources3-Foo.s2z).
 /// Non-.s2z files (e.g. .xml) are copied with their original filename.
 /// Returns a list of non-.s2z filenames that conflicted (were overwritten).
+///
+/// When `filenames` is provided, only those files are copied (for per-file control).
 #[tauri::command]
 pub fn enable_mod(
     state: tauri::State<crate::State>,
     profile: String,
     mod_id: String,
     load_order: u32,
+    filenames: Option<Vec<String>>,
 ) -> Result<Vec<String>, String> {
-    let inner = state.0.read().map_err(|e| format!("Lock error: {:?}", e))?;
+    let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
     let mods_dir = get_mods_dir_path(&inner, &profile)?;
     let game_folder = get_game_folder(&inner, &profile);
     let mod_dir = mods_dir.join(&mod_id);
@@ -431,11 +453,17 @@ pub fn enable_mod(
     fs::create_dir_all(&game_folder)
         .map_err(|e| enrich_io_error("Failed to create game folder.", &e))?;
 
+    // Build a lowercase filter set if filenames were provided
+    let filter: Option<std::collections::HashSet<String>> = filenames.map(|fns| {
+        fns.iter().map(|f| f.to_lowercase()).collect()
+    });
+
     // Scan the mod staging directory for .s2z and .xml files
     let entries = fs::read_dir(&mod_dir)
-        .map_err(|e| format!("Failed to read mod directory: {:?}", e))?;
+        .map_err(|e| format!("Failed to read mod directory: {}", e))?;
 
     let mut conflicts: Vec<String> = Vec::new();
+    let mut copied: Vec<PathBuf> = Vec::new(); // track for rollback
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -451,26 +479,40 @@ pub fn enable_mod(
             continue;
         }
 
+        // Skip files not in the filter set (if a filter was provided)
+        if let Some(ref allowed) = filter {
+            if !allowed.contains(&lower) {
+                continue;
+            }
+        }
+
         if lower.ends_with(".s2z") {
             // .s2z files get load-order prefix
             let dest_name = make_ordered_filename(&filename, load_order);
             let dest = game_folder.join(&dest_name);
-            fs::copy(&path, &dest)
-                .map_err(|e| enrich_io_error(
+            if let Err(e) = fs::copy(&path, &dest) {
+                // Rollback: remove all files we already copied
+                for p in &copied { let _ = fs::remove_file(p); }
+                return Err(enrich_io_error(
                     &format!("Failed to copy mod file '{}' to game folder.", filename),
                     &e,
-                ))?;
+                ));
+            }
+            copied.push(dest);
         } else {
             // Non-.s2z files keep original name, check for conflicts
             let dest = game_folder.join(&filename);
             if dest.exists() {
                 conflicts.push(filename.clone());
             }
-            fs::copy(&path, &dest)
-                .map_err(|e| enrich_io_error(
+            if let Err(e) = fs::copy(&path, &dest) {
+                for p in &copied { let _ = fs::remove_file(p); }
+                return Err(enrich_io_error(
                     &format!("Failed to copy mod file '{}' to game folder.", filename),
                     &e,
-                ))?;
+                ));
+            }
+            copied.push(dest);
         }
     }
 
@@ -485,7 +527,7 @@ pub fn disable_mod(
     profile: String,
     mod_id: String,
 ) -> Result<(), String> {
-    let inner = state.0.read().map_err(|e| format!("Lock error: {:?}", e))?;
+    let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
     let mods_dir = get_mods_dir_path(&inner, &profile)?;
     let game_folder = get_game_folder(&inner, &profile);
     let mod_dir = mods_dir.join(&mod_id);
@@ -537,7 +579,8 @@ pub fn disable_mod(
         }
     }
 
-    // Remove any files in /game/ that match this mod's files
+    // First pass: collect all game-folder files that belong to this mod
+    let mut to_remove: Vec<PathBuf> = Vec::new();
     if let Ok(entries) = fs::read_dir(&game_folder) {
         for entry in entries.flatten() {
             let path = entry.path();
@@ -552,7 +595,7 @@ pub fn disable_mod(
 
             // Check exact match for non-.s2z files (e.g. .xml)
             if mod_exact_names.iter().any(|n| *n == lower_name) {
-                let _ = fs::remove_file(&path);
+                to_remove.push(path);
                 continue;
             }
 
@@ -567,8 +610,143 @@ pub fn disable_mod(
             let base_from_prefix = strip_order_prefix(&stem);
 
             if mod_basenames.iter().any(|b| *b == base_from_suffix || *b == base_from_prefix) {
-                let _ = fs::remove_file(&path);
+                to_remove.push(path);
             }
+        }
+    }
+
+    // Second pass: remove files, tracking what was removed for rollback
+    let mut removed: Vec<(PathBuf, Vec<u8>)> = Vec::new(); // (path, contents)
+    for path in &to_remove {
+        // Read file contents before removing so we can restore on failure
+        let contents = fs::read(path).unwrap_or_default();
+        if let Err(e) = fs::remove_file(path) {
+            // Rollback: restore all previously removed files
+            for (restored_path, restored_contents) in &removed {
+                let _ = fs::write(restored_path, restored_contents);
+            }
+            let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("?");
+            return Err(format!(
+                "Cannot remove '{}': the file is locked by another process.\n\
+                 Close the game and try again.\n{}",
+                name, e
+            ));
+        }
+        removed.push((path.clone(), contents));
+    }
+
+    Ok(())
+}
+
+/// Enable a single file within a mod: copy it from the staging directory into /game/.
+/// .s2z files are renamed with a load-order prefix.
+#[tauri::command]
+pub fn enable_mod_file(
+    state: tauri::State<crate::State>,
+    profile: String,
+    mod_id: String,
+    filename: String,
+    load_order: u32,
+) -> Result<Vec<String>, String> {
+    let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
+    let mods_dir = get_mods_dir_path(&inner, &profile)?;
+    let game_folder = get_game_folder(&inner, &profile);
+    let mod_dir = mods_dir.join(&mod_id);
+
+    let src = mod_dir.join(&filename);
+    if !src.exists() {
+        return Err(format!("File not found in staging: {}", filename));
+    }
+
+    fs::create_dir_all(&game_folder)
+        .map_err(|e| enrich_io_error("Failed to create game folder.", &e))?;
+
+    let lower = filename.to_lowercase();
+    let mut conflicts: Vec<String> = Vec::new();
+
+    if lower.ends_with(".s2z") {
+        let dest_name = make_ordered_filename(&filename, load_order);
+        let dest = game_folder.join(&dest_name);
+        fs::copy(&src, &dest)
+            .map_err(|e| enrich_io_error(
+                &format!("Failed to copy mod file '{}' to game folder.", filename),
+                &e,
+            ))?;
+    } else {
+        let dest = game_folder.join(&filename);
+        if dest.exists() {
+            conflicts.push(filename.clone());
+        }
+        fs::copy(&src, &dest)
+            .map_err(|e| enrich_io_error(
+                &format!("Failed to copy mod file '{}' to game folder.", filename),
+                &e,
+            ))?;
+    }
+
+    Ok(conflicts)
+}
+
+/// Disable a single file within a mod: remove it from the /game/ folder.
+#[tauri::command]
+pub fn disable_mod_file(
+    state: tauri::State<crate::State>,
+    profile: String,
+    _mod_id: String,
+    filename: String,
+) -> Result<(), String> {
+    let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
+    let game_folder = get_game_folder(&inner, &profile);
+
+    if !game_folder.exists() {
+        return Ok(());
+    }
+
+    let lower = filename.to_lowercase();
+
+    if lower.ends_with(".s2z") {
+        // Need to find the file in /game/ — it has a load-order prefix/suffix
+        let stem = Path::new(&filename)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+
+        if let Ok(entries) = fs::read_dir(&game_folder) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if !path.is_file() { continue; }
+                let name = match path.file_name().and_then(|n| n.to_str()) {
+                    Some(n) => n.to_string(),
+                    None => continue,
+                };
+                let game_stem = Path::new(&name)
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("")
+                    .to_lowercase();
+
+                let base_suffix = strip_order_suffix(&game_stem);
+                let base_prefix = strip_order_prefix(&game_stem);
+
+                if base_suffix == stem || base_prefix == stem {
+                    fs::remove_file(&path).map_err(|e| format!(
+                        "Cannot remove '{}': the file is locked by another process.\n\
+                         Close the game and try again.\n{}",
+                        name, e
+                    ))?;
+                }
+            }
+        }
+    } else {
+        // Exact-match removal for non-.s2z files
+        let dest = game_folder.join(&filename);
+        if dest.exists() {
+            fs::remove_file(&dest).map_err(|e| format!(
+                "Cannot remove '{}': the file is locked by another process.\n\
+                 Close the game and try again.\n{}",
+                filename, e
+            ))?;
         }
     }
 
@@ -584,7 +762,7 @@ pub fn reorder_mod(
     old_load_order: u32,
     new_load_order: u32,
 ) -> Result<(), String> {
-    let inner = state.0.read().map_err(|e| format!("Lock error: {:?}", e))?;
+    let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
     let mods_dir = get_mods_dir_path(&inner, &profile)?;
     let game_folder = get_game_folder(&inner, &profile);
     let mod_dir = mods_dir.join(&mod_id);
@@ -611,6 +789,8 @@ pub fn reorder_mod(
         }
     }
 
+    let mut renamed: Vec<(PathBuf, PathBuf)> = Vec::new(); // (new_path, original_path) for rollback
+
     for filename in &mod_files {
         let new_name = make_ordered_filename(filename, new_load_order);
         let new_path = game_folder.join(&new_name);
@@ -619,17 +799,30 @@ pub fn reorder_mod(
         let old_name = make_ordered_filename(filename, old_load_order);
         let old_path = game_folder.join(&old_name);
 
-        if old_path.exists() {
-            fs::rename(&old_path, &new_path)
-                .map_err(|e| format!("Failed to rename {} → {}: {:?}", old_name, new_name, e))?;
+        let (source, source_name) = if old_path.exists() {
+            (old_path, old_name)
         } else {
             let legacy_name = make_ordered_filename_legacy(filename, old_load_order);
             let legacy_path = game_folder.join(&legacy_name);
             if legacy_path.exists() {
-                fs::rename(&legacy_path, &new_path)
-                    .map_err(|e| format!("Failed to rename {} → {}: {:?}", legacy_name, new_name, e))?;
+                (legacy_path, legacy_name)
+            } else {
+                continue; // file not found in game folder, skip
             }
+        };
+
+        if let Err(e) = fs::rename(&source, &new_path) {
+            // Rollback: reverse all previous renames
+            for (rn_new, rn_old) in renamed.iter().rev() {
+                let _ = fs::rename(rn_new, rn_old);
+            }
+            return Err(format!(
+                "Cannot rename '{}': the file is locked by another process.\n\
+                 Close the game and try again.\n{}",
+                source_name, e
+            ));
         }
+        renamed.push((new_path, source));
     }
 
     Ok(())
@@ -647,7 +840,7 @@ pub fn detect_unknown_mods(
     state: tauri::State<crate::State>,
     profile: String,
 ) -> Result<Vec<UnknownModFile>, String> {
-    let inner = state.0.read().map_err(|e| format!("Lock error: {:?}", e))?;
+    let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
     let mods_dir = get_mods_dir_path(&inner, &profile)?;
     let game_folder = get_game_folder(&inner, &profile);
 
@@ -677,7 +870,7 @@ pub fn detect_unknown_mods(
 
     let mut unknown = Vec::new();
     let entries = fs::read_dir(&game_folder)
-        .map_err(|e| format!("Failed to read game folder: {:?}", e))?;
+        .map_err(|e| format!("Failed to read game folder: {}", e))?;
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -704,7 +897,7 @@ pub fn detect_unknown_mods(
 
             if !known_basenames.contains(&base_from_suffix) && !known_basenames.contains(&base_from_prefix) {
                 let metadata = fs::metadata(&path)
-                    .map_err(|e| format!("Failed to get metadata for {}: {:?}", name, e))?;
+                    .map_err(|e| format!("Failed to get metadata for {}: {}", name, e))?;
                 let hash = sha256_file(&path)?;
                 unknown.push(UnknownModFile {
                     filename: name,
@@ -724,7 +917,7 @@ pub fn get_game_folder_path(
     state: tauri::State<crate::State>,
     profile: String,
 ) -> Result<String, String> {
-    let inner = state.0.read().map_err(|e| format!("Lock error: {:?}", e))?;
+    let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
     let folder = get_game_folder(&inner, &profile);
     Ok(folder.to_string_lossy().to_string())
 }
@@ -740,7 +933,7 @@ pub fn uninstall_mod(
     disable_mod(state.clone(), profile.clone(), mod_id.clone())?;
 
     // Then remove the staging directory
-    let inner = state.0.read().map_err(|e| format!("Lock error: {:?}", e))?;
+    let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
     let mods_dir = get_mods_dir_path(&inner, &profile)?;
     let mod_dir = mods_dir.join(&mod_id);
     if mod_dir.exists() {
@@ -757,7 +950,7 @@ pub fn reveal_mod_folder(
     profile: String,
     mod_id: Option<String>,
 ) -> Result<(), String> {
-    let inner = state.0.read().map_err(|e| format!("Lock error: {:?}", e))?;
+    let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
     let mods_dir = get_mods_dir_path(&inner, &profile)?;
     let folder = match mod_id {
         Some(id) => mods_dir.join(id),
@@ -768,7 +961,7 @@ pub fn reveal_mod_folder(
     }
     if let Err(_e) = opener::reveal(&folder) {
         opener::open(&folder)
-            .map_err(|e| format!("Failed to open folder.\n{:?}", e))?;
+            .map_err(|e| format!("Failed to open folder.\n{}", e))?;
     }
     Ok(())
 }
@@ -780,7 +973,7 @@ pub fn get_mod_folder_path(
     profile: String,
     mod_id: String,
 ) -> Result<String, String> {
-    let inner = state.0.read().map_err(|e| format!("Lock error: {:?}", e))?;
+    let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
     let mods_dir = get_mods_dir_path(&inner, &profile)?;
     let mod_dir = mods_dir.join(&mod_id);
     Ok(mod_dir.to_string_lossy().to_string())
@@ -796,7 +989,7 @@ pub fn import_mod_files(
     mod_id: String,
     filenames: Vec<String>,
 ) -> Result<Vec<InstalledModFile>, String> {
-    let inner = state.0.read().map_err(|e| format!("Lock error: {:?}", e))?;
+    let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
     let game_folder = get_game_folder(&inner, &profile);
     let mods_dir = get_mods_dir_path(&inner, &profile)?;
     let mod_dir = mods_dir.join(&mod_id);
@@ -815,9 +1008,15 @@ pub fn import_mod_files(
             .map_err(|e| enrich_io_error(&format!("Failed to copy {} to staging.", filename), &e))?;
 
         // Remove the original from /game/ so enable_mod doesn't create a duplicate
-        let _ = fs::remove_file(&src);
+        fs::remove_file(&src).map_err(|e| format!(
+            "Cannot remove '{}' from game folder: the file is locked by another process.\n\
+             Close the game and try again.\n{}",
+            filename, e
+        ))?;
 
         let hash = sha256_file(&dest)?;
+        let metadata = fs::metadata(&dest)
+            .map_err(|e| format!("Failed to read metadata for {}: {}", filename, e))?;
         let ext = Path::new(filename)
             .extension()
             .and_then(|e| e.to_str())
@@ -827,6 +1026,9 @@ pub fn import_mod_files(
             filename: filename.clone(),
             hash,
             file_type: ext,
+            enabled: true,
+            size: metadata.len(),
+            modified: false,
         });
     }
 
@@ -842,7 +1044,7 @@ pub fn restore_mod_filenames(
     mod_id: String,
     load_order: u32,
 ) -> Result<(), String> {
-    let inner = state.0.read().map_err(|e| format!("Lock error: {:?}", e))?;
+    let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
     let mods_dir = get_mods_dir_path(&inner, &profile)?;
     let game_folder = get_game_folder(&inner, &profile);
     let mod_dir = mods_dir.join(&mod_id);
@@ -869,6 +1071,8 @@ pub fn restore_mod_filenames(
     }
 
     // Rename each ordered file in /game/ back to the original staging name
+    let mut renamed: Vec<(PathBuf, PathBuf)> = Vec::new(); // (new_path, original_path) for rollback
+
     for filename in &s2z_files {
         let original_dest = game_folder.join(filename);
 
@@ -876,7 +1080,17 @@ pub fn restore_mod_filenames(
         let ordered_name = make_ordered_filename(filename, load_order);
         let ordered_path = game_folder.join(&ordered_name);
         if ordered_path.exists() {
-            let _ = fs::rename(&ordered_path, &original_dest);
+            if let Err(e) = fs::rename(&ordered_path, &original_dest) {
+                for (rn_new, rn_old) in renamed.iter().rev() {
+                    let _ = fs::rename(rn_new, rn_old);
+                }
+                return Err(format!(
+                    "Cannot rename '{}': the file is locked by another process.\n\
+                     Close the game and try again.\n{}",
+                    ordered_name, e
+                ));
+            }
+            renamed.push((original_dest, ordered_path));
             continue;
         }
 
@@ -884,7 +1098,17 @@ pub fn restore_mod_filenames(
         let legacy_name = make_ordered_filename_legacy(filename, load_order);
         let legacy_path = game_folder.join(&legacy_name);
         if legacy_path.exists() {
-            let _ = fs::rename(&legacy_path, &original_dest);
+            if let Err(e) = fs::rename(&legacy_path, &original_dest) {
+                for (rn_new, rn_old) in renamed.iter().rev() {
+                    let _ = fs::rename(rn_new, rn_old);
+                }
+                return Err(format!(
+                    "Cannot rename '{}': the file is locked by another process.\n\
+                     Close the game and try again.\n{}",
+                    legacy_name, e
+                ));
+            }
+            renamed.push((original_dest, legacy_path));
         }
     }
 
@@ -899,7 +1123,7 @@ pub fn delete_mod_files(
     profile: String,
     mod_id: String,
 ) -> Result<(), String> {
-    let inner = state.0.read().map_err(|e| format!("Lock error: {:?}", e))?;
+    let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
     let mods_dir = get_mods_dir_path(&inner, &profile)?;
     let mod_dir = mods_dir.join(&mod_id);
     if mod_dir.exists() {
@@ -917,7 +1141,7 @@ pub fn enable_map(
     profile: String,
     mod_id: String,
 ) -> Result<(), String> {
-    let inner = state.0.read().map_err(|e| format!("Lock error: {:?}", e))?;
+    let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
     let mods_dir = get_mods_dir_path(&inner, &profile)?;
     let maps_folder = get_maps_folder(&inner, &profile);
     let mod_dir = mods_dir.join(&mod_id);
@@ -930,7 +1154,9 @@ pub fn enable_map(
         .map_err(|e| enrich_io_error("Failed to create maps folder.", &e))?;
 
     let entries = fs::read_dir(&mod_dir)
-        .map_err(|e| format!("Failed to read map directory: {:?}", e))?;
+        .map_err(|e| format!("Failed to read map directory: {}", e))?;
+
+    let mut copied: Vec<PathBuf> = Vec::new(); // track for rollback
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -943,11 +1169,15 @@ pub fn enable_map(
 
         // Copy all files with their original filename
         let dest = maps_folder.join(&filename);
-        fs::copy(&path, &dest)
-            .map_err(|e| enrich_io_error(
+        if let Err(e) = fs::copy(&path, &dest) {
+            // Rollback: remove all files we already copied
+            for p in &copied { let _ = fs::remove_file(p); }
+            return Err(enrich_io_error(
                 &format!("Failed to copy map file '{}' to maps folder.", filename),
                 &e,
-            ))?;
+            ));
+        }
+        copied.push(dest);
     }
 
     Ok(())
@@ -960,7 +1190,7 @@ pub fn disable_map(
     profile: String,
     mod_id: String,
 ) -> Result<(), String> {
-    let inner = state.0.read().map_err(|e| format!("Lock error: {:?}", e))?;
+    let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
     let mods_dir = get_mods_dir_path(&inner, &profile)?;
     let maps_folder = get_maps_folder(&inner, &profile);
     let mod_dir = mods_dir.join(&mod_id);
@@ -993,7 +1223,8 @@ pub fn disable_map(
         }
     }
 
-    // Remove matching files from /game/maps/
+    // First pass: collect matching file paths
+    let mut to_remove: Vec<PathBuf> = Vec::new();
     if let Ok(entries) = fs::read_dir(&maps_folder) {
         for entry in entries.flatten() {
             let path = entry.path();
@@ -1005,9 +1236,28 @@ pub fn disable_map(
             };
 
             if mod_filenames.iter().any(|n| *n == name.to_lowercase()) {
-                let _ = fs::remove_file(&path);
+                to_remove.push(path);
             }
         }
+    }
+
+    // Second pass: remove files with rollback
+    let mut removed: Vec<(PathBuf, Vec<u8>)> = Vec::new();
+    for path in &to_remove {
+        let contents = fs::read(path).unwrap_or_default();
+        if let Err(e) = fs::remove_file(path) {
+            // Rollback: restore previously removed files
+            for (restored_path, restored_contents) in &removed {
+                let _ = fs::write(restored_path, restored_contents);
+            }
+            let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("?");
+            return Err(format!(
+                "Cannot remove '{}': the file is locked by another process.\n\
+                 Close the game and try again.\n{}",
+                name, e
+            ));
+        }
+        removed.push((path.clone(), contents));
     }
 
     Ok(())
@@ -1022,7 +1272,7 @@ pub fn uninstall_map(
 ) -> Result<(), String> {
     disable_map(state.clone(), profile.clone(), mod_id.clone())?;
 
-    let inner = state.0.read().map_err(|e| format!("Lock error: {:?}", e))?;
+    let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
     let mods_dir = get_mods_dir_path(&inner, &profile)?;
     let mod_dir = mods_dir.join(&mod_id);
     if mod_dir.exists() {
@@ -1102,6 +1352,90 @@ fn strip_order_prefix(stem: &str) -> String {
         }
     }
     stem.to_string()
+}
+
+// ============================================================
+//  Mod file content read/write (for XML editor)
+// ============================================================
+
+/// Read the text content of a mod file from the staging directory.
+#[tauri::command]
+pub fn read_mod_file_content(
+    state: tauri::State<crate::State>,
+    profile: String,
+    mod_id: String,
+    filename: String,
+) -> Result<String, String> {
+    let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
+    let mods_dir = get_mods_dir_path(&inner, &profile)?;
+    let file_path = mods_dir.join(&mod_id).join(&filename);
+
+    if !file_path.exists() {
+        return Err(format!("File not found: {}", file_path.display()));
+    }
+
+    fs::read_to_string(&file_path)
+        .map_err(|e| format!("Failed to read file: {}\n{}", file_path.display(), e))
+}
+
+/// Write modified text content to a mod file in the staging directory,
+/// re-compute its SHA-256 hash, and if the file is currently enabled,
+/// copy the updated version into the game folder.
+#[tauri::command]
+pub fn write_mod_file_content(
+    state: tauri::State<crate::State>,
+    profile: String,
+    mod_id: String,
+    filename: String,
+    content: String,
+    load_order: u32,
+    is_enabled: bool,
+) -> Result<String, String> {
+    let inner = state.0.read().map_err(|e| format!("Lock error: {}", e))?;
+    let mods_dir = get_mods_dir_path(&inner, &profile)?;
+    let file_path = mods_dir.join(&mod_id).join(&filename);
+
+    if !file_path.exists() {
+        return Err(format!("File not found: {}", file_path.display()));
+    }
+
+    // If the file is enabled, try writing to the game folder FIRST.
+    // If the game has it locked, we fail before modifying staging.
+    if is_enabled && load_order > 0 {
+        let game_folder = get_game_folder(&inner, &profile);
+        let ordered_name = make_ordered_filename(&filename, load_order);
+        let game_path = game_folder.join(&ordered_name);
+
+        if game_path.exists() {
+            fs::write(&game_path, &content)
+                .map_err(|e| format!(
+                    "Cannot write to '{}': the file is locked by another process.\n\
+                     Close the game and try again.\n{}",
+                    ordered_name, e
+                ))?;
+        } else {
+            // Try legacy naming
+            let legacy_name = make_ordered_filename_legacy(&filename, load_order);
+            let legacy_path = game_folder.join(&legacy_name);
+            if legacy_path.exists() {
+                fs::write(&legacy_path, &content)
+                    .map_err(|e| format!(
+                        "Cannot write to '{}': the file is locked by another process.\n\
+                         Close the game and try again.\n{}",
+                        legacy_name, e
+                    ))?;
+            }
+        }
+    }
+
+    // Game folder write succeeded (or wasn't needed), now write to staging
+    fs::write(&file_path, &content)
+        .map_err(|e| format!("Failed to write file: {}\n{}", file_path.display(), e))?;
+
+    // Recompute hash
+    let new_hash = sha256_file(&file_path)?;
+
+    Ok(new_hash)
 }
 
 #[cfg(test)]

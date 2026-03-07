@@ -9,10 +9,10 @@ import { repositoryBaseURL } from "@app/utils/consts";
 import CachedImage from "@app/components/CachedImage";
 import { addTask } from "@app/tasks";
 import { ModDownloadTask } from "@app/tasks/Processors/Mod";
-import { showDuplicateModDialog, showFileConflictDialog } from "@app/dialogs/dialogUtil";
+import { showDuplicateModDialog, showErrorDialog, showFileConflictDialog, showModifiedXmlWarning, showXmlEditorDialog } from "@app/dialogs/dialogUtil";
 import { useDownloadHistory } from "@app/stores/DownloadHistoryStore";
 import type { ReleaseChannels } from "@app/hooks/useS2Release";
-import type { ModVersion, InstalledMod } from "@app/types/mods";
+import type { ModVersion, InstalledMod, InstalledModFile } from "@app/types/mods";
 import { isMapMod, isToolMod } from "@app/types/mods";
 
 function channelToProfile(channel: ReleaseChannels): string {
@@ -34,7 +34,7 @@ async function reorderAfterRemoval(
 ) {
     const newOrderById = new Map(newMods.map((m) => [m.id, m.loadOrder]));
     for (const old of oldMods) {
-        if (old.isMap || !old.enabled) continue;
+        if (old.isMap || !old.enabled || old.loadOrder === 0) continue;
         const newOrder = newOrderById.get(old.id);
         if (newOrder !== undefined && newOrder !== old.loadOrder) {
             await invoke("reorder_mod", {
@@ -76,7 +76,9 @@ const ModPage: React.FC = () => {
     const installedMod = useModsStore((s) => numModId !== null ? s.getModByApiId(profile, numModId) : undefined);
     const addMod = useModsStore((s) => s.addMod);
     const setModEnabled = useModsStore((s) => s.setModEnabled);
+    const setFileEnabled = useModsStore((s) => s.setFileEnabled);
     const removeMod = useModsStore((s) => s.removeMod);
+    const updateModVersion = useModsStore((s) => s.updateModVersion);
     const toManifest = useModsStore((s) => s.toManifest);
     const getMods = useModsStore((s) => s.getMods);
 
@@ -160,7 +162,7 @@ const ModPage: React.FC = () => {
                         if (match) {
                             showDuplicateModDialog(mod.name, existing.name);
                             // Clean up downloaded files
-                            invoke("delete_mod_files", { profile, modId: mod.slug }).catch(console.error);
+                            invoke("delete_mod_files", { profile, modId: mod.slug }).catch(showErrorDialog);
                             setInstalling(false);
                             return;
                         }
@@ -168,58 +170,109 @@ const ModPage: React.FC = () => {
                 }
 
                 const isTool = isToolMod(task.extractedFiles);
-                const maxOrder = (isMap || isTool) ? 0 : existingMods.reduce((max, m) => Math.max(max, m.loadOrder), 0);
+                const isUpgrade = !!installedMod;
 
-                const installed: InstalledMod = {
-                    id: mod.slug,
-                    apiModId: mod.id,
-                    name: mod.name,
-                    author: mod.author,
-                    installedVersion: version.version,
-                    installedVersionId: version.id,
-                    enabled: !isTool,
-                    loadOrder: (isMap || isTool) ? 0 : maxOrder + 1,
-                    files: task.extractedFiles,
-                    isCustom: false,
-                    isMap,
-                    installedAt: new Date().toISOString(),
-                };
+                if (isUpgrade) {
+                    // UPGRADE PATH: preserve load order position
+                    const oldLoadOrder = installedMod.loadOrder;
+                    const wasEnabled = installedMod.enabled;
 
-                // Remove old entry if upgrading
-                if (installedMod) {
-                    removeMod(profile, installedMod.id);
-                }
-                addMod(profile, installed);
+                    // Disable old files from /game/ first
+                    const disablePromise = installedMod.isMap
+                        ? invoke("disable_map", { profile, modId: installedMod.id })
+                        : isTool || isToolMod(installedMod.files)
+                            ? Promise.resolve()
+                            : wasEnabled
+                                ? invoke("disable_mod", { profile, modId: installedMod.id })
+                                : Promise.resolve();
 
-                // Log to download history
-                useDownloadHistory.getState().addEntry({
-                    game: "Savage 2",
-                    channel,
-                    type: installedMod ? "update" : "install",
-                    version: version.version,
-                    previousVersion: installedMod?.installedVersion ?? null,
-                    modName: mod.name,
-                });
+                    disablePromise.then(() => {
+                        // Update store entry (preserves loadOrder, enabled, position)
+                        const newFiles = task.extractedFiles.map((f) => ({ ...f, enabled: wasEnabled }));
+                        updateModVersion(profile, installedMod.id, version.version, version.id, newFiles);
 
-                // Persist manifest first, then enable (tool mods skip enabling)
-                const manifest = toManifest(profile);
-                invoke("save_mod_manifest", { profile, manifest }).then(() => {
-                    if (isTool) return; // No files to copy to /game/
-                    if (isMap) {
-                        return invoke("enable_map", { profile, modId: installed.id });
-                    }
-                    return invoke<string[]>("enable_mod", {
-                        profile,
-                        modId: installed.id,
-                        loadOrder: installed.loadOrder,
-                    }).then((conflicts) => {
-                        if (conflicts && conflicts.length > 0) {
-                            showFileConflictDialog(conflicts);
-                        }
+                        // Log to download history
+                        useDownloadHistory.getState().addEntry({
+                            game: "Savage 2",
+                            channel,
+                            type: "update",
+                            version: version.version,
+                            previousVersion: installedMod.installedVersion ?? null,
+                            modName: mod!.name,
+                        });
+
+                        // Persist manifest, then re-enable at the same load order
+                        const manifest = toManifest(profile);
+                        return invoke("save_mod_manifest", { profile, manifest }).then(() => {
+                            if (isTool || isToolMod(installedMod.files)) return;
+                            if (isMap) {
+                                return invoke("enable_map", { profile, modId: installedMod.id });
+                            }
+                            if (!wasEnabled) return;
+                            return invoke<string[]>("enable_mod", {
+                                profile,
+                                modId: installedMod.id,
+                                loadOrder: oldLoadOrder,
+                            }).then((conflicts) => {
+                                if (conflicts && conflicts.length > 0) {
+                                    showFileConflictDialog(conflicts);
+                                }
+                            });
+                        });
+                    }).catch(showErrorDialog).finally(() => setInstalling(false));
+                } else {
+                    // FRESH INSTALL PATH
+                    const maxOrder = (isMap || isTool) ? 0 : existingMods
+                        .filter((m) => !m.isMap && m.loadOrder > 0)
+                        .reduce((max, m) => Math.max(max, m.loadOrder), 0);
+
+                    const installed: InstalledMod = {
+                        id: mod!.slug,
+                        apiModId: mod!.id,
+                        name: mod!.name,
+                        author: mod!.author,
+                        installedVersion: version.version,
+                        installedVersionId: version.id,
+                        enabled: !isTool,
+                        loadOrder: (isMap || isTool) ? 0 : maxOrder + 1,
+                        files: task.extractedFiles,
+                        isCustom: false,
+                        isMap,
+                        installedAt: new Date().toISOString(),
+                    };
+
+                    addMod(profile, installed);
+
+                    // Log to download history
+                    useDownloadHistory.getState().addEntry({
+                        game: "Savage 2",
+                        channel,
+                        type: "install",
+                        version: version.version,
+                        previousVersion: null,
+                        modName: mod!.name,
                     });
-                }).catch(console.error);
 
-                setInstalling(false);
+                    // Persist manifest first, then enable (tool mods skip enabling)
+                    const manifest = toManifest(profile);
+                    invoke("save_mod_manifest", { profile, manifest }).then(() => {
+                        if (isTool) return;
+                        if (isMap) {
+                            return invoke("enable_map", { profile, modId: installed.id });
+                        }
+                        return invoke<string[]>("enable_mod", {
+                            profile,
+                            modId: installed.id,
+                            loadOrder: installed.loadOrder,
+                        }).then((conflicts) => {
+                            if (conflicts && conflicts.length > 0) {
+                                showFileConflictDialog(conflicts);
+                            }
+                        });
+                    }).catch(showErrorDialog);
+
+                    setInstalling(false);
+                }
             },
         );
 
@@ -227,12 +280,14 @@ const ModPage: React.FC = () => {
         task.onCancel = () => setInstalling(false);
 
         addTask(task);
-    }, [mod, profile, installing, isMap, getMods, addMod, removeMod, installedMod, toManifest]);
+    }, [mod, profile, channel, installing, isMap, getMods, addMod, updateModVersion, installedMod, toManifest]);
 
-    // ---- Toggle enable ----
+    // ---- Toggle enable (smart group toggle) ----
     const handleToggleEnabled = useCallback(async () => {
         if (!installedMod) return;
-        const newEnabled = !installedMod.enabled;
+        // Smart toggle: if any file is disabled → enable all, if all enabled → disable all
+        const allEnabled = installedMod.files.every((f) => f.enabled);
+        const newEnabled = !allEnabled;
         try {
             if (installedMod.isMap) {
                 if (newEnabled) {
@@ -242,7 +297,11 @@ const ModPage: React.FC = () => {
                 }
             } else {
                 if (newEnabled) {
-                    const conflicts = await invoke<string[]>("enable_mod", { profile, modId: installedMod.id, loadOrder: installedMod.loadOrder });
+                    const filesToEnable = installedMod.files.filter((f) => !f.enabled).map((f) => f.filename);
+                    const conflicts = await invoke<string[]>("enable_mod", {
+                        profile, modId: installedMod.id, loadOrder: installedMod.loadOrder,
+                        filenames: filesToEnable.length > 0 ? filesToEnable : null,
+                    });
                     if (conflicts && conflicts.length > 0) {
                         await showFileConflictDialog(conflicts);
                     }
@@ -254,13 +313,66 @@ const ModPage: React.FC = () => {
             const manifest = toManifest(profile);
             await invoke("save_mod_manifest", { profile, manifest });
         } catch (err) {
-            console.error("Failed to toggle mod:", err);
+            showErrorDialog(err);
         }
     }, [installedMod, profile, setModEnabled, toManifest]);
+
+    // ---- Per-file toggle enable/disable ----
+    const handleToggleFile = useCallback(async (file: InstalledModFile) => {
+        if (!installedMod) return;
+        const newEnabled = !file.enabled;
+        try {
+            if (newEnabled) {
+                await invoke("enable_mod_file", {
+                    profile, modId: installedMod.id, filename: file.filename, loadOrder: installedMod.loadOrder,
+                });
+            } else {
+                await invoke("disable_mod_file", { profile, modId: installedMod.id, filename: file.filename });
+            }
+            setFileEnabled(profile, installedMod.id, file.filename, newEnabled);
+            const manifest = toManifest(profile);
+            await invoke("save_mod_manifest", { profile, manifest });
+        } catch (err) {
+            showErrorDialog(err);
+        }
+    }, [installedMod, profile, setFileEnabled, toManifest]);
+
+    // ---- XML file edit handler ----
+    const handleEditXmlFile = useCallback(async (file: InstalledModFile) => {
+        if (!installedMod) return;
+        try {
+            const content = await invoke<string>("read_mod_file_content", {
+                profile, modId: installedMod.id, filename: file.filename,
+            });
+            const edited = await showXmlEditorDialog(file.filename, content);
+            if (edited === null) return; // cancelled
+
+            const newHash = await invoke<string>("write_mod_file_content", {
+                profile, modId: installedMod.id, filename: file.filename,
+                content: edited, loadOrder: installedMod.loadOrder, isEnabled: file.enabled,
+            });
+
+            // Update hash in store and persist
+            const setFileHash = useModsStore.getState().setFileHash;
+            setFileHash(profile, installedMod.id, file.filename, newHash);
+            const manifest = toManifest(profile);
+            await invoke("save_mod_manifest", { profile, manifest });
+        } catch (err) {
+            showErrorDialog(err);
+        }
+    }, [installedMod, profile, toManifest]);
 
     // ---- Uninstall ----
     const handleUninstall = useCallback(async () => {
         if (!installedMod) return;
+
+        // Warn if any XML files have been modified by the user
+        const modifiedXmlFiles = installedMod.files.filter((f) => f.type === "xml" && f.modified);
+        if (modifiedXmlFiles.length > 0) {
+            const proceed = await showModifiedXmlWarning(installedMod.name, modifiedXmlFiles.map((f) => f.filename));
+            if (!proceed) return;
+        }
+
         try {
             if (installedMod.isMap) {
                 await invoke("uninstall_map", { profile, modId: installedMod.id });
@@ -280,7 +392,7 @@ const ModPage: React.FC = () => {
             const manifest = toManifest(profile);
             await invoke("save_mod_manifest", { profile, manifest });
         } catch (err) {
-            console.error("Failed to uninstall:", err);
+            showErrorDialog(err);
         }
     }, [installedMod, profile, removeMod, getMods, toManifest]);
 
@@ -409,13 +521,47 @@ const ModPage: React.FC = () => {
                     {/* Installed files */}
                     {installedMod && installedMod.files.length > 0 && (
                         <div className={styles.versions_section}>
-                            <span className={styles.section_heading}>Installed Files</span>
+                            <span className={styles.section_heading}>
+                                Installed Files
+                                {installedMod.files.length > 1 && (
+                                    <span className={styles.file_count}>
+                                        {installedMod.files.filter((f) => f.enabled).length}/{installedMod.files.length} enabled
+                                    </span>
+                                )}
+                            </span>
                             <div className={styles.files_list}>
                                 {installedMod.files.map((f) => (
-                                    <div key={f.filename} className={styles.file_entry}>
-                                        <span className={styles.file_icon}>📄</span>
-                                        <span className={styles.file_name}>{f.filename}</span>
-                                        <span>({f.type})</span>
+                                    <div key={f.filename} className={`${styles.file_entry} ${!f.enabled ? styles.file_entry_disabled : ""}`}>
+                                        <span className={`${styles.file_type_indicator} ${
+                                            f.type === "s2z" ? styles.file_type_s2z
+                                                : f.type === "xml" ? styles.file_type_xml
+                                                    : styles.file_type_other
+                                        }`}>
+                                            {f.type}
+                                        </span>
+                                        {f.type === "xml" ? (
+                                            <span
+                                                className={`${styles.file_name} ${styles.file_name_clickable}`}
+                                                onClick={() => handleEditXmlFile(f)}
+                                                title="Click to edit"
+                                            >
+                                                {f.filename}
+                                            </span>
+                                        ) : (
+                                            <span className={styles.file_name}>{f.filename}</span>
+                                        )}
+                                        {f.size > 0 && (
+                                            <span className={styles.file_size}>{formatFileSize(f.size)}</span>
+                                        )}
+                                        {!isToolMod(installedMod.files) && (
+                                            <button
+                                                className={`${styles.file_toggle_btn} ${f.enabled ? styles.file_toggle_on : styles.file_toggle_off}`}
+                                                onClick={() => handleToggleFile(f)}
+                                                title={f.enabled ? "Disable this file" : "Enable this file"}
+                                            >
+                                                {f.enabled ? "On" : "Off"}
+                                            </button>
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -442,7 +588,7 @@ const ModPage: React.FC = () => {
                                 <div className={styles.action_row}>
                                     <button
                                         className={`${styles.install_button} ${styles.install_button_primary}`}
-                                        onClick={() => invoke("reveal_mod_folder", { profile, modId: installedMod.id }).catch(console.error)}
+                                        onClick={() => invoke("reveal_mod_folder", { profile, modId: installedMod.id }).catch(showErrorDialog)}
                                     >
                                         <DriveIcon /> Open Folder
                                     </button>
@@ -465,35 +611,39 @@ const ModPage: React.FC = () => {
                                     </button>
                                 </div>
                             </>
-                        ) : (
-                            <>
-                                <div className={styles.action_row}>
-                                    <button
-                                        className={`${styles.install_button} ${installedMod.enabled ? styles.install_button_enabled : styles.install_button_disabled_state}`}
-                                        onClick={handleToggleEnabled}
-                                    >
-                                        {installedMod.enabled ? "Enabled" : "Disabled"}
-                                    </button>
-                                </div>
-                                <div className={styles.action_row}>
-                                    {latestVersion && installedMod.installedVersion !== latestVersion.version && (
+                        ) : (() => {
+                            const allEnabled = installedMod.files.every((f) => f.enabled);
+                            const someEnabled = installedMod.files.some((f) => f.enabled);
+                            return (
+                                <>
+                                    <div className={styles.action_row}>
                                         <button
-                                            className={`${styles.install_button} ${styles.install_button_primary}`}
-                                            onClick={() => handleInstall(latestVersion)}
-                                            disabled={installing}
+                                            className={`${styles.install_button} ${someEnabled ? styles.install_button_enabled : styles.install_button_disabled_state}`}
+                                            onClick={handleToggleEnabled}
                                         >
-                                            Update to v{latestVersion.version}
+                                            {allEnabled ? "Enabled" : someEnabled ? "Partial" : "Disabled"}
                                         </button>
-                                    )}
-                                    <button
-                                        className={`${styles.install_button} ${styles.install_button_danger}`}
-                                        onClick={handleUninstall}
-                                    >
-                                        Remove
-                                    </button>
-                                </div>
-                            </>
-                        )}
+                                    </div>
+                                    <div className={styles.action_row}>
+                                        {latestVersion && installedMod.installedVersion !== latestVersion.version && (
+                                            <button
+                                                className={`${styles.install_button} ${styles.install_button_primary}`}
+                                                onClick={() => handleInstall(latestVersion)}
+                                                disabled={installing}
+                                            >
+                                                Update to v{latestVersion.version}
+                                            </button>
+                                        )}
+                                        <button
+                                            className={`${styles.install_button} ${styles.install_button_danger}`}
+                                            onClick={handleUninstall}
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                </>
+                            );
+                        })()}
                     </div>
 
                     {/* Info card */}
@@ -540,7 +690,7 @@ const ModPage: React.FC = () => {
                                 {modFolderPath && (
                                     <div
                                         className={`${styles.info_row} ${styles.clickable_row}`}
-                                        onClick={() => invoke("reveal_mod_folder", { profile, modId: installedMod.id }).catch(console.error)}
+                                        onClick={() => invoke("reveal_mod_folder", { profile, modId: installedMod.id }).catch(showErrorDialog)}
                                         title={modFolderPath}
                                     >
                                         <DriveIcon />

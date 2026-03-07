@@ -15,6 +15,7 @@ import LoadingScreen from "./components/LoadingScreen";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/tauri";
 import { useToastStore } from "./stores/ToastStore";
+import { showToast } from "./utils/toast";
 window.addEventListener("error", event => {
     logError(JSON.stringify(serializeError(event)));
 });
@@ -43,7 +44,8 @@ const App: React.FC = () => {
             try {
                 await invoke("launch", { appName: "Savage 2", profile });
             } catch (e) {
-                console.error("Tray play failed:", e);
+                const msg = typeof e === "string" ? e : "Launch failed";
+                showToast("Cannot Launch", msg);
             }
         });
         return () => { unlisten.then((fn) => fn()); };

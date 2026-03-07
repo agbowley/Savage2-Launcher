@@ -29,12 +29,22 @@ export class ErrorDialog extends BaseDialog<Record<string, never>> {
     }
 
     getInnerContents() {
+        const error = this.props.error;
+        let message: string;
+        if (error instanceof Error) {
+            message = error.message;
+        } else if (typeof error === "string") {
+            message = error;
+        } else {
+            message = JSON.stringify(serializeError(error));
+        }
+
         return <>
             <p>
-                An error has occured. If you don&apos;t know what happened, please report this on our Discord and include the following error message:
+                An error has occurred. If you don&apos;t know what happened, please report this on our Discord and include the following error message:
             </p>
             <div className={styles.stacktrace}>
-                { this.props.error instanceof Error && "message" in this.props.error ? this.props.error.message as string : JSON.stringify(serializeError(this.props.error)) }
+                {message}
             </div>
         </>;
     }

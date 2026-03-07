@@ -3,6 +3,7 @@ import { ExtendedReleaseData, getS2ManifestUrl, getS2ReleaseDownload, ReleaseCha
 import { invoke } from "@tauri-apps/api/tauri";
 import { type } from "@tauri-apps/api/os";
 import { open } from "@tauri-apps/api/dialog";
+import { listen } from "@tauri-apps/api/event";
 import { useS2State } from "@app/stores/S2StateStore";
 import { S2Download, S2PatchUpdate, S2Uninstall } from "@app/tasks/Processors/S2";
 import { showErrorDialog, showInstallFolderDialog, showUninstallDialog } from "@app/dialogs/dialogUtil";
@@ -28,6 +29,7 @@ export enum S2States {
 export type S2Version = {
     state: S2States,
     play: () => Promise<void>,
+    stopGame: () => Promise<void>,
     download: () => Promise<void>,
     cancel: () => Promise<void>,
     uninstall: () => Promise<void>,
@@ -193,6 +195,29 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         invoke("set_tray_play_enabled", { profile, enabled: playable }).catch(() => {});
     }, [state, profile]);
 
+    // Listen for the game-exited event from the backend to transition out of PLAYING
+    useEffect(() => {
+        const unlisten = listen<string>("game-exited", (event) => {
+            if (event.payload === profile) {
+                setState(S2States.AVAILABLE);
+            }
+        });
+
+        return () => { unlisten.then(fn => fn()); };
+    }, [profile]);
+
+    // On mount, recover from a stale PLAYING state (e.g. the game exited while
+    // this component was unmounted and the game-exited event was missed).
+    useEffect(() => {
+        if (state === S2States.PLAYING) {
+            invoke<boolean>("is_game_running", { profile }).then(running => {
+                if (!running) {
+                    setState(S2States.AVAILABLE);
+                }
+            }).catch(() => {});
+        }
+    }, []);
+
     // Periodically poll for new game versions and notify the user
     useEffect(() => {
         if (!releaseData) return;
@@ -232,6 +257,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         return {
             state,
             play: async () => {},
+            stopGame: async () => {},
             download: async () => {},
             cancel: async () => {},
             uninstall: async () => {},
@@ -319,10 +345,6 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
             });
 
             setState(S2States.PLAYING);
-
-            setTimeout(() => {
-                setState(S2States.AVAILABLE);
-            }, 10 * 1000);
         } catch (e) {
             const errMsg = e as string;
             if (errMsg === "CANCELLED") {
@@ -332,6 +354,14 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
             setState(S2States.ERROR);
             showErrorDialog(errMsg);
             console.error(e);
+        }
+    };
+
+    const stopGame = async () => {
+        try {
+            await invoke("stop_game", { profile });
+        } catch (e) {
+            showErrorDialog(e);
         }
     };
 
@@ -671,6 +701,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
     return {
         state,
         play,
+        stopGame,
         download,
         cancel,
         uninstall,

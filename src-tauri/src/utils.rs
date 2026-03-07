@@ -33,6 +33,13 @@ impl CancelToken {
 /// Enrich a generic I/O error message with Windows-specific guidance when the
 /// underlying error indicates a permissions problem (access denied, sharing
 /// violation, etc.).  On non-Windows this just returns the base message.
+/// Format an IO error for user display.
+/// Uses `Display` format (e.g. "The process cannot access the file because it is being
+/// used by another process. (os error 32)") instead of `Debug` which dumps raw struct internals.
+fn friendly_io_error(err: &std::io::Error) -> String {
+    err.to_string()
+}
+
 pub fn enrich_io_error(base_msg: &str, err: &std::io::Error) -> String {
     #[cfg(target_os = "windows")]
     {
@@ -40,19 +47,18 @@ pub fn enrich_io_error(base_msg: &str, err: &std::io::Error) -> String {
         let raw = err.raw_os_error().unwrap_or(0);
         if raw == 5 || raw == 32 {
             return format!(
-                "{}\n{:?}\n\n\
-                The launcher does not have permission to write to this folder.\n\
+                "{}\n\n{}\n\n\
                 Possible causes:\n\
                 • Windows Controlled Folder Access (ransomware protection) is blocking writes\n\
                 • The folder is in a protected location (e.g. Program Files)\n\
                 • Another program has the file locked\n\n\
                 Try adding the Savage 2 Launcher to the Controlled Folder Access allow-list \
                 in Windows Security, or choose an install location under your user directory.",
-                base_msg, err
+                base_msg, friendly_io_error(err)
             );
         }
     }
-    format!("{}\n{:?}", base_msg, err)
+    format!("{}\n{}", base_msg, friendly_io_error(err))
 }
 
 pub fn clear_folder(path: &Path) -> Result<(), String> {

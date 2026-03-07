@@ -80,7 +80,9 @@ pub trait AppProfile {
     fn log_message(&self, message: &str);
 
     fn launch(
-        &self
+        &self,
+        profile: String,
+        on_exit: Box<dyn FnOnce() + Send>,
     ) -> Result<(), String>;
 
     fn reveal_folder(

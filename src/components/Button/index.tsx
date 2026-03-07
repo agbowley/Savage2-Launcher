@@ -18,11 +18,14 @@ export type ButtonProps = React.PropsWithChildren<{
     className?: string,
     style?: React.CSSProperties,
     onClick?: React.MouseEventHandler<HTMLButtonElement>,
+    onMouseEnter?: React.MouseEventHandler<HTMLButtonElement>,
+    onMouseLeave?: React.MouseEventHandler<HTMLButtonElement>,
 
     color?: ButtonColor,
     progress?: number,
     width?: number,
     height?: number,
+    disabled?: boolean,
 }>;
 
 const Button: React.FC<ButtonProps> = (props: ButtonProps) => {
@@ -61,7 +64,7 @@ const Button: React.FC<ButtonProps> = (props: ButtonProps) => {
         "--progress": props.progress ? `${props.progress}%` : undefined
     } as ButtonCSS;
 
-    return <button className={[styles.button, colorClass, props.className].join(" ")} style={newStyles} onClick={props.onClick}>
+    return <button className={[styles.button, colorClass, props.className].join(" ")} style={newStyles} onClick={props.onClick} onMouseEnter={props.onMouseEnter} onMouseLeave={props.onMouseLeave} disabled={props.disabled}>
         <div className={styles.top}>{props.children}</div>
         <div className={styles.bottom}>{props.children}</div>
     </button>;

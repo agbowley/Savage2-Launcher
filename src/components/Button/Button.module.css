@@ -21,6 +21,12 @@
     user-select: none;
 }
 
+.button:disabled {
+    opacity: 0.4;
+    cursor: default;
+    pointer-events: none;
+}
+
 .bottom,
 .top {
     padding: 15px;

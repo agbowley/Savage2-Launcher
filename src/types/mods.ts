@@ -92,6 +92,12 @@ export interface InstalledModFile {
     hash: string;
     /** "s2z" | "xml" | "map" | "other" */
     type: "s2z" | "xml" | "map" | "other";
+    /** Whether this individual file is enabled (defaults to true). */
+    enabled: boolean;
+    /** File size in bytes (0 for legacy entries without size data). */
+    size: number;
+    /** Whether the user has modified this file via the XML editor. */
+    modified?: boolean;
 }
 
 /** An installed mod tracked by the launcher. */
@@ -147,6 +153,7 @@ export interface ScannedModFile {
 export interface ExtractedFile {
     filename: string;
     file_type: "s2z" | "xml" | "other";
+    size: number;
 }
 
 /** An unknown mod file detected in /game/ that isn't tracked. */

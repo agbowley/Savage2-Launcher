@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/tauri";
 import styles from "../ModPage/ModPage.module.css";
 import { useModsStore } from "@app/stores/ModsStore";
 import { BackIcon, DriveIcon } from "@app/assets/Icons";
-import { showDeleteModDialog, showFileConflictDialog } from "@app/dialogs/dialogUtil";
+import { showDeleteModDialog, showErrorDialog, showFileConflictDialog } from "@app/dialogs/dialogUtil";
 import type { ReleaseChannels } from "@app/hooks/useS2Release";
 
 function channelToProfile(channel: ReleaseChannels): string {
@@ -190,7 +190,7 @@ const CustomModPage: React.FC = () => {
                         {modFolderPath && (
                             <div
                                 className={`${styles.info_row} ${styles.clickable_row}`}
-                                onClick={() => invoke("reveal_mod_folder", { profile, modId: mod.id }).catch(console.error)}
+                                onClick={() => invoke("reveal_mod_folder", { profile, modId: mod.id }).catch(showErrorDialog)}
                                 title={modFolderPath}
                             >
                                 <DriveIcon />

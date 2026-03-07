@@ -419,20 +419,123 @@
 .file_entry {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 11px;
+    gap: 8px;
+    font-size: 12px;
     color: rgba(255, 255, 255, 0.5);
-    padding: 3px 0;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    transition: opacity 0.15s;
 }
 
-.file_icon {
-    font-size: 10px;
-    color: rgba(255, 255, 255, 0.3);
+.file_entry:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.file_entry_disabled {
+    opacity: 0.45;
+}
+
+.file_type_indicator {
+    display: inline-flex;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
+}
+
+.file_type_s2z {
+    background: rgba(80, 200, 120, 0.12);
+    color: #50c878;
+}
+
+.file_type_xml {
+    background: rgba(100, 160, 255, 0.12);
+    color: #64a0ff;
+}
+
+.file_type_other {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.5);
 }
 
 .file_name {
     font-family: monospace;
     color: rgba(255, 255, 255, 0.7);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file_size {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.3);
+    flex-shrink: 0;
+}
+
+.file_count {
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.35);
+    margin-left: 8px;
+}
+
+.file_toggle_btn {
+    padding: 2px 10px;
+    border-radius: 4px;
+    border: none;
+    font-size: 10px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+    text-transform: uppercase;
+}
+
+.file_toggle_on {
+    background: rgba(80, 200, 120, 0.15);
+    color: #50c878;
+    border: 1px solid rgba(80, 200, 120, 0.25);
+}
+
+.file_toggle_on:hover {
+    background: rgba(80, 200, 120, 0.25);
+}
+
+.file_toggle_off {
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.file_toggle_off:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.file_name_clickable {
+    cursor: pointer;
+    color: rgba(100, 160, 255, 0.7) !important;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    transition: color 0.15s, text-decoration-color 0.15s;
+}
+
+.file_name_clickable:hover {
+    color: #64a0ff !important;
+    text-decoration-color: rgba(100, 160, 255, 0.4);
+}
+
+.file_icon {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.3);
 }
 
 /* ---- Loading / Error ---- */

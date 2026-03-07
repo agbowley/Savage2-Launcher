@@ -33,8 +33,14 @@ interface ModsState {
     /** Remove (uninstall) a mod completely. */
     removeMod: (profile: string, modId: string) => void;
 
-    /** Toggle enabled state. */
+    /** Toggle enabled state (also sets all files' enabled to match). */
     setModEnabled: (profile: string, modId: string, enabled: boolean) => void;
+
+    /** Toggle an individual file within a mod group. */
+    setFileEnabled: (profile: string, modId: string, filename: string, enabled: boolean) => void;
+
+    /** Update the hash of a file (e.g. after editing XML content). */
+    setFileHash: (profile: string, modId: string, filename: string, hash: string) => void;
 
     /** Update load order for a mod. */
     setLoadOrder: (profile: string, modId: string, loadOrder: number) => void;
@@ -111,14 +117,14 @@ export const useModsStore = create<ModsState>()(
                     const removed = ch.mods.find((m) => m.id === modId);
                     const remaining = ch.mods.filter((m) => m.id !== modId);
 
-                    // Recompact load orders for non-map mods if the removed mod had a load order
+                    // Recompact load orders for ordered mods (exclude maps and tool mods)
                     let recompacted = remaining;
-                    if (removed && !removed.isMap) {
-                        const nonMaps = remaining
-                            .filter((m) => !m.isMap)
+                    if (removed && !removed.isMap && removed.loadOrder > 0) {
+                        const ordered = remaining
+                            .filter((m) => !m.isMap && m.loadOrder > 0)
                             .sort((a, b) => a.loadOrder - b.loadOrder);
                         const newOrderMap = new Map<string, number>();
-                        nonMaps.forEach((m, i) => newOrderMap.set(m.id, i + 1));
+                        ordered.forEach((m, i) => newOrderMap.set(m.id, i + 1));
                         recompacted = remaining.map((m) =>
                             newOrderMap.has(m.id) ? { ...m, loadOrder: newOrderMap.get(m.id)! } : m,
                         );
@@ -144,8 +150,58 @@ export const useModsStore = create<ModsState>()(
                             [profile]: {
                                 ...ch,
                                 mods: ch.mods.map((m) =>
-                                    m.id === modId ? { ...m, enabled } : m,
+                                    m.id === modId
+                                        ? {
+                                            ...m,
+                                            enabled,
+                                            files: m.files.map((f) => ({ ...f, enabled })),
+                                        }
+                                        : m,
                                 ),
+                            },
+                        },
+                    };
+                }),
+
+            setFileEnabled: (profile, modId, filename, enabled) =>
+                set((state) => {
+                    const ch = ensureChannel(state.channels, profile);
+                    return {
+                        channels: {
+                            ...state.channels,
+                            [profile]: {
+                                ...ch,
+                                mods: ch.mods.map((m) => {
+                                    if (m.id !== modId) return m;
+                                    const updatedFiles = m.files.map((f) =>
+                                        f.filename === filename ? { ...f, enabled } : f,
+                                    );
+                                    // Group enabled = any file enabled
+                                    const anyEnabled = updatedFiles.some((f) => f.enabled);
+                                    return { ...m, enabled: anyEnabled, files: updatedFiles };
+                                }),
+                            },
+                        },
+                    };
+                }),
+
+            setFileHash: (profile, modId, filename, hash) =>
+                set((state) => {
+                    const ch = ensureChannel(state.channels, profile);
+                    return {
+                        channels: {
+                            ...state.channels,
+                            [profile]: {
+                                ...ch,
+                                mods: ch.mods.map((m) => {
+                                    if (m.id !== modId) return m;
+                                    return {
+                                        ...m,
+                                        files: m.files.map((f) =>
+                                            f.filename === filename ? { ...f, hash, modified: true } : f,
+                                        ),
+                                    };
+                                }),
                             },
                         },
                     };

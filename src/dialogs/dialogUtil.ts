@@ -6,6 +6,8 @@ import { UnknownModDialog } from "./Dialogs/UnknownModDialog";
 import { DeleteModDialog } from "./Dialogs/DeleteModDialog";
 import { FileConflictDialog } from "./Dialogs/FileConflictDialog";
 import { DuplicateModDialog } from "./Dialogs/DuplicateModDialog";
+import { XmlEditorDialog } from "./Dialogs/XmlEditorDialog";
+import { ModifiedXmlWarningDialog } from "./Dialogs/ModifiedXmlWarningDialog";
 import { createAndShowDialog } from ".";
 import type { UnknownModFile } from "@app/types/mods";
 
@@ -29,7 +31,7 @@ export async function showInstallFolderDialog() {
     return true;
 }
 
-export async function showErrorDialog(error: string) {
+export async function showErrorDialog(error: unknown) {
     await createAndShowDialog(ErrorDialog, { error: error });
 }
 
@@ -72,4 +74,23 @@ export async function showFileConflictDialog(files: string[]): Promise<void> {
 
 export async function showDuplicateModDialog(modName: string, existingModName: string): Promise<void> {
     await createAndShowDialog(DuplicateModDialog, { modName, existingModName });
+}
+
+/** Open the XML editor dialog. Returns the edited content on save, or null on cancel. */
+export async function showXmlEditorDialog(
+    filename: string,
+    content: string,
+): Promise<string | null> {
+    const result = await createAndShowDialog(XmlEditorDialog, { filename, content, wide: true });
+    if (result === undefined || result === "") return null;
+    return result;
+}
+
+/** Show a warning when uninstalling a mod with user-modified XML files. Returns true if user confirms. */
+export async function showModifiedXmlWarning(
+    modName: string,
+    fileNames: string[],
+): Promise<boolean> {
+    const result = await createAndShowDialog(ModifiedXmlWarningDialog, { modName, fileNames });
+    return result === "confirm";
 }

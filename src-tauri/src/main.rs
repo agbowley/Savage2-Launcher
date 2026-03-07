@@ -13,9 +13,24 @@ use directories::BaseDirs;
 use std::collections::HashMap;
 use std::fs::{self, remove_file, File};
 use std::path::PathBuf;
-use std::sync::{RwLock, atomic::{AtomicBool, Ordering}};
+use std::sync::{Mutex, RwLock, atomic::{AtomicBool, Ordering}};
 
 static NOTIFICATIONS_ENABLED: AtomicBool = AtomicBool::new(true);
+static UPDATING_LAUNCHER: AtomicBool = AtomicBool::new(false);
+
+/// Handle to a running game process so we can kill it from the frontend.
+/// Normal spawns store a PID; elevated (ShellExecuteExW) launches store a raw
+/// Windows HANDLE wrapped in a usize.
+pub enum GameProcess {
+    Child(u32),             // PID from std::process::Child
+    #[cfg(target_os = "windows")]
+    Elevated(usize),        // hProcess from ShellExecuteExW
+}
+unsafe impl Send for GameProcess {}
+
+/// Per-profile map of running game processes.
+/// If a profile key is present, that profile's game is currently running.
+pub static GAME_PROCESSES: Mutex<Option<HashMap<String, GameProcess>>> = Mutex::new(None);
 use tauri::{AppHandle, Manager, CustomMenuItem, SystemTray, SystemTrayMenu, SystemTrayMenuItem, SystemTraySubmenu, SystemTrayEvent};
 use utils::{clear_folder, CancelToken};
 use window_shadows::set_shadow;
@@ -339,19 +354,99 @@ fn exists(
     Ok(app_profile.exists())
 }
 
+#[tauri::command]
+fn is_game_running(profile: String) -> bool {
+    let guard = GAME_PROCESSES.lock().unwrap();
+    guard.as_ref().map_or(false, |map| map.contains_key(&profile))
+}
+
 #[tauri::command(async)]
 fn launch(
     state: tauri::State<'_, State>,
+    app_handle: AppHandle,
     app_name: String,
     profile: String
 ) -> Result<(), String> {
+    // Check if THIS profile is already running (other profiles are allowed)
+    {
+        let guard = GAME_PROCESSES.lock().unwrap();
+        if guard.as_ref().map_or(false, |map| map.contains_key(&profile)) {
+            return Err("This client is already running.".to_string());
+        }
+    }
+
     let app_profile = create_app_profile(
         app_name,
         &state,
-        profile
+        profile.clone()
     )?;
 
-    app_profile.launch()
+    let on_exit = {
+        let app = app_handle.clone();
+        let profile = profile.clone();
+        Box::new(move || {
+            {
+                let mut guard = GAME_PROCESSES.lock().unwrap();
+                if let Some(map) = guard.as_mut() {
+                    map.remove(&profile);
+                }
+            }
+            let _ = app.emit_all("game-exited", &profile);
+        })
+    };
+
+    match app_profile.launch(profile.clone(), on_exit) {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            // Clean up in case launch() partially stored a process
+            let mut guard = GAME_PROCESSES.lock().unwrap();
+            if let Some(map) = guard.as_mut() {
+                map.remove(&profile);
+            }
+            Err(e)
+        }
+    }
+}
+
+/// Kill the running game process for a specific profile.
+#[tauri::command]
+fn stop_game(profile: String) -> Result<(), String> {
+    let mut guard = GAME_PROCESSES.lock().unwrap();
+    let process = guard.as_mut().and_then(|map| map.remove(&profile));
+    match process {
+        Some(GameProcess::Child(pid)) => {
+            // Kill the process tree. On Windows taskkill /T /F kills children too.
+            #[cfg(target_os = "windows")]
+            {
+                use std::os::windows::process::CommandExt;
+                let _ = std::process::Command::new("taskkill")
+                    .args(["/PID", &pid.to_string(), "/T", "/F"])
+                    .creation_flags(0x08000000) // CREATE_NO_WINDOW
+                    .output();
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                let _ = std::process::Command::new("kill")
+                    .args(["-9", &pid.to_string()])
+                    .output();
+            }
+            // on_exit callback in the watcher thread will fire once the process dies
+            Ok(())
+        }
+        #[cfg(target_os = "windows")]
+        Some(GameProcess::Elevated(h)) => {
+            #[link(name = "kernel32")]
+            extern "system" {
+                fn TerminateProcess(hProcess: isize, uExitCode: u32) -> i32;
+            }
+            unsafe { TerminateProcess(h as isize, 1); }
+            // on_exit callback in the watcher thread will fire once WaitForSingleObject returns
+            Ok(())
+        }
+        None => {
+            Err("No game process to stop.".to_string())
+        }
+    }
 }
 
 #[tauri::command(async)]
@@ -584,6 +679,14 @@ fn cancel_task(state: tauri::State<'_, State>) -> Result<(), String> {
 fn set_tray_notifications_label(app: AppHandle, enabled: bool) {
     NOTIFICATIONS_ENABLED.store(enabled, Ordering::SeqCst);
     let _ = app.tray_handle().get_item("notifications").set_selected(enabled);
+}
+
+/// Signal that a launcher self-update is about to install.
+/// This allows the window to actually close (instead of hiding to tray)
+/// so the MSI installer can replace the binary via the Restart Manager.
+#[tauri::command]
+fn set_updating_launcher() {
+    UPDATING_LAUNCHER.store(true, Ordering::SeqCst);
 }
 
 /// Enable or disable a tray "Play" submenu item for a given profile.
@@ -918,7 +1021,12 @@ fn main() {
         })
         .on_window_event(|event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event.event() {
-                // Hide to tray instead of closing
+                // Allow close when the launcher is updating itself so the
+                // MSI installer can replace files via the Restart Manager.
+                if UPDATING_LAUNCHER.load(Ordering::SeqCst) {
+                    return;
+                }
+                // Otherwise hide to tray instead of closing
                 let _ = event.window().hide();
                 api.prevent_close();
             }
@@ -932,7 +1040,9 @@ fn main() {
             verify_files,
             uninstall,
             exists,
+            is_game_running,
             launch,
+            stop_game,
             reveal_folder,
             get_installed_version,
             get_install_path,
@@ -951,6 +1061,7 @@ fn main() {
             cancel_task,
             set_tray_notifications_label,
             set_tray_play_enabled,
+            set_updating_launcher,
             show_notification,
 
             // Mod management
@@ -962,6 +1073,8 @@ fn main() {
             mods::extract_mod_package,
             mods::enable_mod,
             mods::disable_mod,
+            mods::enable_mod_file,
+            mods::disable_mod_file,
             mods::reorder_mod,
             mods::hash_file,
             mods::detect_unknown_mods,
@@ -975,6 +1088,8 @@ fn main() {
             mods::enable_map,
             mods::disable_map,
             mods::uninstall_map,
+            mods::read_mod_file_content,
+            mods::write_mod_file_content,
         ])
         .setup(|app| {
             let window = app.get_window("main").unwrap();

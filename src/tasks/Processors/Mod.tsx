@@ -74,11 +74,11 @@ export class ModDownloadTask extends BaseTask implements IBaseTask {
 
         // Step 3: Build file list, hashing each extracted file
         const modsDir = await invoke<string>("get_mods_dir", { profile: this.profile });
-        const modDir = `${modsDir}\\${this.localModId}`;
+        const modDir = `${modsDir}/${this.localModId}`;
 
         this.extractedFiles = [];
         for (const file of extracted) {
-            const filePath = `${modDir}\\${file.filename}`;
+            const filePath = `${modDir}/${file.filename}`;
             let hash = "";
             try {
                 hash = await invoke<string>("hash_file", { path: filePath });
@@ -89,6 +89,8 @@ export class ModDownloadTask extends BaseTask implements IBaseTask {
                 filename: file.filename,
                 hash,
                 type: file.file_type as "s2z" | "xml" | "other",
+                enabled: true,
+                size: file.size,
             });
         }
     }

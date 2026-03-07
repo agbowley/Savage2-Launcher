@@ -8,6 +8,7 @@ import { DropdownButton, DropdownItem } from "@app/components/DropdownButton";
 import Spinner from "@app/components/Spinner";
 import { useNavigate } from "react-router-dom";
 import { useCurrentTask } from "@app/tasks";
+import { useState } from "react";
 
 interface LaunchButtonProps extends React.PropsWithChildren {
     version: S2Version,
@@ -19,6 +20,7 @@ export function LaunchButton(props: LaunchButtonProps) {
     const { version, playName } = props;
     const navigate = useNavigate();
     const currentTask = useCurrentTask();
+    const [hoveringPlaying, setHoveringPlaying] = useState(false);
 
     // Check if this version's task is queued (not the active/first task)
     const isQueued = version.task != null && currentTask != null && version.task !== currentTask;
@@ -226,15 +228,20 @@ export function LaunchButton(props: LaunchButtonProps) {
     }
 
     if (version.state === S2States.PLAYING) {
-        const buttonChildren = <>
-            Opening Savage 2
-        </>;
-
         return <Button
             color={ButtonColor.GRAY}
-            style={props.style}>
-
-            {buttonChildren}
+            style={props.style}
+            onClick={() => version.stopGame()}
+            onMouseEnter={() => setHoveringPlaying(true)}
+            onMouseLeave={() => setHoveringPlaying(false)}>
+            {hoveringPlaying
+                ? <span style={{ color: "var(--button_red)" }}>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="1" y="1" width="10" height="10" rx="1" stroke="currentColor" strokeWidth="2" />
+                    </svg>
+                    {" "}Stop
+                </span>
+                : "Playing"}
         </Button>;
     }
 

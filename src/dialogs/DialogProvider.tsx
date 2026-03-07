@@ -12,7 +12,11 @@ function DialogComponent() {
     return <Dialog.Root open={dialog.open} onOpenChange={isOpen => setDialogOpen(isOpen)}>
         <Dialog.Portal>
             <Dialog.Overlay className={styles.overlay} />
-            <Dialog.Content className={styles.content} onPointerDownOutside={prevent} onInteractOutside={prevent}>
+            <Dialog.Content
+                className={`${styles.content} ${dialog.props?.wide ? styles.content_wide : ""}`}
+                onPointerDownOutside={prevent}
+                onInteractOutside={prevent}
+            >
                 {dialog.content ? <dialog.content {...dialog.props} /> : "No dialog assigned!"}
             </Dialog.Content>
         </Dialog.Portal>

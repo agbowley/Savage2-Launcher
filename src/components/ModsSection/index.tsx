@@ -1,15 +1,16 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 import styles from "./ModsSection.module.css";
 import ModCard from "./ModCard";
 import { useMods } from "@app/hooks/useMods";
 import { useModsStore } from "@app/stores/ModsStore";
-import { PuzzleIcon, DownloadIcon, DriveIcon } from "@app/assets/Icons";
+import { PuzzleIcon, DownloadIcon, DriveIcon, InformationIcon } from "@app/assets/Icons";
+import TooltipWrapper from "@app/components/TooltipWrapper";
 import { ReleaseChannels } from "@app/hooks/useS2Release";
 import type { ModSortBy, InstalledMod, InstalledModFile, ScannedModFile, ModDetail, ModListItem } from "@app/types/mods";
 import { isMapMod, isToolMod } from "@app/types/mods";
 import { useNavigate } from "react-router-dom";
-import { showDeleteModDialog, showDuplicateModDialog, showFileConflictDialog } from "@app/dialogs/dialogUtil";
+import { showDeleteModDialog, showDuplicateModDialog, showErrorDialog, showFileConflictDialog, showModifiedXmlWarning, showXmlEditorDialog } from "@app/dialogs/dialogUtil";
 import { repositoryBaseURL } from "@app/utils/consts";
 import { tauriFetchJson } from "@app/utils/tauriFetch";
 import { getNewsBanner } from "@app/assets/NewsBanners";
@@ -29,6 +30,14 @@ function channelToProfile(channel: ReleaseChannels): string {
     }
 }
 
+/** Format bytes to human-readable size. */
+function formatFileSize(bytes: number): string {
+    if (bytes === 0) return "";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 interface Props {
     channel: ReleaseChannels;
 }
@@ -44,7 +53,7 @@ async function reorderAfterRemoval(
 ) {
     const newOrderById = new Map(newMods.map((m) => [m.id, m.loadOrder]));
     for (const old of oldMods) {
-        if (old.isMap || !old.enabled) continue;
+        if (old.isMap || !old.enabled || old.loadOrder === 0) continue;
         const newOrder = newOrderById.get(old.id);
         if (newOrder !== undefined && newOrder !== old.loadOrder) {
             await invoke("reorder_mod", {
@@ -79,6 +88,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
     }, [setPersistedTagIds]);
     const [page, setPage] = useState(1);
     const [pendingInstalls, setPendingInstalls] = useState<Set<number>>(new Set());
+    const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
     // ---- Data ----
     const { data, isLoading, error } = useMods({
@@ -93,6 +103,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
     const installedMods = useModsStore((s) => s.getMods(profile));
     const addMod = useModsStore((s) => s.addMod);
     const setModEnabled = useModsStore((s) => s.setModEnabled);
+    const setFileEnabled = useModsStore((s) => s.setFileEnabled);
     const removeMod = useModsStore((s) => s.removeMod);
     const reorderMods = useModsStore((s) => s.reorderMods);
     const toManifest = useModsStore((s) => s.toManifest);
@@ -155,9 +166,11 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
 
     const uniqueTags = cachedTags;
 
-    // ---- Enable/disable handler ----
+    // ---- Enable/disable handler (smart group toggle) ----
     const handleToggleEnabled = useCallback(async (mod: InstalledMod) => {
-        const newEnabled = !mod.enabled;
+        // Smart toggle: if any file is disabled → enable all, if all enabled → disable all
+        const allEnabled = mod.files.every((f) => f.enabled);
+        const newEnabled = !allEnabled;
         try {
             if (mod.isMap) {
                 if (newEnabled) {
@@ -167,7 +180,12 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                 }
             } else {
                 if (newEnabled) {
-                    const conflicts = await invoke<string[]>("enable_mod", { profile, modId: mod.id, loadOrder: mod.loadOrder });
+                    // Enable only the files that are currently disabled
+                    const filesToEnable = mod.files.filter((f) => !f.enabled).map((f) => f.filename);
+                    const conflicts = await invoke<string[]>("enable_mod", {
+                        profile, modId: mod.id, loadOrder: mod.loadOrder,
+                        filenames: filesToEnable.length > 0 ? filesToEnable : null,
+                    });
                     if (conflicts && conflicts.length > 0) {
                         await showFileConflictDialog(conflicts);
                     }
@@ -180,9 +198,52 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
             const manifest = toManifest(profile);
             await invoke("save_mod_manifest", { profile, manifest });
         } catch (err) {
-            console.error("Failed to toggle mod:", err);
+            showErrorDialog(err);
         }
     }, [profile, setModEnabled, toManifest]);
+
+    // ---- Per-file enable/disable handler ----
+    const handleToggleFile = useCallback(async (mod: InstalledMod, file: InstalledModFile) => {
+        const newEnabled = !file.enabled;
+        try {
+            if (newEnabled) {
+                await invoke("enable_mod_file", {
+                    profile, modId: mod.id, filename: file.filename, loadOrder: mod.loadOrder,
+                });
+            } else {
+                await invoke("disable_mod_file", { profile, modId: mod.id, filename: file.filename });
+            }
+            setFileEnabled(profile, mod.id, file.filename, newEnabled);
+            const manifest = toManifest(profile);
+            await invoke("save_mod_manifest", { profile, manifest });
+        } catch (err) {
+            showErrorDialog(err);
+        }
+    }, [profile, setFileEnabled, toManifest]);
+
+    // ---- XML file edit handler ----
+    const handleEditXmlFile = useCallback(async (mod: InstalledMod, file: InstalledModFile) => {
+        try {
+            const content = await invoke<string>("read_mod_file_content", {
+                profile, modId: mod.id, filename: file.filename,
+            });
+            const edited = await showXmlEditorDialog(file.filename, content);
+            if (edited === null) return; // cancelled
+
+            const newHash = await invoke<string>("write_mod_file_content", {
+                profile, modId: mod.id, filename: file.filename,
+                content: edited, loadOrder: mod.loadOrder, isEnabled: file.enabled,
+            });
+
+            // Update hash in store and persist
+            const setFileHash = useModsStore.getState().setFileHash;
+            setFileHash(profile, mod.id, file.filename, newHash);
+            const manifest = toManifest(profile);
+            await invoke("save_mod_manifest", { profile, manifest });
+        } catch (err) {
+            showErrorDialog(err);
+        }
+    }, [profile, toManifest]);
 
     // ---- Map enable/disable handler ----
     const handleToggleMapEnabled = useCallback(async (mod: InstalledMod) => {
@@ -197,7 +258,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
             const manifest = toManifest(profile);
             await invoke("save_mod_manifest", { profile, manifest });
         } catch (err) {
-            console.error("Failed to toggle map:", err);
+            showErrorDialog(err);
         }
     }, [profile, setModEnabled, toManifest]);
 
@@ -209,12 +270,19 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
             const manifest = toManifest(profile);
             await invoke("save_mod_manifest", { profile, manifest });
         } catch (err) {
-            console.error("Failed to uninstall map:", err);
+            showErrorDialog(err);
         }
     }, [profile, removeMod, toManifest]);
 
     // ---- Uninstall / Delete handler ----
     const handleDelete = useCallback(async (mod: InstalledMod) => {
+        // Warn if any XML files have been modified by the user
+        const modifiedXmlFiles = mod.files.filter((f) => f.type === "xml" && f.modified);
+        if (modifiedXmlFiles.length > 0) {
+            const proceed = await showModifiedXmlWarning(mod.name, modifiedXmlFiles.map((f) => f.filename));
+            if (!proceed) return;
+        }
+
         if (mod.isCustom) {
             // Custom mods get the delete dialog with file deletion option
             const result = await showDeleteModDialog(mod.name, mod.files.length);
@@ -243,7 +311,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                 const manifest = toManifest(profile);
                 await invoke("save_mod_manifest", { profile, manifest });
             } catch (err) {
-                console.error("Failed to delete custom mod:", err);
+                showErrorDialog(err);
             }
         } else {
             // API mods use the regular uninstall flow
@@ -265,7 +333,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                 const manifest = toManifest(profile);
                 await invoke("save_mod_manifest", { profile, manifest });
             } catch (err) {
-                console.error("Failed to uninstall mod:", err);
+                showErrorDialog(err);
             }
         }
     }, [profile, removeMod, getMods, toManifest]);
@@ -303,7 +371,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                             const match = existing.files.some((f) => f.hash && newHashes.has(f.hash));
                             if (match) {
                                 showDuplicateModDialog(detail.name, existing.name);
-                                invoke("delete_mod_files", { profile, modId: detail.slug }).catch(console.error);
+                                invoke("delete_mod_files", { profile, modId: detail.slug }).catch(showErrorDialog);
                                 setPendingInstalls((prev) => { const next = new Set(prev); next.delete(modItem.id); return next; });
                                 return;
                             }
@@ -311,7 +379,9 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                     }
 
                     const isTool = isToolMod(task.extractedFiles);
-                    const maxOrder = (isMap || isTool) ? 0 : existingMods.reduce((max, m) => Math.max(max, m.loadOrder), 0);
+                    const maxOrder = (isMap || isTool) ? 0 : existingMods
+                        .filter(m => !m.isMap && m.loadOrder > 0)
+                        .reduce((max, m) => Math.max(max, m.loadOrder), 0);
 
                     const installed: InstalledMod = {
                         id: detail.slug,
@@ -355,7 +425,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                     showFileConflictDialog(conflicts);
                                 }
                             });
-                    }).catch(console.error);
+                    }).catch(showErrorDialog);
 
                     setPendingInstalls((prev) => { const next = new Set(prev); next.delete(modItem.id); return next; });
                 },
@@ -396,7 +466,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                 setImportMode(true);
             }
         } catch (err) {
-            console.error("Failed to scan game folder:", err);
+            showErrorDialog(err);
         } finally {
             setScanning(false);
         }
@@ -430,7 +500,9 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
 
             // Determine load order
             const existingMods = installedMods;
-            const maxOrder = existingMods.reduce((max, m) => Math.max(max, m.loadOrder), 0);
+            const maxOrder = existingMods
+                .filter(m => !m.isMap && m.loadOrder > 0)
+                .reduce((max, m) => Math.max(max, m.loadOrder), 0);
 
             const installed: InstalledMod = {
                 id: modId,
@@ -459,7 +531,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
 
             setImportMode(false);
         } catch (err) {
-            console.error("Failed to import mod files:", err);
+            showErrorDialog(err);
         } finally {
             setImporting(false);
         }
@@ -483,7 +555,10 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
             const manifest = toManifest(profile);
             await invoke("save_mod_manifest", { profile, manifest });
         } catch (err) {
-            console.error("Failed to reorder:", err);
+            // Revert store to original order
+            const revertIds = sorted.map((m) => m.id);
+            reorderMods(profile, revertIds);
+            showErrorDialog(err);
         }
     }, [regularMods, profile, reorderMods, toManifest]);
 
@@ -502,7 +577,10 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
             const manifest = toManifest(profile);
             await invoke("save_mod_manifest", { profile, manifest });
         } catch (err) {
-            console.error("Failed to reorder:", err);
+            // Revert store to original order
+            const revertIds = sorted.map((m) => m.id);
+            reorderMods(profile, revertIds);
+            showErrorDialog(err);
         }
     }, [regularMods, profile, reorderMods, toManifest]);
 
@@ -649,77 +727,151 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                             ? `${repositoryBaseURL}${modItem.primaryImageUrl}`
                                             : null;
                                         const fb = getNewsBanner(modItem.id);
+                                        const isMultiFile = inst && inst.files.length > 1;
+                                        const isBrowseExpanded = inst ? expandedGroups.has(inst.id) : false;
+                                        const allFilesEnabled = inst ? inst.files.every((f) => f.enabled) : false;
+                                        const someFilesEnabled = inst ? inst.files.some((f) => f.enabled) : false;
+                                        const isPartial = someFilesEnabled && !allFilesEnabled;
                                         return (
-                                            <div
-                                                key={modItem.id}
-                                                className={styles.browse_row}
-                                                onClick={() => navigate(`/mods/${modItem.id}?channel=${channel}`)}
-                                            >
-                                                <div className={styles.browse_thumb}>
-                                                    <CachedImage cachedSrc={imageUrl} fallbackSrc={fb.url} alt={modItem.name} />
-                                                </div>
-                                                <div className={styles.browse_info}>
-                                                    <span className={styles.browse_name}>
-                                                        {modItem.name}
-                                                        {modItem.tags.length > 0 && (
-                                                            <span className={styles.browse_name_tags}>
-                                                                {modItem.tags.slice(0, 2).map((tag) => (
-                                                                    <span
-                                                                        key={tag.id}
-                                                                        className={styles.browse_tag}
-                                                                        style={{
-                                                                            background: `${tag.color}20`,
-                                                                            color: tag.color === "#ffffff" ? "rgba(255,255,255,0.8)" : tag.color,
-                                                                        }}
-                                                                    >
-                                                                        {tag.name}
-                                                                    </span>
-                                                                ))}
-                                                            </span>
+                                            <React.Fragment key={modItem.id}>
+                                                <div
+                                                    className={styles.browse_row}
+                                                    onClick={() => navigate(`/mods/${modItem.id}?channel=${channel}`)}
+                                                >
+                                                    <div className={styles.browse_thumb}>
+                                                        <CachedImage cachedSrc={imageUrl} fallbackSrc={fb.url} alt={modItem.name} />
+                                                    </div>
+                                                    {isMultiFile && (
+                                                        <button
+                                                            className={`${styles.expand_chevron} ${isBrowseExpanded ? styles.expand_chevron_open : ""}`}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setExpandedGroups((prev) => {
+                                                                    const next = new Set(prev);
+                                                                    if (next.has(inst.id)) next.delete(inst.id);
+                                                                    else next.add(inst.id);
+                                                                    return next;
+                                                                });
+                                                            }}
+                                                            title={isBrowseExpanded ? "Collapse files" : "Expand files"}
+                                                        >
+                                                            <svg viewBox="0 0 8 12" fill="currentColor"><path d="M1.5 0L7.5 6L1.5 12L0 10.5L4.5 6L0 1.5L1.5 0Z"/></svg>
+                                                        </button>
+                                                    )}
+                                                    <div className={styles.browse_info}>
+                                                        <span className={styles.browse_name}>
+                                                            {modItem.name}
+                                                            {isPartial && <span className={styles.partial_badge}>Partial</span>}
+                                                            {modItem.tags.length > 0 && (
+                                                                <span className={styles.browse_name_tags}>
+                                                                    {modItem.tags.slice(0, 2).map((tag) => (
+                                                                        <span
+                                                                            key={tag.id}
+                                                                            className={styles.browse_tag}
+                                                                            style={{
+                                                                                background: `${tag.color}20`,
+                                                                                color: tag.color === "#ffffff" ? "rgba(255,255,255,0.8)" : tag.color,
+                                                                            }}
+                                                                        >
+                                                                            {tag.name}
+                                                                        </span>
+                                                                    ))}
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                        <span className={styles.browse_meta}>
+                                                            by {modItem.author} &middot; <DownloadIcon /> {modItem.totalDownloads} &middot; v{modItem.latestVersion}
+                                                        </span>
+                                                    </div>
+                                                    <div className={styles.browse_actions} onClick={(e) => e.stopPropagation()}>
+                                                        {inst && (
+                                                            isToolMod(inst.files) ? (
+                                                                <button
+                                                                    className={`${styles.action_button} ${styles.action_button_folder}`}
+                                                                    onClick={() => invoke("reveal_mod_folder", { profile, modId: inst.id }).catch(showErrorDialog)}
+                                                                    title="Open mod folder"
+                                                                >
+                                                                    <DriveIcon /> Open Folder
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    className={`${styles.action_button} ${someFilesEnabled ? styles.browse_enabled_btn : styles.browse_disabled_btn}`}
+                                                                    onClick={() => handleToggleEnabled(inst)}
+                                                                    title={allFilesEnabled ? "Disable all files" : "Enable all files"}
+                                                                >
+                                                                    {allFilesEnabled ? "Enabled" : someFilesEnabled ? "Partial" : "Disabled"}
+                                                                </button>
+                                                            )
                                                         )}
-                                                    </span>
-                                                    <span className={styles.browse_meta}>
-                                                        by {modItem.author} &middot; <DownloadIcon /> {modItem.totalDownloads} &middot; v{modItem.latestVersion}
-                                                    </span>
-                                                </div>
-                                                <div className={styles.browse_actions} onClick={(e) => e.stopPropagation()}>
-                                                    {inst && (
-                                                        isToolMod(inst.files) ? (
+                                                        {inst ? (
                                                             <button
-                                                                className={`${styles.action_button} ${styles.action_button_folder}`}
-                                                                onClick={() => invoke("reveal_mod_folder", { profile, modId: inst.id }).catch(console.error)}
-                                                                title="Open mod folder"
+                                                                className={`${styles.action_button} ${styles.action_button_danger}`}
+                                                                onClick={() => handleDelete(inst)}
                                                             >
-                                                                <DriveIcon /> Open Folder
+                                                                Remove
                                                             </button>
                                                         ) : (
                                                             <button
-                                                                className={`${styles.action_button} ${inst.enabled ? styles.browse_enabled_btn : styles.browse_disabled_btn}`}
-                                                                onClick={() => handleToggleEnabled(inst)}
-                                                                title={inst.enabled ? "Disable mod" : "Enable mod"}
+                                                                className={`${styles.action_button} ${styles.browse_install_btn}`}
+                                                                onClick={() => handleQuickInstall(modItem)}
+                                                                disabled={pendingInstalls.has(modItem.id)}
                                                             >
-                                                                {inst.enabled ? "Enabled" : "Disabled"}
+                                                                {pendingInstalls.has(modItem.id) ? "Installing..." : "Install"}
                                                             </button>
-                                                        )
-                                                    )}
-                                                    {inst ? (
-                                                        <button
-                                                            className={`${styles.action_button} ${styles.action_button_danger}`}
-                                                            onClick={() => handleDelete(inst)}
-                                                        >
-                                                            Remove
-                                                        </button>
-                                                    ) : (
-                                                        <button
-                                                            className={`${styles.action_button} ${styles.browse_install_btn}`}
-                                                            onClick={() => handleQuickInstall(modItem)}
-                                                            disabled={pendingInstalls.has(modItem.id)}
-                                                        >
-                                                            {pendingInstalls.has(modItem.id) ? "Installing..." : "Install"}
-                                                        </button>
-                                                    )}
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
+                                                {/* File sub-rows for per-file toggle */}
+                                                {isMultiFile && isBrowseExpanded && (
+                                                    <div className={styles.file_subrows}>
+                                                        {inst.files.map((file) => (
+                                                            <div
+                                                                key={file.filename}
+                                                                className={styles.file_subrow}
+                                                            >
+                                                                <div className={styles.file_subrow_info}>
+                                                                    {file.type === "xml" ? (
+                                                                        <span
+                                                                            className={`${styles.file_subrow_name} ${styles.file_subrow_name_clickable}`}
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleEditXmlFile(inst, file);
+                                                                            }}
+                                                                            title="Click to edit"
+                                                                        >
+                                                                            {file.filename}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className={styles.file_subrow_name}>{file.filename}</span>
+                                                                    )}
+                                                                    <span className={`${styles.file_type_badge} ${
+                                                                        file.type === "s2z" ? styles.file_type_s2z
+                                                                            : file.type === "xml" ? styles.file_type_xml
+                                                                                : styles.file_type_other
+                                                                    }`}>
+                                                                        {file.type}
+                                                                    </span>
+                                                                    {file.size > 0 && (
+                                                                        <span className={styles.file_subrow_size}>{formatFileSize(file.size)}</span>
+                                                                    )}
+                                                                </div>
+                                                                <div className={styles.file_subrow_actions}>
+                                                                    <button
+                                                                        className={`${styles.file_toggle} ${file.enabled ? styles.file_toggle_on : styles.file_toggle_off}`}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleToggleFile(inst, file);
+                                                                        }}
+                                                                        title={file.enabled ? "Disable this file" : "Enable this file"}
+                                                                    >
+                                                                        {file.enabled ? "On" : "Off"}
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </React.Fragment>
                                         );
                                     })}
                                 </div>
@@ -747,7 +899,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                 }}
                                                 onOpenFolder={(m) => {
                                                     const installed = installedByApiId.get(m.id);
-                                                    if (installed) invoke("reveal_mod_folder", { profile, modId: installed.id }).catch(console.error);
+                                                    if (installed) invoke("reveal_mod_folder", { profile, modId: installed.id }).catch(showErrorDialog);
                                                 }}
                                             />
                                         );
@@ -836,6 +988,9 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                         </>
                                     ) : "Import from Game Folder"}
                                 </button>
+                                <TooltipWrapper text="Scan your game folder for unmanaged mods that are able to be imported and managed by the launcher. Unmanaged local mods will continue to work as normal and be unaffected if you choose not to import them.">
+                                    <InformationIcon className={styles.import_info_icon} />
+                                </TooltipWrapper>
                                 {noLocalMods && (
                                     <span className={styles.no_local_mods}>No local mods found.</span>
                                 )}
@@ -856,74 +1011,155 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                             </div>
                                             {[...regularMods]
                                                 .sort((a, b) => a.loadOrder - b.loadOrder)
-                                                .map((mod, index) => (
-                                                    <div
-                                                        key={mod.id}
-                                                        className={styles.installed_row}
-                                                        style={{ cursor: "pointer" }}
-                                                        onClick={() => {
-                                                            if (mod.apiModId) {
-                                                                navigate(`/mods/${mod.apiModId}?channel=${channel}`);
-                                                            } else {
-                                                                navigate(`/mods/custom/${mod.id}?channel=${channel}`);
-                                                            }
-                                                        }}
-                                                    >
-                                                        {/* Load order controls */}
-                                                        <div className={styles.installed_order} onClick={(e) => e.stopPropagation()}>
-                                                            <span className={styles.order_label}>{mod.loadOrder}</span>
-                                                            <button
-                                                                className={styles.order_button}
-                                                                onClick={() => handleMoveUp(mod.id, index)}
-                                                                disabled={index === 0}
-                                                                title="Move up (load earlier)"
-                                                            >
-                                                                ▲
-                                                            </button>
-                                                            <button
-                                                                className={styles.order_button}
-                                                                onClick={() => handleMoveDown(mod.id, index)}
-                                                                disabled={index === regularMods.length - 1}
-                                                                title="Move down (load later)"
-                                                            >
-                                                                ▼
-                                                            </button>
-                                                        </div>
+                                                .map((mod, index) => {
+                                                    const isMultiFile = mod.files.length > 1;
+                                                    const isExpanded = expandedGroups.has(mod.id);
+                                                    const allFilesEnabled = mod.files.every((f) => f.enabled);
+                                                    const someFilesEnabled = mod.files.some((f) => f.enabled);
+                                                    const isPartial = someFilesEnabled && !allFilesEnabled;
 
-                                                        <div
-                                                            className={styles.installed_info}
-                                                        >
-                                                            <span className={styles.installed_name}>
-                                                                {mod.name}
-                                                                {mod.isCustom && <span className={styles.custom_badge}>Imported</span>}
-                                                                {mod.files.length > 1 && <span className={styles.group_badge}>Mod Group</span>}
-                                                            </span>
-                                                            {!mod.isCustom && (
-                                                                <span className={styles.installed_meta}>
-                                                                    by {mod.author} &middot; v{mod.installedVersion} &middot; {mod.files.length} file{mod.files.length !== 1 ? "s" : ""}
-                                                                </span>
+                                                    return (
+                                                        <React.Fragment key={mod.id}>
+                                                            <div
+                                                                className={styles.installed_row}
+                                                                style={{ cursor: "pointer" }}
+                                                                onClick={() => {
+                                                                    if (mod.apiModId) {
+                                                                        navigate(`/mods/${mod.apiModId}?channel=${channel}`);
+                                                                    } else {
+                                                                        navigate(`/mods/custom/${mod.id}?channel=${channel}`);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                {/* Load order controls */}
+                                                                <div className={styles.installed_order} onClick={(e) => e.stopPropagation()}>
+                                                                    <span className={styles.order_label}>{mod.loadOrder}</span>
+                                                                    <button
+                                                                        className={styles.order_button}
+                                                                        onClick={() => handleMoveUp(mod.id, index)}
+                                                                        disabled={index === 0}
+                                                                        title="Move up (load earlier)"
+                                                                    >
+                                                                        ▲
+                                                                    </button>
+                                                                    <button
+                                                                        className={styles.order_button}
+                                                                        onClick={() => handleMoveDown(mod.id, index)}
+                                                                        disabled={index === regularMods.length - 1}
+                                                                        title="Move down (load later)"
+                                                                    >
+                                                                        ▼
+                                                                    </button>
+                                                                </div>
+
+                                                                {/* Expand chevron (only for multi-file mods) */}
+                                                                {isMultiFile && (
+                                                                    <button
+                                                                        className={`${styles.expand_chevron} ${isExpanded ? styles.expand_chevron_open : ""}`}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setExpandedGroups((prev) => {
+                                                                                const next = new Set(prev);
+                                                                                if (next.has(mod.id)) next.delete(mod.id);
+                                                                                else next.add(mod.id);
+                                                                                return next;
+                                                                            });
+                                                                        }}
+                                                                        title={isExpanded ? "Collapse files" : "Expand files"}
+                                                                    >
+                                                                        <svg viewBox="0 0 8 12" fill="currentColor"><path d="M1.5 0L7.5 6L1.5 12L0 10.5L4.5 6L0 1.5L1.5 0Z"/></svg>
+                                                                    </button>
+                                                                )}
+
+                                                                <div
+                                                                    className={styles.installed_info}
+                                                                >
+                                                                    <span className={styles.installed_name}>
+                                                                        {mod.name}
+                                                                        {mod.isCustom && <span className={styles.custom_badge}>Imported</span>}
+                                                                        {isMultiFile && <span className={styles.group_badge}>Mod Group</span>}
+                                                                        {isPartial && <span className={styles.partial_badge}>Partial</span>}
+                                                                    </span>
+                                                                    {!mod.isCustom && (
+                                                                        <span className={styles.installed_meta}>
+                                                                            by {mod.author} &middot; v{mod.installedVersion} &middot; {mod.files.length} file{mod.files.length !== 1 ? "s" : ""}
+                                                                            {isPartial && ` (${mod.files.filter((f) => f.enabled).length} enabled)`}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+
+                                                                {/* Actions */}
+                                                                <div className={styles.installed_actions} onClick={(e) => e.stopPropagation()}>
+                                                                    <button
+                                                                        className={`${styles.action_button} ${someFilesEnabled ? styles.browse_enabled_btn : styles.browse_disabled_btn}`}
+                                                                        onClick={() => handleToggleEnabled(mod)}
+                                                                        title={allFilesEnabled ? "Disable all files" : "Enable all files"}
+                                                                    >
+                                                                        {someFilesEnabled ? "Enabled" : "Disabled"}
+                                                                    </button>
+                                                                    <button
+                                                                        className={`${styles.action_button} ${styles.action_button_danger}`}
+                                                                        onClick={() => handleDelete(mod)}
+                                                                        title="Remove mod"
+                                                                    >
+                                                                        Remove
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* File sub-rows (only shown when expanded) */}
+                                                            {isMultiFile && isExpanded && (
+                                                                <div className={styles.file_subrows}>
+                                                                    {mod.files.map((file) => (
+                                                                        <div
+                                                                            key={file.filename}
+                                                                            className={styles.file_subrow}
+                                                                        >
+                                                                            <div className={styles.file_subrow_info}>
+                                                                                {file.type === "xml" ? (
+                                                                                    <span
+                                                                                        className={`${styles.file_subrow_name} ${styles.file_subrow_name_clickable}`}
+                                                                                        onClick={(e) => {
+                                                                                            e.stopPropagation();
+                                                                                            handleEditXmlFile(mod, file);
+                                                                                        }}
+                                                                                        title="Click to edit"
+                                                                                    >
+                                                                                        {file.filename}
+                                                                                    </span>
+                                                                                ) : (
+                                                                                    <span className={styles.file_subrow_name}>{file.filename}</span>
+                                                                                )}
+                                                                                <span className={`${styles.file_type_badge} ${
+                                                                                    file.type === "s2z" ? styles.file_type_s2z
+                                                                                        : file.type === "xml" ? styles.file_type_xml
+                                                                                            : styles.file_type_other
+                                                                                }`}>
+                                                                                    {file.type}
+                                                                                </span>
+                                                                                {file.size > 0 && (
+                                                                                    <span className={styles.file_subrow_size}>{formatFileSize(file.size)}</span>
+                                                                                )}
+                                                                            </div>
+                                                                            <div className={styles.file_subrow_actions}>
+                                                                                <button
+                                                                                    className={`${styles.file_toggle} ${file.enabled ? styles.file_toggle_on : styles.file_toggle_off}`}
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        handleToggleFile(mod, file);
+                                                                                    }}
+                                                                                    title={file.enabled ? "Disable this file" : "Enable this file"}
+                                                                                >
+                                                                                    {file.enabled ? "On" : "Off"}
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
                                                             )}
-                                                        </div>
-
-                                                        {/* Actions */}
-                                                        <div className={styles.installed_actions} onClick={(e) => e.stopPropagation()}>
-                                                            <button
-                                                                className={`${styles.action_button} ${mod.enabled ? styles.browse_enabled_btn : styles.browse_disabled_btn}`}
-                                                                onClick={() => handleToggleEnabled(mod)}
-                                                                title={mod.enabled ? "Disable mod" : "Enable mod"}
-                                                            >
-                                                                {mod.enabled ? "Enabled" : "Disabled"}
-                                                            </button>
-                                                            <button
-                                                                className={`${styles.action_button} ${styles.action_button_danger}`}
-                                                                onClick={() => handleDelete(mod)}
-                                                                title="Remove mod"
-                                                            >
-                                                                Remove
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                                        </React.Fragment>
+                                                    );
+                                                })}
                                         </div>
                                     )}
 
@@ -1010,7 +1246,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                     <div className={styles.installed_actions} onClick={(e) => e.stopPropagation()}>
                                                         <button
                                                             className={`${styles.action_button} ${styles.action_button_folder}`}
-                                                            onClick={() => invoke("reveal_mod_folder", { profile, modId: mod.id }).catch(console.error)}
+                                                            onClick={() => invoke("reveal_mod_folder", { profile, modId: mod.id }).catch(showErrorDialog)}
                                                             title="Open mod folder"
                                                         >
                                                             <DriveIcon /> Open Folder
