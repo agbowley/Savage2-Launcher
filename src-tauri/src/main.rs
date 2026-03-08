@@ -897,13 +897,22 @@ fn hidden_install_main(installer_path: &str, installer_args: &str) -> i32 {
 
 fn main() {
     // ── WebKitGTK EGL workaround ─────────────────────────────────────
-    // Newer WebKitGTK versions crash with "Could not create default EGL
-    // display: EGL_BAD_PARAMETER" on systems with certain GPU drivers or
-    // inside VMs.  Setting this env var before GTK initialises disables
-    // the DMA-BUF renderer path and falls back to a compatible one.
+    // WebKitGTK can crash during EGL display creation on systems with
+    // missing or incompatible GPU drivers (VMs, certain iGPUs, Wayland
+    // without proper EGL, etc.).
+    //
+    // WEBKIT_DISABLE_DMABUF_RENDERER  – prevents the DMA-BUF renderer
+    //   path that fails with "EGL_BAD_PARAMETER".
+    // WEBKIT_DISABLE_COMPOSITING_MODE – prevents the fallback surfaceless
+    //   EGL path that aborts with "EGL_BAD_ALLOC".
+    //
+    // Together they force WebKitGTK into a software-composited rendering
+    // mode that works everywhere.  For a launcher UI the visual difference
+    // is negligible.
     #[cfg(target_os = "linux")]
     {
         std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
     }
 
     // ── Hidden-install dispatch ──────────────────────────────────────
