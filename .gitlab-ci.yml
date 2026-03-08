@@ -72,16 +72,6 @@ build:linux:
     - . "$HOME/.cargo/env"
   script:
     - npm ci --prefer-offline
-    # Prevent linuxdeploy from bundling Mesa GPU/EGL libraries.
-    # These must come from the host system to match the kernel and GPU
-    # driver — bundling Ubuntu's old Mesa breaks Arch, Fedora, etc.
-    - mkdir -p "$HOME/.config/linuxdeploy"
-    - printf '%s\n'
-        libEGL.so libEGL_mesa.so
-        libGL.so libGLX.so libGLX_mesa.so
-        libGLESv2.so libGLdispatch.so
-        libdrm.so libgbm.so libvulkan.so libglapi.so
-        > "$HOME/.config/linuxdeploy/excludelist"
     - npx tauri build
     - mkdir -p artifacts
     - cp src-tauri/target/release/bundle/appimage/*.AppImage         artifacts/ 2>/dev/null || true

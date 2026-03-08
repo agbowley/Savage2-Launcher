@@ -146,20 +146,7 @@ jobs:
 
       - name: Build Tauri app
         shell: bash
-        run: |
-          if [ "$RUNNER_OS" = "Linux" ]; then
-            # Prevent linuxdeploy from bundling Mesa GPU/EGL libraries.
-            # These must come from the host system to match the kernel and GPU
-            # driver — bundling Ubuntu's old Mesa breaks Arch, Fedora, etc.
-            mkdir -p "$HOME/.config/linuxdeploy"
-            printf '%s\n' \
-              libEGL.so libEGL_mesa.so \
-              libGL.so libGLX.so libGLX_mesa.so \
-              libGLESv2.so libGLdispatch.so \
-              libdrm.so libgbm.so libvulkan.so libglapi.so \
-              > "$HOME/.config/linuxdeploy/excludelist"
-          fi
-          npx tauri build ${{ matrix.tauri_args }}
+        run: npx tauri build ${{ matrix.tauri_args }}
 
       - name: Collect artifacts
         shell: bash

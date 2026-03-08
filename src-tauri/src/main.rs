@@ -895,100 +895,42 @@ fn hidden_install_main(installer_path: &str, installer_args: &str) -> i32 {
     }
 }
 
-/// Probe whether the EGL surfaceless platform is usable on this system.
-///
-/// Dynamically loads `libEGL.so.1`, attempts to create and initialise a
-/// surfaceless EGL display (`EGL_PLATFORM_SURFACELESS_MESA`), then tears
-/// it down.  Returns `true` when the whole sequence succeeds, `false` if
-/// any step fails (missing library, missing symbol, bad display, etc.).
-#[cfg(target_os = "linux")]
-fn probe_surfaceless_egl() -> bool {
-    use std::ffi::c_void;
-
-    const RTLD_LAZY: i32 = 1;
-    const EGL_PLATFORM_SURFACELESS_MESA: u32 = 0x31DD;
-
-    extern "C" {
-        fn dlopen(filename: *const i8, flags: i32) -> *mut c_void;
-        fn dlsym(handle: *mut c_void, symbol: *const i8) -> *mut c_void;
-        fn dlclose(handle: *mut c_void) -> i32;
-    }
-
-    unsafe {
-        let lib = dlopen(b"libEGL.so.1\0".as_ptr() as *const i8, RTLD_LAZY);
-        if lib.is_null() {
-            return false;
-        }
-
-        // --- eglGetPlatformDisplay (EGL 1.5 core) ---------------------
-        let gpd = dlsym(lib, b"eglGetPlatformDisplay\0".as_ptr() as *const i8);
-        if gpd.is_null() {
-            dlclose(lib);
-            return false;
-        }
-
-        type GetPlatformDisplay =
-            unsafe extern "C" fn(u32, *mut c_void, *const isize) -> *mut c_void;
-        let egl_get_platform_display: GetPlatformDisplay = std::mem::transmute(gpd);
-
-        let display = egl_get_platform_display(
-            EGL_PLATFORM_SURFACELESS_MESA,
-            std::ptr::null_mut(), // EGL_DEFAULT_DISPLAY
-            std::ptr::null(),     // no attrib list
-        );
-        if display.is_null() {
-            dlclose(lib);
-            return false;
-        }
-
-        // --- eglInitialize --------------------------------------------
-        let init_sym = dlsym(lib, b"eglInitialize\0".as_ptr() as *const i8);
-        let ok = if !init_sym.is_null() {
-            type Initialize =
-                unsafe extern "C" fn(*mut c_void, *mut i32, *mut i32) -> u32;
-            let egl_initialize: Initialize = std::mem::transmute(init_sym);
-            let mut major: i32 = 0;
-            let mut minor: i32 = 0;
-            egl_initialize(display, &mut major, &mut minor) != 0
-        } else {
-            false
-        };
-
-        // --- clean up -------------------------------------------------
-        if ok {
-            let term = dlsym(lib, b"eglTerminate\0".as_ptr() as *const i8);
-            if !term.is_null() {
-                type Terminate = unsafe extern "C" fn(*mut c_void) -> u32;
-                let egl_terminate: Terminate = std::mem::transmute(term);
-                egl_terminate(display);
-            }
-        }
-
-        dlclose(lib);
-        ok
-    }
-}
-
 fn main() {
-    // ── WebKitGTK EGL workaround ─────────────────────────────────────
-    // Newer WebKitGTK (≥ 2.44, common on Arch/Fedora) uses a WPE backend
-    // that requires surfaceless EGL.  On systems where the GPU driver
-    // doesn't support this (NVIDIA proprietary, some VMs, etc.) the
-    // process aborts with:
+    // ── WebKitGTK / AppImage compatibility ───────────────────────────
+    //
+    // The AppImage bundles Ubuntu 22.04's libwebkit2gtk and WebKit process
+    // binaries.  On distros with a different graphics stack (Arch, Fedora,
+    // etc.) the bundled WebKitGTK can crash when it tries to create GL
+    // contexts through the host's EGL — producing:
     //
     //   "Could not create surfaceless EGL display: EGL_BAD_ALLOC"
     //
-    // WEBKIT_DISABLE_DMABUF_RENDERER  – always set; prevents the DMA-BUF
-    //   path that can fail with "EGL_BAD_PARAMETER".
-    // WEBKIT_DISABLE_COMPOSITING_MODE – only set when we detect that the
-    //   surfaceless EGL platform is not usable, so distros where GPU
-    //   compositing works (e.g. Ubuntu) are unaffected.
+    // Two mitigations are applied:
+    //
+    // 1. WEBKIT_DISABLE_DMABUF_RENDERER=1  — always set on Linux;
+    //    prevents the DMA-BUF renderer path.
+    //
+    // 2. When running from an AppImage, prepend standard system library
+    //    paths to LD_LIBRARY_PATH so the HOST's own WebKitGTK, Mesa, and
+    //    EGL libraries take precedence over the bundled ones.  The host
+    //    libraries are matched to the running kernel and GPU driver, so
+    //    GL context creation succeeds.  Native builds are unaffected.
     #[cfg(target_os = "linux")]
     {
         std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
 
-        if !probe_surfaceless_egl() {
-            std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
+        if std::env::var("APPIMAGE").is_ok() {
+            // Common system library paths across distros:
+            //   Arch/Fedora: /usr/lib64, /usr/lib
+            //   Debian/Ubuntu: /usr/lib/x86_64-linux-gnu
+            const SYS_LIB_DIRS: &str =
+                "/usr/lib64:/usr/lib/x86_64-linux-gnu:/usr/lib";
+
+            let ld_path = std::env::var("LD_LIBRARY_PATH").unwrap_or_default();
+            std::env::set_var(
+                "LD_LIBRARY_PATH",
+                format!("{}:{}", SYS_LIB_DIRS, ld_path),
+            );
         }
     }
 

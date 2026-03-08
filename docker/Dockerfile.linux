@@ -27,22 +27,4 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 WORKDIR /build
 
-# Prevent linuxdeploy from bundling Mesa GPU/EGL libraries inside the
-# AppImage.  These must come from the host system so they match the
-# running kernel and GPU driver.
-RUN mkdir -p /root/.config/linuxdeploy && \
-    printf '%s\n' \
-      libEGL.so \
-      libEGL_mesa.so \
-      libGL.so \
-      libGLX.so \
-      libGLX_mesa.so \
-      libGLESv2.so \
-      libGLdispatch.so \
-      libdrm.so \
-      libgbm.so \
-      libvulkan.so \
-      libglapi.so \
-    > /root/.config/linuxdeploy/excludelist
-
 CMD ["bash", "-c", "npm ci && npx tauri build"]
