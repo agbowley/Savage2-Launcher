@@ -3,6 +3,8 @@ import { DiscordIcon, QueueIcon, GitlabIcon, UpdateIcon, WarningIcon } from "@ap
 import SidebarMenuButton from "./SidebarMenuButton";
 import { NavLink } from "react-router-dom";
 import VersionsList from "./Versions/List";
+import UserProfile from "./UserProfile";
+import { useAuthStore } from "@app/stores/AuthStore";
 import { useEffect, useRef, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { useLauncherUpdater } from "@app/hooks/useLauncherUpdater";
@@ -65,29 +67,39 @@ const Sidebar: React.FC = () => {
     return <div className={styles.sidebar}>
         <VersionsList />
 
-        <div className={styles.downloads}>
-            <NavLink to="/queue">
-                <SidebarMenuButton icon={<QueueIcon />}>
-                    Downloads {queue.size <= 0 ? "" : `(${queue.size})`}
-                </SidebarMenuButton>
-            </NavLink>
-        </div>
+        <div className={styles.bottomSection}>
+            <div className={styles.downloads}>
+                <NavLink to="/queue">
+                    <SidebarMenuButton icon={<QueueIcon />}>
+                        Downloads {queue.size <= 0 ? "" : `(${queue.size})`}
+                    </SidebarMenuButton>
+                </NavLink>
+            </div>
 
-        <div className={styles.footer}>
-            {hasUpdate ? (
-                <TooltipWrapper text={`Update available: ${effectiveUpdateVersion}\nClick to update`}>
-                    {versionContent}
-                </TooltipWrapper>
-            ) : versionContent}
+            {useAuthStore(s => s.user) ? (
+                <NavLink to="/account" style={{ textDecoration: "none" }}>
+                    <UserProfile />
+                </NavLink>
+            ) : (
+                <UserProfile />
+            )}
 
-            <div className={styles.socials}>
-                {hasUpdate && !isUpdating && (
-                    <TooltipWrapper text={`Download update ${effectiveUpdateVersion}`} className={styles.updateLink} onClick={handleVersionClick}>
-                        <UpdateIcon />
+            <div className={styles.footer}>
+                {hasUpdate ? (
+                    <TooltipWrapper text={`Update available: ${effectiveUpdateVersion}\nClick to update`}>
+                        {versionContent}
                     </TooltipWrapper>
-                )}
-                <a href="https://discord.gg/gtXahvDjZE" target="_blank" className={styles.link} rel="noreferrer"><DiscordIcon /></a>
-                <a href="https://gitlab.com/TalesofNewerth" target="_blank" className={styles.link} rel="noreferrer"><GitlabIcon /></a>
+                ) : versionContent}
+
+                <div className={styles.socials}>
+                    {hasUpdate && !isUpdating && (
+                        <TooltipWrapper text={`Download update ${effectiveUpdateVersion}`} className={styles.updateLink} onClick={handleVersionClick}>
+                            <UpdateIcon />
+                        </TooltipWrapper>
+                    )}
+                    <a href="https://discord.gg/gtXahvDjZE" target="_blank" className={styles.link} rel="noreferrer"><DiscordIcon /></a>
+                    <a href="https://gitlab.com/TalesofNewerth" target="_blank" className={styles.link} rel="noreferrer"><GitlabIcon /></a>
+                </div>
             </div>
         </div>
     </div>;

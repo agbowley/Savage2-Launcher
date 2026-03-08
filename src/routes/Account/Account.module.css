@@ -1,0 +1,454 @@
+/* ── Page layout ── */
+.page {
+    padding: 24px 32px;
+    overflow-y: auto;
+    height: 100%;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.heading {
+    font-size: 20px;
+    font-weight: 700;
+    color: white;
+    margin: 0;
+}
+
+.goldBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #FFD700;
+    background: rgba(255, 215, 0, 0.08);
+    border: 1px solid rgba(255, 215, 0, 0.15);
+    border-radius: 6px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.goldBadge:hover {
+    background: rgba(255, 215, 0, 0.14);
+    border-color: rgba(255, 215, 0, 0.3);
+}
+
+/* ── Tabs ── */
+.tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 8px;
+    padding: 2px;
+    width: fit-content;
+}
+
+.tab {
+    position: relative;
+    background: none;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.45);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    font-family: inherit;
+}
+
+.notifyDot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #FFD700;
+}
+
+.tab:hover {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.tabActive {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.tabContent {
+    min-height: 0;
+}
+
+/* ── Rune Image (layered) ── */
+.runeImage {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.runeLayerWrap {
+    position: absolute;
+    inset: 0;
+}
+
+.runeLayerImg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ── Rune Builder ── */
+.builderWrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Stepper */
+.stepper {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 0 4px;
+}
+
+.stepItem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+}
+
+.stepItem:last-child {
+    flex: 0 0 auto;
+}
+
+.stepCircle {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.stepActive {
+    background: var(--accent);
+    color: #000;
+}
+
+.stepDone {
+    background: rgba(70, 231, 79, 0.2);
+    color: var(--green);
+}
+
+.stepLabel {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.35);
+    white-space: nowrap;
+}
+
+.stepLabelActive {
+    color: #fff;
+    font-weight: 600;
+}
+
+.stepLine {
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 0 8px;
+}
+
+.stepLineDone {
+    background: rgba(70, 231, 79, 0.3);
+}
+
+/* Landing / Intro / Confirm / Success shared layout */
+.builderLanding {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 40px 16px;
+    text-align: center;
+}
+
+.builderTitle {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    max-width: 600px;
+    line-height: 1.5;
+}
+
+.builderHint {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 14px;
+    max-width: 600px;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.introIcons {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.introIcon {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.introPlus,
+.introEquals {
+    font-size: 28px;
+    font-weight: 700;
+    color: rgba(200, 30, 30, 0.8);
+}
+
+.introButtons {
+    display: flex;
+    gap: 10px;
+}
+
+/* Builder step — 4 columns */
+.builderStep {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.pointsHeader {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.pointsStar {
+    color: #4fc3f7;
+    font-size: 18px;
+}
+
+.pointsText {
+    color: #fff;
+}
+
+.builderColumns {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.affixColumn {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.affixList {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.affixRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.12s;
+}
+
+.affixRow:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.affixRowSelected {
+    background: rgba(180, 30, 30, 0.35);
+    outline: 1px solid rgba(200, 40, 40, 0.5);
+}
+
+.affixRowDisabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.affixThumb {
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.affixInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex: 1;
+    min-width: 0;
+}
+
+.affixName {
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.affixStat {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.affixPoints {
+    font-size: 12px;
+    font-weight: 600;
+    color: #4fc3f7;
+    flex-shrink: 0;
+}
+
+.builderNav {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding-top: 8px;
+}
+
+/* ── Rune Vault ── */
+.vaultContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.vaultSection {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.vaultSectionHeader {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.emptySlotIcon {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    opacity: 0.5;
+}
+
+.runeGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.runeSlot {
+    width: 62px;
+    height: 62px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+    padding: 3px;
+}
+
+.runeSlot:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.runeSlotSelected {
+    border-color: var(--accent);
+    background: rgba(255, 192, 20, 0.08);
+}
+
+.runeSlotEmpty {
+    cursor: default;
+    opacity: 0.4;
+}
+
+.runeSlotEmpty:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.runeActions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+    width: fit-content;
+}
+
+.runeActionName {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    margin-right: 4px;
+}
+
+.activateButton,
+.deleteButton {
+    border: none;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: opacity 0.15s;
+}
+
+.activateButton:disabled,
+.deleteButton:disabled {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.activateButton {
+    background: rgba(70, 231, 79, 0.15);
+    color: var(--green);
+}
+
+.activateButton:hover {
+    background: rgba(70, 231, 79, 0.25);
+}
+
+.deleteButton {
+    background: rgba(243, 43, 55, 0.1);
+    color: #F32B37;
+}
+
+.deleteButton:hover {
+    background: rgba(243, 43, 55, 0.2);
+}

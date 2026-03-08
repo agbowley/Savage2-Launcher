@@ -1,0 +1,149 @@
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    margin-top: 8px;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+}
+
+.field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.field input {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: #fff;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.field input:focus {
+    border-color: var(--accent);
+}
+
+.field input::placeholder {
+    color: rgba(255, 255, 255, 0.25);
+}
+
+.error {
+    color: #F32B37;
+    font-size: 13px;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: rgba(243, 43, 55, 0.08);
+}
+
+.fieldHint {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.35);
+    margin-top: 2px;
+}
+
+.fieldStatus {
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.fieldStatus.available {
+    color: var(--green);
+}
+
+.fieldStatus.taken {
+    color: #F32B37;
+}
+
+.steps {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    padding-bottom: 4px;
+}
+
+.step {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    transition: background 0.2s;
+}
+
+.step.active {
+    background: var(--accent);
+}
+
+.successMessage {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 8px 0;
+}
+
+.successMessage strong {
+    color: #fff;
+}
+
+.link {
+    color: var(--accent);
+    cursor: pointer;
+    transition: opacity 0.15s;
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.link:hover {
+    opacity: 0.8;
+}
+
+.backLink {
+    font-size: 13px;
+    text-align: center;
+}
+
+.validationList {
+    list-style: none;
+    padding: 0;
+    margin: 4px 0 0;
+    font-size: 11px;
+}
+
+.validationList li {
+    padding: 1px 0;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.validationList li.met {
+    color: var(--green);
+}
+
+.validationList li.unmet {
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.buttons {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    align-self: stretch;
+    padding-top: 12px;
+}

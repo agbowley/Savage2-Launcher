@@ -11,6 +11,7 @@ import NewsPage from "./NewsPage";
 import ChangelogPage from "./ChangelogPage";
 import ModPage from "./ModPage";
 import CustomModPage from "./CustomModPage";
+import Account from "./Account";
 
 const Router = createBrowserRouter([
     {
@@ -70,6 +71,11 @@ const Router = createBrowserRouter([
             {
                 path: "/mods/:modId",
                 element: <ModPage />
+            },
+
+            {
+                path: "/account",
+                element: <Account />
             }
         ]
     },

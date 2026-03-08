@@ -26,6 +26,7 @@ export type ButtonProps = React.PropsWithChildren<{
     width?: number,
     height?: number,
     disabled?: boolean,
+    compact?: boolean,
 }>;
 
 const Button: React.FC<ButtonProps> = (props: ButtonProps) => {
@@ -64,7 +65,7 @@ const Button: React.FC<ButtonProps> = (props: ButtonProps) => {
         "--progress": props.progress ? `${props.progress}%` : undefined
     } as ButtonCSS;
 
-    return <button className={[styles.button, colorClass, props.className].join(" ")} style={newStyles} onClick={props.onClick} onMouseEnter={props.onMouseEnter} onMouseLeave={props.onMouseLeave} disabled={props.disabled}>
+    return <button className={[styles.button, colorClass, props.compact ? styles.compact : "", props.className].join(" ")} style={newStyles} onClick={props.onClick} onMouseEnter={props.onMouseEnter} onMouseLeave={props.onMouseLeave} disabled={props.disabled}>
         <div className={styles.top}>{props.children}</div>
         <div className={styles.bottom}>{props.children}</div>
     </button>;

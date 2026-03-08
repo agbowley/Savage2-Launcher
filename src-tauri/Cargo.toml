@@ -1,6 +1,6 @@
 [package]
 name = "s2_launcher"
-version = "1.0.9"
+version = "1.1.0"
 description = "Savage 2 launcher"
 authors = ["Savage 2"]
 license = ""

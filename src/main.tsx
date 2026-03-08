@@ -16,12 +16,18 @@ import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/tauri";
 import { useToastStore } from "./stores/ToastStore";
 import { showToast } from "./utils/toast";
+import { useAuthStore } from "./stores/AuthStore";
 window.addEventListener("error", event => {
     logError(JSON.stringify(serializeError(event)));
 });
 
 const App: React.FC = () => {
     const [error, setError] = useState<unknown>(null);
+
+    // Restore auth session on startup
+    useEffect(() => {
+        useAuthStore.getState().restoreSession();
+    }, []);
 
     // Sync tray "Notifications" label with store & listen for tray toggle clicks
     useEffect(() => {

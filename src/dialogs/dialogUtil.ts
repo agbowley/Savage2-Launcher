@@ -8,8 +8,13 @@ import { FileConflictDialog } from "./Dialogs/FileConflictDialog";
 import { DuplicateModDialog } from "./Dialogs/DuplicateModDialog";
 import { XmlEditorDialog } from "./Dialogs/XmlEditorDialog";
 import { ModifiedXmlWarningDialog } from "./Dialogs/ModifiedXmlWarningDialog";
+import { LoginDialog } from "./Dialogs/LoginDialog";
+import { RegisterDialog } from "./Dialogs/RegisterDialog";
+import { ConfirmActionDialog } from "./Dialogs/ConfirmActionDialog";
+import { GoldHistoryDialog } from "./Dialogs/GoldHistoryDialog";
 import { createAndShowDialog } from ".";
 import type { UnknownModFile } from "@app/types/mods";
+import { ButtonColor } from "@app/components/Button";
 
 export async function showInstallFolderDialog() {
     if (!await invoke("is_initialized")) {
@@ -93,4 +98,34 @@ export async function showModifiedXmlWarning(
 ): Promise<boolean> {
     const result = await createAndShowDialog(ModifiedXmlWarningDialog, { modName, fileNames });
     return result === "confirm";
+}
+
+export async function showConfirmAction(
+    title: string,
+    message: string,
+    confirmLabel?: string,
+    confirmColor?: ButtonColor,
+): Promise<boolean> {
+    const result = await createAndShowDialog(ConfirmActionDialog, { title, message, confirmLabel, confirmColor });
+    return result === "confirm";
+}
+
+export async function showGoldHistory(): Promise<void> {
+    await createAndShowDialog(GoldHistoryDialog, { wide: true });
+}
+
+export async function showLoginDialog(): Promise<void> {
+    const result = await createAndShowDialog(LoginDialog);
+    // If user clicked "Create account", open register dialog
+    if (result === "register") {
+        await showRegisterDialog();
+    }
+}
+
+export async function showRegisterDialog(): Promise<void> {
+    const result = await createAndShowDialog(RegisterDialog);
+    // If user clicked "Sign in" from register, open login dialog
+    if (result === "login") {
+        await showLoginDialog();
+    }
 }

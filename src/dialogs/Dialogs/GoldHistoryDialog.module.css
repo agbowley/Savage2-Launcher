@@ -1,0 +1,188 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    min-height: 350px;
+    max-height: 60vh;
+}
+
+.titleRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.closeBtn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    padding: 4px;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.closeBtn:hover {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.tableWrap {
+    overflow-y: auto;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    transition: opacity 0.15s;
+}
+
+.tableLoading {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.table th {
+    position: sticky;
+    top: 0;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 600;
+    text-align: left;
+    padding: 6px 10px;
+    white-space: nowrap;
+}
+
+.table td {
+    padding: 5px 10px;
+    color: rgba(255, 255, 255, 0.7);
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    white-space: nowrap;
+    vertical-align: top;
+}
+
+.table tr:first-child td {
+    border-top: none;
+}
+
+.sourceCell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+
+.sourceName {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.positive {
+    color: #FFD700;
+    font-weight: 600;
+}
+
+.negative {
+    color: #F32B37;
+    font-weight: 600;
+}
+
+.boost {
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 11px;
+    margin-left: 3px;
+}
+
+.sourceTag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.sourceMatch {
+    background: rgba(33, 150, 243, 0.25);
+    color: #64B5F6;
+}
+
+.sourceAchievement {
+    background: rgba(76, 175, 80, 0.25);
+    color: #81C784;
+}
+
+.sourceDailyQuest {
+    background: rgba(0, 188, 212, 0.25);
+    color: #4DD0E1;
+}
+
+.sourceWeeklyReward {
+    background: rgba(255, 152, 0, 0.25);
+    color: #FFB74D;
+}
+
+.sourceReferral {
+    background: rgba(156, 39, 176, 0.25);
+    color: #CE93D8;
+}
+
+.sourceAdmin {
+    background: rgba(244, 67, 54, 0.25);
+    color: #E57373;
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.pageBtn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.6);
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.pageBtn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.pageBtn:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.empty {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.35);
+    padding: 24px 0;
+    font-size: 13px;
+}
+
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 1;
+}

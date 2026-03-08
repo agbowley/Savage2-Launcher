@@ -80,3 +80,9 @@
     --background: var(--button_red);
     --color: var(--buttonText_red);
 }
+
+.compact .bottom,
+.compact .top {
+    padding: 8px 12px;
+    font-size: 12px;
+}

@@ -11,8 +11,11 @@
     gap: 50px;
 }
 
-.downloads {
+.bottomSection {
     margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .footer {

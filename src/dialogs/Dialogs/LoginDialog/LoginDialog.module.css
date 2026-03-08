@@ -1,0 +1,108 @@
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    margin-top: 8px;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+}
+
+.field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.field input {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: #fff;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.field input:focus {
+    border-color: var(--accent);
+}
+
+.field input::placeholder {
+    color: rgba(255, 255, 255, 0.25);
+}
+
+.error {
+    color: #F32B37;
+    font-size: 13px;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: rgba(243, 43, 55, 0.08);
+}
+
+.links {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+}
+
+.link {
+    color: var(--accent);
+    cursor: pointer;
+    transition: opacity 0.15s;
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.link:hover {
+    opacity: 0.8;
+}
+
+.banInfo {
+    text-align: left;
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    background: rgba(243, 43, 55, 0.08);
+    border: 1px solid rgba(243, 43, 55, 0.2);
+}
+
+.banInfo p {
+    margin: 2px 0;
+}
+
+.banInfo strong {
+    color: #F32B37;
+}
+
+.verifyNotice {
+    text-align: center;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.verifyNotice .link {
+    font-size: 13px;
+}
+
+.buttons {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    align-self: stretch;
+    padding-top: 12px;
+}
