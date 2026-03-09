@@ -53,9 +53,8 @@ i18n
             escapeValue: false,
         },
         detection: {
-            order: ["localStorage", "navigator"],
-            lookupLocalStorage: "i18nextLng",
-            caches: ["localStorage"],
+            order: ["navigator"],
+            caches: [],
         },
     });
 
