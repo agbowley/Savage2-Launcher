@@ -12,8 +12,10 @@ import { useDownloadHistory } from "@app/stores/DownloadHistoryStore";
 import { intlFormatDistance } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { ModDownloadTask } from "@app/tasks/Processors/Mod";
+import { useTranslation } from "react-i18next";
 
 function Queue() {
+    const { t } = useTranslation();
     const [lastWasEmpty, setLastWasEmpty] = useState(false);
     const navigate = useNavigate();
 
@@ -59,9 +61,9 @@ function Queue() {
                     <button
                         className={styles.cancel_button}
                         onClick={() => cancelTask(currentTask)}
-                        title="Cancel download"
+                        title={t("cancel_download", { ns: "mods" })}
                     >
-                        Cancel
+                        {t("cancel")}
                     </button>
                 </div>
                 <div className={styles.progress_container}>
@@ -84,7 +86,7 @@ function Queue() {
 
             return <div className={styles.empty_banner}>
                 <h1 className={styles.empty_banner_header}>
-                    <QueueIcon /> DOWNLOADS
+                    <QueueIcon /> {t("downloads")}
                 </h1>
             </div>;
         }
@@ -94,7 +96,7 @@ function Queue() {
         {getBanner()}
         <div className={styles.main}>
             {queue.size > 1 && (
-                <QueueSection icon={<QueueListIcon />} title="QUEUED ACTIONS">
+                <QueueSection icon={<QueueListIcon />} title={t("queued_actions")}>
                     {Array.from(queue).splice(1).map(downloader =>
                         <div key={downloader.taskUUID}>
                             {downloader.getQueueEntry(false, () => cancelTask(downloader))}
@@ -104,7 +106,7 @@ function Queue() {
             )}
             <QueueSection
                 icon={<TimeIcon />}
-                title="HISTORY"
+                title={t("history")}
                 rightContent={historyEntries.length > 0
                     ? intlFormatDistance(new Date(historyEntries[0].timestamp), new Date())
                     : undefined
@@ -115,10 +117,10 @@ function Queue() {
                         <HistoryEntryComponent key={entry.id} entry={entry} />
                     )}
                     <button className={styles.clear_history} onClick={clearHistory}>
-                        Clear History
+                        {t("clear_history")}
                     </button>
                 </> :
-                    <div className={styles.empty_queue}>No download history yet.</div>
+                    <div className={styles.empty_queue}>{t("no_download_history")}</div>
                 }
             </QueueSection>
         </div>

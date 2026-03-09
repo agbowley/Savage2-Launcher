@@ -4,6 +4,7 @@ import styles from "./GoldHistoryDialog.module.css";
 import { useAuthStore } from "@app/stores/AuthStore";
 import { tauriFetchJson } from "@app/utils/tauriFetch";
 import Spinner from "@app/components/Spinner";
+import i18n from "@app/i18n";
 
 interface GoldTransaction {
     id: number;
@@ -26,14 +27,17 @@ interface ProfileGoldLog {
     };
 }
 
-const SOURCE_LABELS: Record<number, string> = {
-    1: "Match",
-    2: "Achievement",
-    3: "Daily Quest",
-    4: "Weekly Reward",
-    5: "Referral",
-    6: "Admin",
-};
+function getSourceLabel(type: number): string {
+    const key = ({
+        1: "source_match",
+        2: "source_achievement",
+        3: "source_daily_quest",
+        4: "source_weekly_reward",
+        5: "source_referral",
+        6: "source_admin",
+    } as Record<number, string>)[type];
+    return key ? i18n.t(key, { ns: "dialogs" }) : i18n.t("source_other", { ns: "dialogs" });
+}
 
 const SOURCE_STYLES: Record<number, string> = {
     1: styles.sourceMatch,
@@ -116,23 +120,23 @@ export class GoldHistoryDialog extends React.Component<Record<string, unknown>, 
         return (
             <div className={styles.container}>
                 <div className={styles.titleRow}>
-                    <span className={styles.title}>Gold History</span>
+                    <span className={styles.title}>{i18n.t("gold_history_title", { ns: "dialogs" })}</span>
                     <button className={styles.closeBtn} onClick={() => closeDialog()}>&#10005;</button>
                 </div>
 
                 {initialLoad ? (
                     <div className={styles.loading}><Spinner size={20} /></div>
                 ) : !hasData ? (
-                    <div className={styles.empty}>No transactions found</div>
+                    <div className={styles.empty}>{i18n.t("no_transactions", { ns: "dialogs" })}</div>
                 ) : (
                     <>
                         <div className={`${styles.tableWrap} ${loading ? styles.tableLoading : ""}`}>
                             <table className={styles.table}>
                                 <thead>
                                     <tr>
-                                        <th>Amount</th>
-                                        <th>Source</th>
-                                        <th>Date</th>
+                                        <th>{i18n.t("amount", { ns: "dialogs" })}</th>
+                                        <th>{i18n.t("source", { ns: "dialogs" })}</th>
+                                        <th>{i18n.t("date", { ns: "dialogs" })}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -143,13 +147,13 @@ export class GoldHistoryDialog extends React.Component<Record<string, unknown>, 
                                                     {tx.totalAmount >= 0 ? "+" : ""}{tx.totalAmount}
                                                 </span>
                                                 {tx.boostAmount > 0 && (
-                                                    <span className={styles.boost}>(+{tx.boostAmount} bonus)</span>
+                                                    <span className={styles.boost}>{i18n.t("bonus", { ns: "dialogs", amount: tx.boostAmount })}</span>
                                                 )}
                                             </td>
                                             <td>
                                                 <div className={styles.sourceCell}>
                                                     <span className={`${styles.sourceTag} ${SOURCE_STYLES[tx.sourceType] ?? ""}`}>
-                                                        {SOURCE_LABELS[tx.sourceType] ?? "Other"}
+                                                        {getSourceLabel(tx.sourceType)}
                                                     </span>
                                                     {(tx.sourceName || tx.eventName) && (
                                                         <span className={styles.sourceName}>{tx.sourceName || tx.eventName}</span>
@@ -170,15 +174,15 @@ export class GoldHistoryDialog extends React.Component<Record<string, unknown>, 
                                     disabled={page <= 1 || loading}
                                     onClick={() => this.fetchHistory(page - 1)}
                                 >
-                                    Prev
+                                    {i18n.t("prev", { ns: "dialogs" })}
                                 </button>
-                                <span>Page {page} / {totalPages}</span>
+                                <span>{i18n.t("page_indicator", { ns: "dialogs", page, totalPages })}</span>
                                 <button
                                     className={styles.pageBtn}
                                     disabled={page >= totalPages || loading}
                                     onClick={() => this.fetchHistory(page + 1)}
                                 >
-                                    Next
+                                    {i18n.t("next", { ns: "common" })}
                                 </button>
                             </div>
                         )}

@@ -20,6 +20,7 @@ import { ModDownloadTask } from "@app/tasks/Processors/Mod";
 import { useDownloadHistory } from "@app/stores/DownloadHistoryStore";
 import { useBrowsePrefsStore } from "@app/stores/BrowsePrefsStore";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import { useTranslation } from "react-i18next";
 
 /** Map frontend channel to backend profile tag. */
 function channelToProfile(channel: ReleaseChannels): string {
@@ -69,6 +70,7 @@ async function reorderAfterRemoval(
 const ModsSection: React.FC<Props> = ({ channel }: Props) => {
     const profile = channelToProfile(channel);
     const navigate = useNavigate();
+    const { t } = useTranslation("mods");
 
     // ---- State ----
     const subTab = useBrowsePrefsStore((s) => s.subTab);
@@ -482,13 +484,16 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
 
             let groupName = importGroupName.trim();
             if (!groupName) {
-                // Find the next available "Local Mod Group N" number
+                // Find the next available auto-numbered group name
+                const localGroupPrefix = t("local_mod_group", { num: "" }).trimEnd();
+                const escapedPrefix = localGroupPrefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                const localGroupRegex = new RegExp(`^${escapedPrefix}\\s*(\\d+)$`);
                 const existingNums = installedMods
-                    .map((m) => m.name.match(/^Local Mod Group (\d+)$/)?.[1])
+                    .map((m) => m.name.match(localGroupRegex)?.[1])
                     .filter(Boolean)
                     .map(Number);
                 const nextNum = existingNums.length > 0 ? Math.max(...existingNums) + 1 : 1;
-                groupName = `Local Mod Group ${nextNum}`;
+                groupName = t("local_mod_group", { num: nextNum });
             }
 
             // Import files to staging directory
@@ -594,13 +599,13 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                     className={`${styles.sub_tab} ${subTab === "browse" ? styles.sub_tab_active : ""}`}
                     onClick={() => setSubTab("browse")}
                 >
-                    Browse
+                    {t("browse")}
                 </button>
                 <button
                     className={`${styles.sub_tab} ${subTab === "installed" ? styles.sub_tab_active : ""}`}
                     onClick={() => setSubTab("installed")}
                 >
-                    Installed ({regularMods.length + toolMods.length + installedMaps.length})
+                    {t("installed_count", { count: regularMods.length + toolMods.length + installedMaps.length })}
                 </button>
             </div>
 
@@ -612,14 +617,14 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                         <input
                             className={styles.search_input}
                             type="text"
-                            placeholder="Search mods..."
+                            placeholder={t("search_placeholder")}
                             value={search}
                             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                         />
                         <DropdownMenu.Root modal={false}>
                             <DropdownMenu.Trigger asChild>
                                 <button className={styles.sort_trigger}>
-                                    {sortBy === "downloads" ? "Most Downloaded" : sortBy === "createdAt" ? "Newest" : sortBy === "updatedAt" ? "Recently Updated" : "Name"}
+                                    {sortBy === "downloads" ? t("most_downloaded") : sortBy === "createdAt" ? t("newest") : sortBy === "updatedAt" ? t("recently_updated") : t("name")}
                                     {sortDesc ? " ↓" : " ↑"}
                                     <svg className={styles.sort_chevron} viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
                                         <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -629,10 +634,10 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                             <DropdownMenu.Portal>
                                 <DropdownMenu.Content className={styles.sort_dropdown_content} sideOffset={5} align="start">
                                     {([
-                                        ["downloads", "Most Downloaded"],
-                                        ["createdAt", "Newest"],
-                                        ["updatedAt", "Recently Updated"],
-                                        ["name", "Name"],
+                                        ["downloads", t("most_downloaded")],
+                                        ["createdAt", t("newest")],
+                                        ["updatedAt", t("recently_updated")],
+                                        ["name", t("name")],
                                     ] as [ModSortBy, string][]).map(([value, label]) => (
                                         <DropdownMenu.Item
                                             key={value}
@@ -661,14 +666,14 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                             <button
                                 className={`${styles.view_toggle_btn} ${viewMode === "grid" ? styles.view_toggle_active : ""}`}
                                 onClick={() => setViewMode("grid")}
-                                title="Grid view"
+                                title={t("grid_view")}
                             >
                                 <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
                             </button>
                             <button
                                 className={`${styles.view_toggle_btn} ${viewMode === "list" ? styles.view_toggle_active : ""}`}
                                 onClick={() => setViewMode("list")}
-                                title="List view"
+                                title={t("list_view")}
                             >
                                 <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="14" height="2.5" rx="1"/><rect x="1" y="6.75" width="14" height="2.5" rx="1"/><rect x="1" y="11.5" width="14" height="2.5" rx="1"/></svg>
                             </button>
@@ -682,7 +687,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                 className={`${styles.tag_chip} ${selectedTagIds.size === 0 ? styles.tag_chip_active : ""}`}
                                 onClick={() => { setSelectedTagIds(new Set()); setPage(1); }}
                             >
-                                All
+                                {t("all")}
                             </button>
                             {uniqueTags.map((tag) => {
                                 const isSelected = selectedTagIds.has(tag.id);
@@ -713,8 +718,8 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                     )}
 
                     {/* Loading / Error */}
-                    {isLoading && <div className={styles.empty}>Loading mods...</div>}
-                    {error && <div className={styles.empty}>Failed to load mods.</div>}
+                    {isLoading && <div className={styles.empty}>{t("loading_mods")}</div>}
+                    {error && <div className={styles.empty}>{t("failed_load_mods")}</div>}
 
                     {/* Mod grid / list */}
                     {data && (
@@ -753,7 +758,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                                     return next;
                                                                 });
                                                             }}
-                                                            title={isBrowseExpanded ? "Collapse files" : "Expand files"}
+                                                            title={isBrowseExpanded ? t("collapse_files") : t("expand_files")}
                                                         >
                                                             <svg viewBox="0 0 8 12" fill="currentColor"><path d="M1.5 0L7.5 6L1.5 12L0 10.5L4.5 6L0 1.5L1.5 0Z"/></svg>
                                                         </button>
@@ -761,7 +766,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                     <div className={styles.browse_info}>
                                                         <span className={styles.browse_name}>
                                                             {modItem.name}
-                                                            {isPartial && <span className={styles.partial_badge}>Partial</span>}
+                                                            {isPartial && <span className={styles.partial_badge}>{t("partial")}</span>}
                                                             {modItem.tags.length > 0 && (
                                                                 <span className={styles.browse_name_tags}>
                                                                     {modItem.tags.slice(0, 2).map((tag) => (
@@ -780,7 +785,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                             )}
                                                         </span>
                                                         <span className={styles.browse_meta}>
-                                                            by {modItem.author} &middot; <DownloadIcon /> {modItem.totalDownloads} &middot; v{modItem.latestVersion}
+                                                            {t("by_author", { author: modItem.author })} &middot; <DownloadIcon /> {modItem.totalDownloads} &middot; v{modItem.latestVersion}
                                                         </span>
                                                     </div>
                                                     <div className={styles.browse_actions} onClick={(e) => e.stopPropagation()}>
@@ -789,17 +794,17 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                                 <button
                                                                     className={`${styles.action_button} ${styles.action_button_folder}`}
                                                                     onClick={() => invoke("reveal_mod_folder", { profile, modId: inst.id }).catch(showErrorDialog)}
-                                                                    title="Open mod folder"
+                                                                    title={t("open_mod_folder")}
                                                                 >
-                                                                    <DriveIcon /> Open Folder
+                                                                    <DriveIcon /> {t("open_folder")}
                                                                 </button>
                                                             ) : (
                                                                 <button
                                                                     className={`${styles.action_button} ${someFilesEnabled ? styles.browse_enabled_btn : styles.browse_disabled_btn}`}
                                                                     onClick={() => handleToggleEnabled(inst)}
-                                                                    title={allFilesEnabled ? "Disable all files" : "Enable all files"}
+                                                                    title={allFilesEnabled ? t("disable_all_files") : t("enable_all_files")}
                                                                 >
-                                                                    {allFilesEnabled ? "Enabled" : someFilesEnabled ? "Partial" : "Disabled"}
+                                                                    {allFilesEnabled ? t("enabled", { ns: "common" }) : someFilesEnabled ? t("partial") : t("disabled", { ns: "common" })}
                                                                 </button>
                                                             )
                                                         )}
@@ -808,7 +813,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                                 className={`${styles.action_button} ${styles.action_button_danger}`}
                                                                 onClick={() => handleDelete(inst)}
                                                             >
-                                                                Remove
+                                                                {t("remove")}
                                                             </button>
                                                         ) : (
                                                             <button
@@ -816,7 +821,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                                 onClick={() => handleQuickInstall(modItem)}
                                                                 disabled={pendingInstalls.has(modItem.id)}
                                                             >
-                                                                {pendingInstalls.has(modItem.id) ? "Installing..." : "Install"}
+                                                                {pendingInstalls.has(modItem.id) ? t("installing_mod") : t("install", { ns: "common" })}
                                                             </button>
                                                         )}
                                                     </div>
@@ -837,7 +842,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                                                 e.stopPropagation();
                                                                                 handleEditXmlFile(inst, file);
                                                                             }}
-                                                                            title="Click to edit"
+                                                                            title={t("click_to_edit")}
                                                                         >
                                                                             {file.filename}
                                                                         </span>
@@ -862,9 +867,9 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                                             e.stopPropagation();
                                                                             handleToggleFile(inst, file);
                                                                         }}
-                                                                        title={file.enabled ? "Disable this file" : "Enable this file"}
+                                                                        title={file.enabled ? t("disable_file") : t("enable_file")}
                                                                     >
-                                                                        {file.enabled ? "On" : "Off"}
+                                                                        {file.enabled ? t("on", { ns: "common" }) : t("off", { ns: "common" })}
                                                                     </button>
                                                                 </div>
                                                             </div>
@@ -908,13 +913,13 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                             )}
                             {data.items.length < data.totalCount && (
                                 <div className={styles.load_more} onClick={() => setPage(page + 1)}>
-                                    Load More...
+                                    {t("load_more")}
                                 </div>
                             )}
                             {data.items.length === 0 && (
                                 <div className={styles.empty}>
                                     <PuzzleIcon />
-                                    No mods found.
+                                    {t("no_mods_found")}
                                 </div>
                             )}
                         </>
@@ -929,18 +934,18 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                     {importMode ? (
                         <div className={styles.import_panel}>
                             <div className={styles.import_header}>
-                                <span style={{ fontWeight: 600, fontSize: 14 }}>Import Mods from Game Folder</span>
-                                <button className={styles.import_cancel} onClick={() => setImportMode(false)}>Cancel</button>
+                                <span style={{ fontWeight: 600, fontSize: 14 }}>{t("import_header")}</span>
+                                <button className={styles.import_cancel} onClick={() => setImportMode(false)}>{t("cancel", { ns: "common" })}</button>
                             </div>
                             <input
                                 className={styles.import_group_input}
                                 type="text"
-                                placeholder="Group name (optional)"
+                                placeholder={t("import_group_placeholder")}
                                 value={importGroupName}
                                 onChange={(e) => setImportGroupName(e.target.value)}
                             />
                             <div className={styles.import_hint}>
-                                Select the .s2z files you want to import. Multiple files will be grouped into one mod.
+                                {t("import_hint")}
                             </div>
                             <div className={styles.installed_list}>
                                 {gameFiles.map((f) => (
@@ -970,7 +975,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                 disabled={selectedImportFiles.size === 0 || importing}
                                 onClick={handleConfirmImport}
                             >
-                                {importing ? "Importing..." : `Import ${selectedImportFiles.size} file${selectedImportFiles.size !== 1 ? "s" : ""}`}
+                                {importing ? t("importing") : t("import_files", { count: selectedImportFiles.size })}
                             </button>
                         </div>
                     ) : (
@@ -984,30 +989,30 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                     {scanning ? (
                                         <>
                                             <span className={styles.import_spinner} />
-                                            Scanning...
+                                            {t("scanning")}
                                         </>
-                                    ) : "Import from Game Folder"}
+                                    ) : t("import_from_game")}
                                 </button>
-                                <TooltipWrapper text="Scan your game folder for unmanaged mods that are able to be imported and managed by the launcher. Unmanaged local mods will continue to work as normal and be unaffected if you choose not to import them.">
+                                <TooltipWrapper text={t("import_scan_tooltip")}>
                                     <InformationIcon className={styles.import_info_icon} />
                                 </TooltipWrapper>
                                 {noLocalMods && (
-                                    <span className={styles.no_local_mods}>No local mods found.</span>
+                                    <span className={styles.no_local_mods}>{t("no_local_mods")}</span>
                                 )}
                             </div>
                             {regularMods.length === 0 && toolMods.length === 0 && installedMaps.length === 0 ? (
                                 <div className={styles.empty}>
                                     <PuzzleIcon />
-                                    No mods installed yet. Browse and install mods from the Browse tab, or import existing mods from your game folder.
+                                    {t("no_mods_installed")}
                                 </div>
                             ) : (
                                 <>
                                     {regularMods.length > 0 && (
                                         <div className={styles.installed_list}>
                                             <div className={styles.installed_header}>
-                                                <span className={styles.header_order}>Order</span>
-                                                <span className={styles.header_name}>Mod</span>
-                                                <span className={styles.header_actions}>Actions</span>
+                                                <span className={styles.header_order}>{t("order_header")}</span>
+                                                <span className={styles.header_name}>{t("mod_header")}</span>
+                                                <span className={styles.header_actions}>{t("actions_header")}</span>
                                             </div>
                                             {[...regularMods]
                                                 .sort((a, b) => a.loadOrder - b.loadOrder)
@@ -1038,7 +1043,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                                         className={styles.order_button}
                                                                         onClick={() => handleMoveUp(mod.id, index)}
                                                                         disabled={index === 0}
-                                                                        title="Move up (load earlier)"
+                                                                        title={t("move_up")}
                                                                     >
                                                                         ▲
                                                                     </button>
@@ -1046,7 +1051,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                                         className={styles.order_button}
                                                                         onClick={() => handleMoveDown(mod.id, index)}
                                                                         disabled={index === regularMods.length - 1}
-                                                                        title="Move down (load later)"
+                                                                        title={t("move_down")}
                                                                     >
                                                                         ▼
                                                                     </button>
@@ -1065,7 +1070,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                                                 return next;
                                                                             });
                                                                         }}
-                                                                        title={isExpanded ? "Collapse files" : "Expand files"}
+                                                                        title={isExpanded ? t("collapse_files") : t("expand_files")}
                                                                     >
                                                                         <svg viewBox="0 0 8 12" fill="currentColor"><path d="M1.5 0L7.5 6L1.5 12L0 10.5L4.5 6L0 1.5L1.5 0Z"/></svg>
                                                                     </button>
@@ -1076,14 +1081,14 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                                 >
                                                                     <span className={styles.installed_name}>
                                                                         {mod.name}
-                                                                        {mod.isCustom && <span className={styles.custom_badge}>Imported</span>}
-                                                                        {isMultiFile && <span className={styles.group_badge}>Mod Group</span>}
-                                                                        {isPartial && <span className={styles.partial_badge}>Partial</span>}
+                                                                        {mod.isCustom && <span className={styles.custom_badge}>{t("imported_badge")}</span>}
+                                                                        {isMultiFile && <span className={styles.group_badge}>{t("mod_group_badge")}</span>}
+                                                                        {isPartial && <span className={styles.partial_badge}>{t("partial")}</span>}
                                                                     </span>
                                                                     {!mod.isCustom && (
                                                                         <span className={styles.installed_meta}>
-                                                                            by {mod.author} &middot; v{mod.installedVersion} &middot; {mod.files.length} file{mod.files.length !== 1 ? "s" : ""}
-                                                                            {isPartial && ` (${mod.files.filter((f) => f.enabled).length} enabled)`}
+                                                                            {t("by_author", { author: mod.author })} &middot; v{mod.installedVersion} &middot; {t("files_count", { count: mod.files.length })}
+                                                                            {isPartial && ` ${t("files_enabled_count", { count: mod.files.filter((f) => f.enabled).length })}`}
                                                                         </span>
                                                                     )}
                                                                 </div>
@@ -1093,16 +1098,16 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                                     <button
                                                                         className={`${styles.action_button} ${someFilesEnabled ? styles.browse_enabled_btn : styles.browse_disabled_btn}`}
                                                                         onClick={() => handleToggleEnabled(mod)}
-                                                                        title={allFilesEnabled ? "Disable all files" : "Enable all files"}
+                                                                        title={allFilesEnabled ? t("disable_all_files") : t("enable_all_files")}
                                                                     >
-                                                                        {someFilesEnabled ? "Enabled" : "Disabled"}
+                                                                        {someFilesEnabled ? t("enabled", { ns: "common" }) : t("disabled", { ns: "common" })}
                                                                     </button>
                                                                     <button
                                                                         className={`${styles.action_button} ${styles.action_button_danger}`}
                                                                         onClick={() => handleDelete(mod)}
-                                                                        title="Remove mod"
+                                                                        title={t("remove_mod")}
                                                                     >
-                                                                        Remove
+                                                                        {t("remove")}
                                                                     </button>
                                                                 </div>
                                                             </div>
@@ -1123,7 +1128,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                                                             e.stopPropagation();
                                                                                             handleEditXmlFile(mod, file);
                                                                                         }}
-                                                                                        title="Click to edit"
+                                                                                        title={t("click_to_edit")}
                                                                                     >
                                                                                         {file.filename}
                                                                                     </span>
@@ -1148,9 +1153,9 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                                                         e.stopPropagation();
                                                                                         handleToggleFile(mod, file);
                                                                                     }}
-                                                                                    title={file.enabled ? "Disable this file" : "Enable this file"}
+                                                                                    title={file.enabled ? t("disable_file") : t("enable_file")}
                                                                                 >
-                                                                                    {file.enabled ? "On" : "Off"}
+                                                                                    {file.enabled ? t("on", { ns: "common" }) : t("off", { ns: "common" })}
                                                                                 </button>
                                                                             </div>
                                                                         </div>
@@ -1167,8 +1172,8 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                     {installedMaps.length > 0 && (
                                         <div className={styles.installed_list}>
                                             <div className={styles.installed_header}>
-                                                <span className={styles.header_name}>Maps</span>
-                                                <span className={styles.header_actions}>Actions</span>
+                                                <span className={styles.header_name}>{t("maps_header")}</span>
+                                                <span className={styles.header_actions}>{t("actions_header")}</span>
                                             </div>
                                             {installedMaps.map((map) => (
                                                 <div
@@ -1186,7 +1191,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                             {map.name}
                                                         </span>
                                                         <span className={styles.installed_meta}>
-                                                            by {map.author} &middot; v{map.installedVersion} &middot; {map.files.length} file{map.files.length !== 1 ? "s" : ""}
+                                                            {t("by_author", { author: map.author })} &middot; v{map.installedVersion} &middot; {t("files_count", { count: map.files.length })}
                                                         </span>
                                                     </div>
 
@@ -1194,16 +1199,16 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                         <button
                                                             className={`${styles.action_button} ${map.enabled ? styles.browse_enabled_btn : styles.browse_disabled_btn}`}
                                                             onClick={() => handleToggleMapEnabled(map)}
-                                                            title={map.enabled ? "Disable map" : "Enable map"}
+                                                            title={map.enabled ? t("disable_map") : t("enable_map")}
                                                         >
-                                                            {map.enabled ? "Enabled" : "Disabled"}
+                                                            {map.enabled ? t("enabled", { ns: "common" }) : t("disabled", { ns: "common" })}
                                                         </button>
                                                         <button
                                                             className={`${styles.action_button} ${styles.action_button_danger}`}
                                                             onClick={() => handleDeleteMap(map)}
-                                                            title="Remove map"
+                                                            title={t("remove_map")}
                                                         >
-                                                            Remove
+                                                            {t("remove")}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1215,8 +1220,8 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                     {toolMods.length > 0 && (
                                         <div className={styles.installed_list}>
                                             <div className={styles.installed_header}>
-                                                <span className={styles.header_name}>Tools &amp; Utilities</span>
-                                                <span className={styles.header_actions}>Actions</span>
+                                                <span className={styles.header_name}>{t("tools_header")}</span>
+                                                <span className={styles.header_actions}>{t("actions_header")}</span>
                                             </div>
                                             {toolMods.map((mod) => (
                                                 <div
@@ -1234,11 +1239,11 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                     <div className={styles.installed_info}>
                                                         <span className={styles.installed_name}>
                                                             {mod.name}
-                                                            <span className={styles.tool_badge}>Tool</span>
+                                                            <span className={styles.tool_badge}>{t("tool_badge")}</span>
                                                         </span>
                                                         {!mod.isCustom && (
                                                             <span className={styles.installed_meta}>
-                                                                by {mod.author} &middot; v{mod.installedVersion} &middot; {mod.files.length} file{mod.files.length !== 1 ? "s" : ""}
+                                                                {t("by_author", { author: mod.author })} &middot; v{mod.installedVersion} &middot; {t("files_count", { count: mod.files.length })}
                                                             </span>
                                                         )}
                                                     </div>
@@ -1247,16 +1252,16 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                         <button
                                                             className={`${styles.action_button} ${styles.action_button_folder}`}
                                                             onClick={() => invoke("reveal_mod_folder", { profile, modId: mod.id }).catch(showErrorDialog)}
-                                                            title="Open mod folder"
+                                                            title={t("open_mod_folder")}
                                                         >
-                                                            <DriveIcon /> Open Folder
+                                                            <DriveIcon /> {t("open_folder")}
                                                         </button>
                                                         <button
                                                             className={`${styles.action_button} ${styles.action_button_danger}`}
                                                             onClick={() => handleDelete(mod)}
-                                                            title="Remove mod"
+                                                            title={t("remove_mod")}
                                                         >
-                                                            Remove
+                                                            {t("remove")}
                                                         </button>
                                                     </div>
                                                 </div>

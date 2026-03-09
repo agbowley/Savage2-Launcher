@@ -4,6 +4,7 @@ import StableS2Icon from "@app/assets/s2icon-stable.png";
 import NightlyS2Icon from "@app/assets/s2icon-nightly.png";
 import LegacyS2Icon from "@app/assets/s2icon-legacy.png";
 import { ReleaseChannels } from "@app/hooks/useS2Release";
+import { useTranslation } from "react-i18next";
 
 interface Props {
     s2Task: S2Task,
@@ -19,6 +20,7 @@ function getTaskType(task: S2Task): "download" | "update" | "uninstall" | "repai
 }
 
 const S2Queue: React.FC<Props> = ({ s2Task, bannerMode, onRemove }: Props) => {
+    const { t } = useTranslation("launch");
     const channelIconPath: { [key in ReleaseChannels]: string } = {
         "stable": StableS2Icon,
         "nightly": NightlyS2Icon,
@@ -28,11 +30,11 @@ const S2Queue: React.FC<Props> = ({ s2Task, bannerMode, onRemove }: Props) => {
     function getChannelDisplayName() {
         switch (s2Task.channel) {
             case "stable":
-                return "Community Edition";
+                return t("community_edition");
             case "nightly":
-                return "Beta Test Client";
+                return t("beta_test_client");
             case "legacy":
-                return "Legacy Client";
+                return t("legacy_client");
         }
     }
 

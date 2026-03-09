@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import "./styles.css";
+import "./i18n";
 import TitleBar from "./components/TitleBar";
 import { RouterProvider } from "react-router-dom";
 import Router from "@app/routes";
@@ -17,16 +18,29 @@ import { invoke } from "@tauri-apps/api/tauri";
 import { useToastStore } from "./stores/ToastStore";
 import { showToast } from "./utils/toast";
 import { useAuthStore } from "./stores/AuthStore";
+import i18n from "./i18n";
+import { useTranslation } from "react-i18next";
 window.addEventListener("error", event => {
     logError(JSON.stringify(serializeError(event)));
 });
 
 const App: React.FC = () => {
     const [error, setError] = useState<unknown>(null);
+    const { t } = useTranslation();
 
     // Restore auth session on startup
     useEffect(() => {
         useAuthStore.getState().restoreSession();
+    }, []);
+
+    // Sync locale with Rust backend on startup and when language changes
+    useEffect(() => {
+        invoke("set_locale", { locale: i18n.language }).catch(() => {});
+        const handleLangChange = (lng: string) => {
+            invoke("set_locale", { locale: lng }).catch(() => {});
+        };
+        i18n.on("languageChanged", handleLangChange);
+        return () => { i18n.off("languageChanged", handleLangChange); };
     }, []);
 
     // Sync tray "Notifications" label with store & listen for tray toggle clicks
@@ -50,8 +64,8 @@ const App: React.FC = () => {
             try {
                 await invoke("launch", { appName: "Savage 2", profile });
             } catch (e) {
-                const msg = typeof e === "string" ? e : "Launch failed";
-                showToast("Cannot Launch", msg);
+                const msg = typeof e === "string" ? e : t("launch_failed");
+                showToast(t("cannot_launch"), msg);
             }
         });
         return () => { unlisten.then((fn) => fn()); };
@@ -62,7 +76,7 @@ const App: React.FC = () => {
         return <React.StrictMode>
             <TitleBar />
             <p>
-                An error has occurred when attempted to initalize the launcher. Please report this on our Discord and include the following error message:
+                {t("error_init")}
             </p>
             <p>
                 {error instanceof Error ? error.message : JSON.stringify(serializeError(error))}

@@ -11,6 +11,7 @@ import { useQueries } from "@tanstack/react-query";
 import { useNewsAuthorSettings } from "@app/hooks/useNewsAuthor";
 import NewsAuthor from "@app/components/NewsSection/NewsAuthor";
 import { getNewsBanner } from "@app/assets/NewsBanners";
+import { useTranslation } from "react-i18next";
 
 function NewsPage() {
     const { id } = useParams();
@@ -19,14 +20,15 @@ function NewsPage() {
     const articleId = parseInt(id);
     const { data: article, error } = useNewsArticle(articleId);
     const navigate = useNavigate();
+    const { t } = useTranslation();
 
     const authorQueries = article ? [useNewsAuthorSettings(article.author)] : [];
     const authors = useQueries({
         queries: authorQueries.length > 0 ? authorQueries : [useNewsAuthorSettings("")]
     });
 
-    if (error) return `An error has occurred: ${error}`;
-    if (!article) return "Loading...";
+    if (error) return t("error_occurred", { error });
+    if (!article) return t("loading");
 
     const content = article.content;
     const banner = getNewsBanner(article.id);
@@ -37,7 +39,7 @@ function NewsPage() {
             <div className={styles.header}>
                 <div onClick={() => navigate(-1)} className={styles.header_back}>
                     <BackIcon />
-                    RETURN
+                    {t("return")}
                 </div>
                 <div className={styles.header_info}>
                     <NewsBadge badgeType="update" />

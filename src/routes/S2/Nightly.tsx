@@ -3,22 +3,24 @@ import { useS2Release } from "@app/hooks/useS2Release";
 import { useS2Version } from "@app/hooks/useS2Version";
 import NightlyS2Icon from "@app/assets/s2icon-nightly.png";
 import NightlyS2Banner from "@app/assets/Banner/hell_banner.webp";
+import { useTranslation } from "react-i18next";
 
 function NightlyS2Page() {
+    const { t } = useTranslation("launch");
     const { data: releaseData, error, isSuccess, isLoading } = useS2Release("nightly");
     const S2Version = useS2Version(releaseData, "nightly");
 
-    if (isLoading) return "Loading...";
+    if (isLoading) return t("loading", { ns: "common" });
 
-    if (error) return `An error has occurred: ${error}`;
+    if (error) return t("error_occurred", { ns: "common", error });
 
     if (isSuccess) {
         return (<>
             <LaunchPage
                 version={S2Version}
-                playName="Beta Test Client"
+                playName={t("beta_test_client")}
                 description={<>
-                    {releaseData?.description}
+                    {t("beta_test_client_desc")}
                 </>}
                 websiteUrl="https://savage2.net"
                 icon={NightlyS2Icon}

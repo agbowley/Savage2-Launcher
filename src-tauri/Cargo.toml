@@ -47,6 +47,8 @@ opener = { version = "0.6.1", features = ["reveal"] }
 async-trait = "0.1.74"
 regex = "1"
 sha2 = "0.10"
+rust-i18n = "3"
+sys-locale = "0.3"
 
 [target.'cfg(windows)'.dependencies]
 tauri-winrt-notification = "0.7"

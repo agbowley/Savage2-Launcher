@@ -1,6 +1,8 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+rust_i18n::i18n!("locales", fallback = "en");
+
 mod utils;
 mod app_profile;
 mod mods;
@@ -10,6 +12,7 @@ use app_profile::AppProfile;
 // use app_profile::yarg::YARGAppProfile;
 use app_profile::s2::S2AppProfile;
 use directories::BaseDirs;
+use rust_i18n::t;
 use std::collections::HashMap;
 use std::fs::{self, remove_file, File};
 use std::path::PathBuf;
@@ -733,6 +736,39 @@ fn show_notification(app: AppHandle, title: String, body: String) {
     }
 }
 
+/// Build the system tray menu with translated labels.
+fn build_tray_menu() -> SystemTrayMenu {
+    let show = CustomMenuItem::new("show", t!("tray.open").to_string());
+    let notifications = CustomMenuItem::new("notifications", t!("tray.notifications").to_string()).selected();
+    let quit = CustomMenuItem::new("quit", t!("tray.quit").to_string());
+
+    let play_ce = CustomMenuItem::new("play_stable", t!("tray.community_edition").to_string()).disabled();
+    let play_beta = CustomMenuItem::new("play_nightly", t!("tray.beta_test_client").to_string()).disabled();
+    let play_legacy = CustomMenuItem::new("play_legacy", t!("tray.legacy_client").to_string()).disabled();
+    let play_menu = SystemTrayMenu::new()
+        .add_item(play_ce)
+        .add_item(play_beta)
+        .add_item(play_legacy);
+    let play_submenu = SystemTraySubmenu::new(t!("tray.play").to_string(), play_menu);
+
+    SystemTrayMenu::new()
+        .add_item(show)
+        .add_submenu(play_submenu)
+        .add_native_item(SystemTrayMenuItem::Separator)
+        .add_item(notifications)
+        .add_native_item(SystemTrayMenuItem::Separator)
+        .add_item(quit)
+}
+
+/// Update the backend locale and refresh the tray menu labels.
+#[tauri::command]
+fn set_locale(app: AppHandle, locale: String) {
+    rust_i18n::set_locale(&locale);
+
+    // Rebuild the entire tray menu so the submenu title is also updated
+    let _ = app.tray_handle().set_menu(build_tray_menu());
+}
+
 /// Hidden-install mode: launched as an elevated child process by `run_elevated_and_wait`.
 ///
 /// Creates an invisible Windows desktop, runs the given installer on it (so that ALL
@@ -960,30 +996,18 @@ fn main() {
         unsafe { SetCurrentProcessExplicitAppUserModelID(id.as_ptr()); }
     }
 
+    // ── Detect system locale for initial tray translations ───────────
+    {
+        let sys_locale = sys_locale::get_locale().unwrap_or_else(|| "en".to_string());
+        let lang = sys_locale.split(&['-', '_'][..]).next().unwrap_or("en");
+        let supported = rust_i18n::available_locales!();
+        if supported.contains(&lang) {
+            rust_i18n::set_locale(lang);
+        }
+    }
+
     // Build the system tray menu
-    let show = CustomMenuItem::new("show", "Open");
-    let notifications = CustomMenuItem::new("notifications", "Notifications").selected();
-    let quit = CustomMenuItem::new("quit", "Quit");
-
-    // Play submenu — items start disabled; the frontend enables them once it
-    // detects which profiles are installed.
-    let play_ce = CustomMenuItem::new("play_stable", "Community Edition").disabled();
-    let play_beta = CustomMenuItem::new("play_nightly", "Beta Test Client").disabled();
-    let play_legacy = CustomMenuItem::new("play_legacy", "Legacy Client").disabled();
-    let play_menu = SystemTrayMenu::new()
-        .add_item(play_ce)
-        .add_item(play_beta)
-        .add_item(play_legacy);
-    let play_submenu = SystemTraySubmenu::new("Play", play_menu);
-
-    let tray_menu = SystemTrayMenu::new()
-        .add_item(show)
-        .add_submenu(play_submenu)
-        .add_native_item(SystemTrayMenuItem::Separator)
-        .add_item(notifications)
-        .add_native_item(SystemTrayMenuItem::Separator)
-        .add_item(quit);
-    let system_tray = SystemTray::new().with_menu(tray_menu);
+    let system_tray = SystemTray::new().with_menu(build_tray_menu());
 
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
@@ -1091,6 +1115,7 @@ fn main() {
             set_tray_play_enabled,
             set_updating_launcher,
             show_notification,
+            set_locale,
 
             // Mod management
             mods::get_mods_dir,

@@ -12,6 +12,17 @@ import { usePayload, TaskPayload } from "@app/tasks/payload";
 import { IBaseTask } from "@app/tasks/Processors/base";
 import { useDownloadHistory } from "@app/stores/DownloadHistoryStore";
 import { showToast } from "@app/utils/toast";
+import i18n from "@app/i18n";
+
+const channelNameKeys: Record<string, string> = {
+    stable: "community_edition",
+    nightly: "beta_test_client",
+    legacy: "legacy_client",
+};
+
+function getTranslatedChannelName(channel: string): string {
+    return i18n.t(channelNameKeys[channel] ?? channel, { ns: "launch" });
+}
 
 export enum S2States {
     "AVAILABLE",
@@ -175,8 +186,8 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
                     if (lastNotifiedVersion.current !== latestVersion) {
                         lastNotifiedVersion.current = latestVersion;
                         showToast(
-                            "Update Available",
-                            `Savage 2 — ${releaseData.name} ${latestVersion}`
+                            i18n.t("update_available_toast"),
+                            i18n.t("savage2_update_body", { name: getTranslatedChannelName(releaseData.channel), version: latestVersion })
                         );
                     }
                 } else {
@@ -239,8 +250,8 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
                     if (lastNotifiedVersion.current !== remoteVersion) {
                         lastNotifiedVersion.current = remoteVersion;
                         showToast(
-                            "Update Available",
-                            `Savage 2 — ${releaseData.name} ${remoteVersion}`
+                            i18n.t("update_available_toast"),
+                            i18n.t("savage2_update_body", { name: getTranslatedChannelName(releaseData.channel), version: remoteVersion })
                         );
                     }
                 }
@@ -319,7 +330,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
                     // Log repair to download history
                     useDownloadHistory.getState().addEntry({
                         game: "Savage 2",
-                        channel: releaseData.name,
+                        channel: releaseData.channel,
                         type: "repair",
                         version: installedVersion,
                         previousVersion: null,
@@ -416,7 +427,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
                 // Log to download history
                 useDownloadHistory.getState().addEntry({
                     game: "Savage 2",
-                    channel: releaseData.name,
+                    channel: releaseData.channel,
                     type: gameExists ? "update" : "install",
                     version: latestVersion,
                     previousVersion: gameExists ? previousVersion : null,
@@ -424,8 +435,8 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
 
                 // Toast
                 showToast(
-                    gameExists ? "Update Complete" : "Install Complete",
-                    `Savage 2 — ${releaseData.name} ${latestVersion ?? ""}`
+                    gameExists ? i18n.t("update_complete") : i18n.t("install_complete"),
+                    i18n.t("savage2_update_body", { name: getTranslatedChannelName(releaseData.channel), version: latestVersion ?? "" })
                 );
 
                 setState(S2States.AVAILABLE);
@@ -491,7 +502,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
 
         if (!await invoke("is_initialized")) return;
 
-        const confirmed = await showUninstallDialog(`Savage 2 - ${releaseData.name}`);
+        const confirmed = await showUninstallDialog(`Savage 2 - ${getTranslatedChannelName(releaseData.channel)}`);
         if (!confirmed) return;
 
         setState(S2States.UNINSTALLING);
@@ -507,7 +518,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
                 () => {
                     useDownloadHistory.getState().addEntry({
                         game: "Savage 2",
-                        channel: releaseData.name,
+                        channel: releaseData.channel,
                         type: "uninstall",
                         version: installedVersion,
                         previousVersion: null,
@@ -612,7 +623,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
             // Log repair to download history
             useDownloadHistory.getState().addEntry({
                 game: "Savage 2",
-                channel: releaseData.name,
+                channel: releaseData.channel,
                 type: "repair",
                 version: installedVersion,
                 previousVersion: null,
@@ -622,14 +633,14 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
             if (repairTask.skippedFiles.length > 0) {
                 setVerificationWarning(true);
                 showToast(
-                    "Verification Warning",
-                    `${repairTask.skippedFiles.length} file(s) could not be verified`
+                    i18n.t("verification_warning_toast"),
+                    i18n.t("files_not_verified", { count: repairTask.skippedFiles.length })
                 );
             } else {
                 setVerificationWarning(false);
                 showToast(
-                    "Verification Complete",
-                    "All files verified successfully"
+                    i18n.t("verification_complete"),
+                    i18n.t("all_files_verified_success")
                 );
             }
 
@@ -661,7 +672,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
             const selected = await open({
                 directory: true,
                 multiple: false,
-                title: "Choose Install Location",
+                title: i18n.t("choose_install_location", { ns: "launch" }),
                 defaultPath: defaultPath || undefined
             });
 

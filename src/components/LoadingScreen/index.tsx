@@ -4,6 +4,7 @@ import * as Progress from "@radix-ui/react-progress";
 import { error as logError } from "tauri-plugin-log-api";
 import { serializeError } from "serialize-error";
 import { invoke } from "@tauri-apps/api/tauri";
+import { useTranslation } from "react-i18next";
 
 enum LoadingState {
     "LOADING",
@@ -17,6 +18,7 @@ interface Props {
 
 const LoadingScreen: React.FC<Props> = (props: Props) => {
     const [loading, setLoading] = useState(LoadingState.LOADING);
+    const { t } = useTranslation();
 
     // Load
     useEffect(() => {
@@ -63,7 +65,7 @@ const LoadingScreen: React.FC<Props> = (props: Props) => {
 
         <div className={styles.factContainer}>
             {/* <p className={styles.factHeader}>Fun Fact</p> */}
-            Loading...
+            {t("loading")}
         </div>
     </div>;
 };

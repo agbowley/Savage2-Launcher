@@ -3,6 +3,7 @@ import { BaseDialog } from "./BaseDialog";
 import baseStyles from "./BaseDialog.module.css";
 import { closeDialog } from "..";
 import { WarningIcon } from "@app/assets/Icons";
+import i18n from "@app/i18n";
 
 export class FileConflictDialog extends BaseDialog<Record<string, never>> {
     constructor(props: Record<string, unknown>) {
@@ -18,7 +19,7 @@ export class FileConflictDialog extends BaseDialog<Record<string, never>> {
     }
 
     getTitle() {
-        return <>File Conflict</>;
+        return <>{i18n.t("file_conflict_title", { ns: "dialogs" })}</>;
     }
 
     getInnerContents() {
@@ -27,7 +28,9 @@ export class FileConflictDialog extends BaseDialog<Record<string, never>> {
         return (
             <div style={{ textAlign: "center" }}>
                 <p>
-                    The following file{files.length !== 1 ? "s were" : " was"} overwritten in the game folder:
+                    {files.length !== 1
+                        ? i18n.t("file_conflict_files_plural", { ns: "dialogs" })
+                        : i18n.t("file_conflict_files_singular", { ns: "dialogs" })}
                 </p>
                 <div style={{
                     background: "rgba(255,255,255,0.04)",
@@ -51,8 +54,9 @@ export class FileConflictDialog extends BaseDialog<Record<string, never>> {
                     ))}
                 </div>
                 <p style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
-                    Another mod may have been using {files.length !== 1 ? "these files" : "this file"}.
-                    If you experience issues, try disabling conflicting mods.
+                    {files.length !== 1
+                        ? i18n.t("file_conflict_hint_plural", { ns: "dialogs" })
+                        : i18n.t("file_conflict_hint_singular", { ns: "dialogs" })}
                 </p>
             </div>
         );
@@ -61,7 +65,7 @@ export class FileConflictDialog extends BaseDialog<Record<string, never>> {
     getButtons() {
         return (
             <Button color={ButtonColor.GRAY} onClick={() => closeDialog()}>
-                OK
+                {i18n.t("ok", { ns: "common" })}
             </Button>
         );
     }

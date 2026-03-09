@@ -5,6 +5,7 @@ import styles from "./InstallFolderDialog.module.css";
 import { DriveIcon, WarningIcon } from "@app/assets/Icons";
 import { invoke } from "@tauri-apps/api";
 import { closeDialog } from "..";
+import i18n from "@app/i18n";
 
 interface State {
     path?: string;
@@ -32,13 +33,12 @@ export class InstallFolderDialog extends BaseDialog<State> {
     getInnerContents() {
         return <>
             <p>
-                Please choose an installation folder. This folder should not be a folder that is synced with the cloud.
-                If you do not know what folder to choose, just click &quot;Okay&quot;.
+                {i18n.t("install_folder_body", { ns: "dialogs" })}
             </p>
             <div className={styles.folder_container} onClick={() => this.askForFolder()}>
                 <div className={styles.folder_info}>
                     <DriveIcon />
-                    {typeof this.state.path === "string" ? this.state.path : "Loading..."}
+                    {typeof this.state.path === "string" ? this.state.path : i18n.t("loading")}
                 </div>
                 <div className={styles.folder_extra}>
 
@@ -46,7 +46,7 @@ export class InstallFolderDialog extends BaseDialog<State> {
             </div>
             {!this.state.empty ?
                 <div className={styles.warning_box}>
-                    <WarningIcon /> The folder selected is not empty! Make sure it doesn&apos;t have any files in it.
+                    <WarningIcon /> {i18n.t("folder_not_empty", { ns: "dialogs" })}
                 </div>
                 : ""
             }
@@ -70,7 +70,7 @@ export class InstallFolderDialog extends BaseDialog<State> {
     }
 
     getTitle() {
-        return <>Install Folder</>;
+        return <>{i18n.t("install_folder_title", { ns: "dialogs" })}</>;
     }
 
     getIcon() {
@@ -83,14 +83,14 @@ export class InstallFolderDialog extends BaseDialog<State> {
 
     getButtons() {
         return <>
-            <Button color={ButtonColor.GRAY} onClick={() => closeDialog("cancel")}>Cancel</Button>
+            <Button color={ButtonColor.GRAY} onClick={() => closeDialog("cancel")}>{i18n.t("cancel", { ns: "common" })}</Button>
             <Button color={ButtonColor.GREEN} onClick={() => {
                 if (!this.state.empty) {
                     return;
                 }
 
                 closeDialog(this.state.path);
-            }}>Okay</Button>
+            }}>{i18n.t("okay", { ns: "dialogs" })}</Button>
         </>;
     }
 }

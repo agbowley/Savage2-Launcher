@@ -6,6 +6,8 @@ import { useModsStore } from "@app/stores/ModsStore";
 import { BackIcon, DriveIcon } from "@app/assets/Icons";
 import { showDeleteModDialog, showErrorDialog, showFileConflictDialog } from "@app/dialogs/dialogUtil";
 import type { ReleaseChannels } from "@app/hooks/useS2Release";
+import { useTranslation } from "react-i18next";
+import i18n from "@app/i18n";
 
 function channelToProfile(channel: ReleaseChannels): string {
     switch (channel) {
@@ -16,7 +18,7 @@ function channelToProfile(channel: ReleaseChannels): string {
 }
 
 function formatDate(iso: string): string {
-    return new Intl.DateTimeFormat("en-US", {
+    return new Intl.DateTimeFormat(i18n.language, {
         year: "numeric",
         month: "short",
         day: "numeric",
@@ -24,6 +26,7 @@ function formatDate(iso: string): string {
 }
 
 const CustomModPage: React.FC = () => {
+    const { t } = useTranslation("mods");
     const { modId } = useParams<{ modId: string }>();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -98,7 +101,7 @@ const CustomModPage: React.FC = () => {
     if (!mod) {
         return (
             <div className={styles.page}>
-                <div className={styles.loading}>Mod not found.</div>
+                <div className={styles.loading}>{t("mod_not_found")}</div>
             </div>
         );
     }
@@ -109,7 +112,7 @@ const CustomModPage: React.FC = () => {
             <div className={styles.back_bar}>
                 <button className={styles.back_button} onClick={() => navigate(`/s2/${channel}`, { state: { activeTab: "mods" } })}>
                     <BackIcon />
-                    Back
+                    {t("back", { ns: "common" })}
                 </button>
             </div>
 
@@ -120,15 +123,15 @@ const CustomModPage: React.FC = () => {
                     <div className={styles.header}>
                         <span className={styles.title}>{mod.name}</span>
                         <span className={styles.subtitle}>
-                            Imported mod
-                            {mod.files.length > 1 && <span>&middot; {mod.files.length} files</span>}
+                            {t("imported_mod")}
+                            {mod.files.length > 1 && <span>&middot; {mod.files.length} {t("files_section")}</span>}
                         </span>
                     </div>
 
                     {/* Installed files */}
                     {mod.files.length > 0 && (
                         <div className={styles.versions_section}>
-                            <span className={styles.section_heading}>Files</span>
+                            <span className={styles.section_heading}>{t("files_section")}</span>
                             <div className={styles.files_list}>
                                 {mod.files.map((f) => (
                                     <div key={f.filename} className={styles.file_entry}>
@@ -151,7 +154,7 @@ const CustomModPage: React.FC = () => {
                                 className={`${styles.install_button} ${mod.enabled ? styles.install_button_enabled : styles.install_button_disabled_state}`}
                                 onClick={handleToggleEnabled}
                             >
-                                {mod.enabled ? "Enabled" : "Disabled"}
+                                {mod.enabled ? t("enabled", { ns: "common" }) : t("disabled", { ns: "common" })}
                             </button>
                         </div>
                         <div className={styles.action_row}>
@@ -159,32 +162,32 @@ const CustomModPage: React.FC = () => {
                                 className={`${styles.install_button} ${styles.install_button_danger}`}
                                 onClick={handleDelete}
                             >
-                                Remove
+                                {t("remove", { ns: "common" })}
                             </button>
                         </div>
                     </div>
 
                     {/* Info card */}
                     <div className={styles.side_card}>
-                        <span className={styles.side_card_title}>Details</span>
+                        <span className={styles.side_card_title}>{t("details")}</span>
                         <div className={styles.info_row}>
-                            <span className={styles.info_label}>Type</span>
-                            <span className={styles.info_value}>Imported</span>
+                            <span className={styles.info_label}>{t("type_label")}</span>
+                            <span className={styles.info_value}>{t("imported_value")}</span>
                         </div>
                         <div className={styles.info_row}>
-                            <span className={styles.info_label}>Files</span>
+                            <span className={styles.info_label}>{t("files_section")}</span>
                             <span className={styles.info_value}>{mod.files.length}</span>
                         </div>
                         <div className={styles.info_row}>
-                            <span className={styles.info_label}>Load Order</span>
+                            <span className={styles.info_label}>{t("load_order_label")}</span>
                             <span className={styles.info_value}>#{mod.loadOrder}</span>
                         </div>
                         <div className={styles.info_row}>
-                            <span className={styles.info_label}>Status</span>
-                            <span className={styles.info_value}>{mod.enabled ? "Active" : "Inactive"}</span>
+                            <span className={styles.info_label}>{t("status_label")}</span>
+                            <span className={styles.info_value}>{mod.enabled ? t("active_status") : t("inactive_status")}</span>
                         </div>
                         <div className={styles.info_row}>
-                            <span className={styles.info_label}>Imported</span>
+                            <span className={styles.info_label}>{t("installed_label")}</span>
                             <span className={styles.info_value}>{formatDate(mod.installedAt)}</span>
                         </div>
                         {modFolderPath && (

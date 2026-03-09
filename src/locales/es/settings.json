@@ -1,0 +1,9 @@
+{
+    "heading": "Configuración",
+    "language_section": "Idioma",
+    "language_label": "Idioma",
+    "language_description": "Elige el idioma de visualización del launcher",
+    "notifications_section": "Notificaciones",
+    "toast_label": "Notificaciones emergentes",
+    "toast_description": "Mostrar alertas emergentes cuando las descargas terminen o haya actualizaciones disponibles (solo mientras está minimizado en la bandeja)"
+}

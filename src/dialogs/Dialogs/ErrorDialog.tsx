@@ -6,6 +6,7 @@ import { error as LogError } from "tauri-plugin-log-api";
 import { serializeError } from "serialize-error";
 import { closeDialog } from "..";
 import { ErrorIcon } from "@app/assets/Icons";
+import i18n from "@app/i18n";
 
 export class ErrorDialog extends BaseDialog<Record<string, never>> {
     constructor(props: Record<string, unknown>) {
@@ -41,7 +42,7 @@ export class ErrorDialog extends BaseDialog<Record<string, never>> {
 
         return <>
             <p>
-                An error has occurred. If you don&apos;t know what happened, please report this on our Discord and include the following error message:
+                {i18n.t("error_body", { ns: "dialogs" })}
             </p>
             <div className={styles.stacktrace}>
                 {message}
@@ -50,12 +51,12 @@ export class ErrorDialog extends BaseDialog<Record<string, never>> {
     }
 
     getTitle() {
-        return <>Error</>;
+        return <>{i18n.t("error_title", { ns: "dialogs" })}</>;
     }
 
     getButtons() {
         return <>
-            <Button color={ButtonColor.GRAY} onClick={() => closeDialog()}>Okay</Button>
+            <Button color={ButtonColor.GRAY} onClick={() => closeDialog()}>{i18n.t("okay", { ns: "dialogs" })}</Button>
         </>;
     }
 }

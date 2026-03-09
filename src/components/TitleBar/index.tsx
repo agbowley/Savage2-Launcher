@@ -3,6 +3,7 @@ import { appWindow } from "@tauri-apps/api/window";
 import styles from "./titlebar.module.css";
 import { CloseIcon, MinimizeIcon } from "@app/assets/Icons";
 import LauncherIcon from "@app/assets/SourceIcons/Official.png";
+import { useTranslation } from "react-i18next";
 
 let clickCount = 0;
 let clickTimer: ReturnType<typeof setTimeout> | null = null;
@@ -33,12 +34,14 @@ const TitleBar: React.FC = () => {
         }
     }
 
+    const { t } = useTranslation();
+
     return <div
         onMouseDown={handleMouseDown}
         className={styles.title_bar}>
         <div className={styles.text}>
             <img src={LauncherIcon} height={18} alt="Savage 2" />
-            Savage 2 Launcher
+            {t("savage2_launcher")}
         </div>
 
         <div className={styles.buttons}>

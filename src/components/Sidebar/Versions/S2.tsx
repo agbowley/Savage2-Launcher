@@ -6,12 +6,14 @@ import StableS2Icon from "@app/assets/s2icon-stable.png";
 import LegacyS2Icon from "@app/assets/s2icon-legacy.png";
 import { Link, useLocation } from "react-router-dom";
 import { useCurrentTask } from "@app/tasks";
+import { useTranslation } from "react-i18next";
 
 interface Props {
     channel: ReleaseChannels;
 }
 
 const S2Version: React.FC<Props> = ({ channel }: Props) => {
+    const { t } = useTranslation("launch");
     const { data: releaseData } = useS2Release(channel);
     const { state, installedVersion, latestVersion, task, play, download } = useS2Version(releaseData, channel);
     const currentTask = useCurrentTask();
@@ -30,11 +32,11 @@ const S2Version: React.FC<Props> = ({ channel }: Props) => {
     function getChannelDisplayName() {
         switch (channel) {
             case "stable":
-                return "Community Edition";
+                return t("community_edition");
             case "nightly":
-                return "Beta Test Client";
+                return t("beta_test_client");
             case "legacy":
-                return "Legacy Client";
+                return t("legacy_client");
         }
     }
 

@@ -3,6 +3,7 @@ import { BaseDialog } from "./BaseDialog";
 import baseStyles from "./BaseDialog.module.css";
 import { closeDialog } from "..";
 import { WarningIcon } from "@app/assets/Icons";
+import i18n from "@app/i18n";
 
 export class UninstallDialog extends BaseDialog<Record<string, never>> {
     constructor(props: Record<string, unknown>) {
@@ -20,20 +21,19 @@ export class UninstallDialog extends BaseDialog<Record<string, never>> {
     getInnerContents() {
         return <>
             <p>
-                Are you sure you want to uninstall <strong>{this.props.appName as string}</strong>?
-                This will remove all game files. Your mods and user configuration settings will be preserved.
+                {i18n.t("confirm_uninstall_body", { ns: "dialogs", appName: this.props.appName as string })}
             </p>
         </>;
     }
 
     getTitle() {
-        return <>Confirm Uninstall</>;
+        return <>{i18n.t("confirm_uninstall_title", { ns: "dialogs" })}</>;
     }
 
     getButtons() {
         return <>
-            <Button color={ButtonColor.GRAY} onClick={() => closeDialog()}>Cancel</Button>
-            <Button color={ButtonColor.RED} onClick={() => closeDialog("confirm")}>Uninstall</Button>
+            <Button color={ButtonColor.GRAY} onClick={() => closeDialog()}>{i18n.t("cancel", { ns: "common" })}</Button>
+            <Button color={ButtonColor.RED} onClick={() => closeDialog("confirm")}>{i18n.t("uninstall", { ns: "launch" })}</Button>
         </>;
     }
 }

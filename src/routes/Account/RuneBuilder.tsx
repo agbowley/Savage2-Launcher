@@ -16,6 +16,7 @@ import {
     composeType,
     type Affix,
 } from "./runeData";
+import { useTranslation } from "react-i18next";
 
 type Step = "intro" | "builder" | "confirm" | "success";
 
@@ -32,6 +33,7 @@ interface RuneBuilderProps {
 
 // eslint-disable-next-line react/prop-types
 const RuneBuilder: React.FC<RuneBuilderProps> = ({ onGoldChanged }) => {
+    const { t } = useTranslation("account");
     const [step, setStep] = useState<Step>("intro");
     const [selections, setSelections] = useState<Selections>({ type: null, color: null, passive: null, active: null });
     const [resultType, setResultType] = useState<number>(0);
@@ -92,7 +94,7 @@ const RuneBuilder: React.FC<RuneBuilderProps> = ({ onGoldChanged }) => {
     };
 
     const stepIndex = step === "intro" ? 0 : step === "builder" ? 1 : step === "confirm" ? 2 : 3;
-    const stepLabels = ["Introduction", "Builder", "Confirmation", "Success"];
+    const stepLabels = [t("step_introduction"), t("step_builder"), t("step_confirmation"), t("step_success")];
 
     const renderStepper = () => (
         <div className={styles.stepper}>
@@ -122,11 +124,11 @@ const RuneBuilder: React.FC<RuneBuilderProps> = ({ onGoldChanged }) => {
                         <CachedImage
                             cachedSrc={`${RUNE_IMAGE_BASE}${affix.affixImage}`}
                             className={styles.affixThumb}
-                            alt={affix.text}
+                            alt={t(affix.text)}
                         />
                         <div className={styles.affixInfo}>
-                            <span className={styles.affixName}>{affix.text}</span>
-                            <span className={styles.affixStat}>+ {affix.status}</span>
+                            <span className={styles.affixName}>{t(affix.text)}</span>
+                            <span className={styles.affixStat}>+ {t(affix.status)}</span>
                         </div>
                         <span className={styles.affixPoints}>&#10022; {affix.cost}</span>
                     </div>
@@ -142,7 +144,7 @@ const RuneBuilder: React.FC<RuneBuilderProps> = ({ onGoldChanged }) => {
             {step === "intro" && (
                 <div className={styles.builderLanding}>
                     <p className={styles.builderTitle}>
-                        Here you can create powerful items to be used on the battlefield
+                        {t("builder_intro")}
                     </p>
                     <div className={styles.introIcons}>
                         <CachedImage cachedSrc={`${RUNE_IMAGE_BASE}types/object_jewel.png`} className={styles.introIcon} alt="" />
@@ -156,14 +158,14 @@ const RuneBuilder: React.FC<RuneBuilderProps> = ({ onGoldChanged }) => {
                         <RuneImage type={composeType(3, 1, 4, 1)} stage={-1} size={80} />
                     </div>
                     <p className={styles.builderHint}>
-                        Spend <GoldIcon /> 100 gold to construct the perfect item, or test your luck to reveal random affixes for <GoldIcon /> 50 gold
+                        {t("builder_hint_spend")} <GoldIcon /> {t("builder_hint_gold_craft")} <GoldIcon /> {t("builder_hint_gold_random")}
                     </p>
                     <div className={styles.introButtons}>
                         <Button color={ButtonColor.YELLOW} onClick={() => setStep("builder")} compact>
-                            CREATE NEW ITEM
+                            {t("create_new_item")}
                         </Button>
                         <Button color={ButtonColor.GRAY} onClick={() => createItem(true)} disabled={loading} compact>
-                            {loading ? <Spinner size={14} /> : "RANDOMIZE AN ITEM"}
+                            {loading ? <Spinner size={14} /> : t("randomize_item")}
                         </Button>
                     </div>
                 </div>
@@ -173,20 +175,20 @@ const RuneBuilder: React.FC<RuneBuilderProps> = ({ onGoldChanged }) => {
                 <div className={styles.builderStep}>
                     <div className={styles.pointsHeader}>
                         <span className={styles.pointsStar}>&#10022;</span>
-                        <span className={styles.pointsText}>Points left: {pointsLeft} / {MAX_POINTS}</span>
+                        <span className={styles.pointsText}>{t("points_left", { left: pointsLeft, max: MAX_POINTS })}</span>
                     </div>
                     <div className={styles.builderColumns}>
-                        {renderAffixColumn("Type", Types, "type", selections.type)}
-                        {renderAffixColumn("Color", Regen, "color", selections.color)}
-                        {renderAffixColumn("Passive", Passives, "passive", selections.passive)}
-                        {renderAffixColumn("Active", Actives, "active", selections.active)}
+                        {renderAffixColumn(t("column_type"), Types, "type", selections.type)}
+                        {renderAffixColumn(t("column_color"), Regen, "color", selections.color)}
+                        {renderAffixColumn(t("column_passive"), Passives, "passive", selections.passive)}
+                        {renderAffixColumn(t("column_active"), Actives, "active", selections.active)}
                     </div>
                     <div className={styles.builderNav}>
                         <Button color={ButtonColor.GRAY} compact onClick={() => { reset(); }}>
-                            PREVIOUS
+                            {t("previous")}
                         </Button>
                         <Button color={ButtonColor.YELLOW} compact disabled={!allSelected || pointsLeft < 0} onClick={() => setStep("confirm")}>
-                            NEXT
+                            {t("next_step")}
                         </Button>
                     </div>
                 </div>
@@ -194,14 +196,14 @@ const RuneBuilder: React.FC<RuneBuilderProps> = ({ onGoldChanged }) => {
 
             {step === "confirm" && (
                 <div className={styles.builderLanding}>
-                    <p className={styles.builderTitle}>Are you sure you want to create this rune?</p>
+                    <p className={styles.builderTitle}>{t("confirm_rune")}</p>
                     <RuneImage type={previewType} stage={-1} size={160} />
                     <div className={styles.introButtons}>
                         <Button color={ButtonColor.GRAY} compact onClick={() => setStep("builder")}>
-                            PREVIOUS
+                            {t("previous")}
                         </Button>
                         <Button color={ButtonColor.YELLOW} compact disabled={loading} onClick={() => createItem(false)}>
-                            {loading ? <Spinner size={14} /> : "CREATE"}
+                            {loading ? <Spinner size={14} /> : t("create")}
                         </Button>
                     </div>
                 </div>
@@ -210,11 +212,11 @@ const RuneBuilder: React.FC<RuneBuilderProps> = ({ onGoldChanged }) => {
             {step === "success" && (
                 <div className={styles.builderLanding}>
                     <p className={styles.builderTitle}>
-                        Your rune has been successfully created! You can access it in your rune vault now and equip it.
+                        {t("rune_created")}
                     </p>
                     <RuneImage type={resultType} stage={-1} size={160} />
                     <Button color={ButtonColor.YELLOW} compact onClick={reset}>
-                        CREATE A NEW RUNE
+                        {t("create_new_rune")}
                     </Button>
                 </div>
             )}

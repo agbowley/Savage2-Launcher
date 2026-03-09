@@ -5,10 +5,12 @@ import { useAuthStore } from "@app/stores/AuthStore";
 import { showGoldHistory } from "@app/dialogs/dialogUtil";
 import RuneBuilder from "./RuneBuilder";
 import RuneVault from "./RuneVault";
+import { useTranslation } from "react-i18next";
 
 type Tab = "vault" | "builder";
 
 function Account() {
+    const { t } = useTranslation("account");
     const user = useAuthStore(s => s.user);
     const gold = useAuthStore(s => s.gold);
     const fetchGold = useAuthStore(s => s.fetchGold);
@@ -43,7 +45,7 @@ function Account() {
     return (
         <div className={styles.page}>
             <div className={styles.header}>
-                <h1 className={styles.heading}>My Account</h1>
+                <h1 className={styles.heading}>{t("my_account")}</h1>
                 {gold != null && (
                     <div className={styles.goldBadge} onClick={showGoldHistory} role="button" tabIndex={0}>
                         <GoldIcon />
@@ -57,13 +59,13 @@ function Account() {
                     className={`${styles.tab} ${tab === "builder" ? styles.tabActive : ""}`}
                     onClick={() => setTab("builder")}
                 >
-                    Rune Builder
+                    {t("rune_builder")}
                 </button>
                 <button
                     className={`${styles.tab} ${tab === "vault" ? styles.tabActive : ""}`}
                     onClick={switchToVault}
                 >
-                    Rune Vault
+                    {t("rune_vault")}
                     {vaultNotify && <span className={styles.notifyDot} />}
                 </button>
             </div>

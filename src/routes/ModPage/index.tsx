@@ -14,6 +14,8 @@ import { useDownloadHistory } from "@app/stores/DownloadHistoryStore";
 import type { ReleaseChannels } from "@app/hooks/useS2Release";
 import type { ModVersion, InstalledMod, InstalledModFile } from "@app/types/mods";
 import { isMapMod, isToolMod } from "@app/types/mods";
+import { useTranslation } from "react-i18next";
+import i18n from "@app/i18n";
 
 function channelToProfile(channel: ReleaseChannels): string {
     switch (channel) {
@@ -54,7 +56,7 @@ function formatFileSize(bytes: number): string {
 }
 
 function formatDate(iso: string): string {
-    return new Intl.DateTimeFormat("en-US", {
+    return new Intl.DateTimeFormat(i18n.language, {
         year: "numeric",
         month: "short",
         day: "numeric",
@@ -62,6 +64,7 @@ function formatDate(iso: string): string {
 }
 
 const ModPage: React.FC = () => {
+    const { t } = useTranslation("mods");
     const { modId } = useParams<{ modId: string }>();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -397,8 +400,8 @@ const ModPage: React.FC = () => {
     }, [installedMod, profile, removeMod, getMods, toManifest]);
 
     // ---- Loading / Error ----
-    if (isLoading) return <div className={styles.page}><div className={styles.loading}>Loading mod details...</div></div>;
-    if (error || !mod) return <div className={styles.page}><div className={styles.loading}>Failed to load mod.</div></div>;
+    if (isLoading) return <div className={styles.page}><div className={styles.loading}>{t("loading_mod_details")}</div></div>;
+    if (error || !mod) return <div className={styles.page}><div className={styles.loading}>{t("failed_load_mod")}</div></div>;
 
     const latestVersion = mod.versions.find((v) => v.isLatest) ?? mod.versions[0];
 
@@ -408,14 +411,14 @@ const ModPage: React.FC = () => {
             <div className={styles.back_bar}>
                 <button className={styles.back_button} onClick={() => navigate(`/s2/${channel}`, { state: { activeTab: "mods" } })}>
                     <BackIcon />
-                    Back
+                    {t("back", { ns: "common" })}
                 </button>
             </div>
 
             {/* Lightbox */}
             {lightboxImage && (
                 <div className={styles.lightbox} onClick={() => setLightboxImage(null)}>
-                    <CachedImage cachedSrc={lightboxImage} alt="Mod screenshot" />
+                    <CachedImage cachedSrc={lightboxImage} alt={t("mod_screenshot")} />
                 </div>
             )}
 
@@ -426,9 +429,9 @@ const ModPage: React.FC = () => {
                     <div className={styles.header}>
                         <span className={styles.title}>{mod.name}</span>
                         <span className={styles.subtitle}>
-                            by {mod.author}
+                            {t("by_author", { author: mod.author })}
                             <span>&middot;</span>
-                            <DownloadIcon /> {mod.totalDownloads} downloads
+                            <DownloadIcon /> {mod.totalDownloads} {t("downloads_suffix")}
                         </span>
                         {mod.tags.length > 0 && (
                             <div className={styles.tags_row}>
@@ -482,18 +485,18 @@ const ModPage: React.FC = () => {
 
                     {/* Version history */}
                     <div className={styles.versions_section}>
-                        <span className={styles.section_heading}>Versions</span>
+                        <span className={styles.section_heading}>{t("versions_label")}</span>
                         {mod.versions.map((ver) => (
                             <div key={ver.id} className={styles.version_card}>
                                 <div className={styles.version_header}>
                                     <span className={styles.version_name}>
                                         v{ver.version}
-                                        {ver.isLatest && <span className={styles.version_latest_badge}>Latest</span>}
+                                        {ver.isLatest && <span className={styles.version_latest_badge}>{t("latest_badge")}</span>}
                                     </span>
                                     {installedMod?.installedVersionId === ver.id ? (
                                         <span className={styles.version_installed_badge}>
                                             <CheckmarkIcon />
-                                            Installed
+                                            {t("installed_label")}
                                         </span>
                                     ) : (
                                         <button
@@ -501,14 +504,14 @@ const ModPage: React.FC = () => {
                                             onClick={() => handleInstall(ver)}
                                             disabled={installing}
                                         >
-                                            Install
+                                            {t("install", { ns: "common" })}
                                         </button>
                                     )}
                                 </div>
                                 <div className={styles.version_meta}>
-                                    {ver.gameVersion && <span>Game: {ver.gameVersion}</span>}
+                                    {ver.gameVersion && <span>{t("game_version_prefix", { version: ver.gameVersion })}</span>}
                                     <span>{formatFileSize(ver.fileSize)}</span>
-                                    <span>{ver.downloadCount} downloads</span>
+                                    <span>{ver.downloadCount} {t("downloads_suffix")}</span>
                                     <span>{formatDate(ver.createdAt)}</span>
                                 </div>
                                 {ver.changelog && (
@@ -522,10 +525,10 @@ const ModPage: React.FC = () => {
                     {installedMod && installedMod.files.length > 0 && (
                         <div className={styles.versions_section}>
                             <span className={styles.section_heading}>
-                                Installed Files
+                                {t("installed_files")}
                                 {installedMod.files.length > 1 && (
                                     <span className={styles.file_count}>
-                                        {installedMod.files.filter((f) => f.enabled).length}/{installedMod.files.length} enabled
+                                        {t("enabled_count", { count: installedMod.files.filter((f) => f.enabled).length, total: installedMod.files.length })}
                                     </span>
                                 )}
                             </span>
@@ -543,7 +546,7 @@ const ModPage: React.FC = () => {
                                             <span
                                                 className={`${styles.file_name} ${styles.file_name_clickable}`}
                                                 onClick={() => handleEditXmlFile(f)}
-                                                title="Click to edit"
+                                                title={t("click_to_edit")}
                                             >
                                                 {f.filename}
                                             </span>
@@ -557,9 +560,9 @@ const ModPage: React.FC = () => {
                                             <button
                                                 className={`${styles.file_toggle_btn} ${f.enabled ? styles.file_toggle_on : styles.file_toggle_off}`}
                                                 onClick={() => handleToggleFile(f)}
-                                                title={f.enabled ? "Disable this file" : "Enable this file"}
+                                                title={f.enabled ? t("disable_file") : t("enable_file")}
                                             >
-                                                {f.enabled ? "On" : "Off"}
+                                                {f.enabled ? t("on", { ns: "common" }) : t("off", { ns: "common" })}
                                             </button>
                                         )}
                                     </div>
@@ -580,7 +583,7 @@ const ModPage: React.FC = () => {
                                     onClick={() => latestVersion && handleInstall(latestVersion)}
                                     disabled={installing || !latestVersion}
                                 >
-                                    {installing ? "Installing..." : "Install"}
+                                    {installing ? t("installing_mod") : t("install", { ns: "common" })}
                                 </button>
                             </div>
                         ) : isToolMod(installedMod.files) ? (
@@ -590,7 +593,7 @@ const ModPage: React.FC = () => {
                                         className={`${styles.install_button} ${styles.install_button_primary}`}
                                         onClick={() => invoke("reveal_mod_folder", { profile, modId: installedMod.id }).catch(showErrorDialog)}
                                     >
-                                        <DriveIcon /> Open Folder
+                                        <DriveIcon /> {t("open_folder")}
                                     </button>
                                 </div>
                                 <div className={styles.action_row}>
@@ -600,14 +603,14 @@ const ModPage: React.FC = () => {
                                             onClick={() => handleInstall(latestVersion)}
                                             disabled={installing}
                                         >
-                                            Update to v{latestVersion.version}
+                                            {t("update_to", { version: `v${latestVersion.version}` })}
                                         </button>
                                     )}
                                     <button
                                         className={`${styles.install_button} ${styles.install_button_danger}`}
                                         onClick={handleUninstall}
                                     >
-                                        Remove
+                                        {t("remove", { ns: "common" })}
                                     </button>
                                 </div>
                             </>
@@ -621,7 +624,7 @@ const ModPage: React.FC = () => {
                                             className={`${styles.install_button} ${someEnabled ? styles.install_button_enabled : styles.install_button_disabled_state}`}
                                             onClick={handleToggleEnabled}
                                         >
-                                            {allEnabled ? "Enabled" : someEnabled ? "Partial" : "Disabled"}
+                                            {allEnabled ? t("enabled", { ns: "common" }) : someEnabled ? t("partial") : t("disabled", { ns: "common" })}
                                         </button>
                                     </div>
                                     <div className={styles.action_row}>
@@ -631,14 +634,14 @@ const ModPage: React.FC = () => {
                                                 onClick={() => handleInstall(latestVersion)}
                                                 disabled={installing}
                                             >
-                                                Update to v{latestVersion.version}
+                                                {t("update_to", { version: `v${latestVersion.version}` })}
                                             </button>
                                         )}
                                         <button
                                             className={`${styles.install_button} ${styles.install_button_danger}`}
                                             onClick={handleUninstall}
                                         >
-                                            Remove
+                                            {t("remove", { ns: "common" })}
                                         </button>
                                     </div>
                                 </>
@@ -648,42 +651,42 @@ const ModPage: React.FC = () => {
 
                     {/* Info card */}
                     <div className={styles.side_card}>
-                        <span className={styles.side_card_title}>Details</span>
+                        <span className={styles.side_card_title}>{t("details")}</span>
                         <div className={styles.info_row}>
-                            <span className={styles.info_label}>Author</span>
+                            <span className={styles.info_label}>{t("author_label")}</span>
                             <span className={styles.info_value}>{mod.author}</span>
                         </div>
                         <div className={styles.info_row}>
-                            <span className={styles.info_label}>Latest Version</span>
+                            <span className={styles.info_label}>{t("latest_version_label")}</span>
                             <span className={styles.info_value}>{latestVersion?.version ?? "—"}</span>
                         </div>
                         {latestVersion?.gameVersion && (
                             <div className={styles.info_row}>
-                                <span className={styles.info_label}>Game Version</span>
+                                <span className={styles.info_label}>{t("game_version_label")}</span>
                                 <span className={styles.info_value}>{latestVersion.gameVersion}</span>
                             </div>
                         )}
                         <div className={styles.info_row}>
-                            <span className={styles.info_label}>Total Downloads</span>
+                            <span className={styles.info_label}>{t("total_downloads_label")}</span>
                             <span className={styles.info_value}>{mod.totalDownloads}</span>
                         </div>
                         <div className={styles.info_row}>
-                            <span className={styles.info_label}>Created</span>
+                            <span className={styles.info_label}>{t("created_label")}</span>
                             <span className={styles.info_value}>{formatDate(mod.createdAt)}</span>
                         </div>
                         <div className={styles.info_row}>
-                            <span className={styles.info_label}>Updated</span>
+                            <span className={styles.info_label}>{t("updated_label")}</span>
                             <span className={styles.info_value}>{formatDate(mod.updatedAt)}</span>
                         </div>
                         {isInstalled && (
                             <>
                                 <div className={styles.info_row}>
-                                    <span className={styles.info_label}>Installed</span>
+                                    <span className={styles.info_label}>{t("installed_label")}</span>
                                     <span className={styles.info_value}>v{installedMod.installedVersion}</span>
                                 </div>
                                 {!installedMod.isMap && !isToolMod(installedMod.files) && (
                                     <div className={styles.info_row}>
-                                        <span className={styles.info_label}>Load Order</span>
+                                        <span className={styles.info_label}>{t("load_order_label")}</span>
                                         <span className={styles.info_value}>#{installedMod.loadOrder}</span>
                                     </div>
                                 )}

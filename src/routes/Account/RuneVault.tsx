@@ -9,6 +9,7 @@ import TooltipWrapper from "@app/components/TooltipWrapper";
 import { getRuneName, getRuneDescription, getSalvageValue, RUNE_IMAGE_BASE } from "./runeData";
 import { showConfirmAction } from "@app/dialogs/dialogUtil";
 import { ButtonColor } from "@app/components/Button";
+import { useTranslation } from "react-i18next";
 
 interface RuneVaultProps {
     onGoldChanged: () => void;
@@ -17,6 +18,7 @@ interface RuneVaultProps {
 
 // eslint-disable-next-line react/prop-types
 const RuneVault: React.FC<RuneVaultProps> = ({ onGoldChanged, refreshKey }) => {
+    const { t } = useTranslation("account");
     const activeItems = useVaultStore(s => s.activeItems);
     const storedItems = useVaultStore(s => s.storedItems);
     const fetchActive = useVaultStore(s => s.fetchActive);
@@ -36,11 +38,11 @@ const RuneVault: React.FC<RuneVaultProps> = ({ onGoldChanged, refreshKey }) => {
 
     const activateItem = async (id: number) => {
         const item = storedItems.find(i => i.id === id);
-        const name = item ? getRuneName(item.compositeType, 4) : "this item";
+        const name = item ? getRuneName(item.compositeType, 4) : t("this_item");
         const confirmed = await showConfirmAction(
-            "Activate Item",
-            `Are you sure you want to activate ${name}? Once activated, it will expire in 30 days.`,
-            "Activate",
+            t("activate_item_title"),
+            t("activate_item_confirm", { name }),
+            t("activate"),
             ButtonColor.YELLOW,
         );
         if (!confirmed) return;
@@ -56,11 +58,11 @@ const RuneVault: React.FC<RuneVaultProps> = ({ onGoldChanged, refreshKey }) => {
 
     const salvageItem = async (id: number) => {
         const item = storedItems.find(i => i.id === id);
-        const name = item ? getRuneName(item.compositeType, 4) : "this item";
+        const name = item ? getRuneName(item.compositeType, 4) : t("this_item");
         const confirmed = await showConfirmAction(
-            "Salvage Item",
-            `Are you sure you want to salvage ${name} for ${getSalvageValue()}g? This cannot be undone.`,
-            "Salvage",
+            t("salvage_item_title"),
+            t("salvage_item_confirm", { name, value: getSalvageValue() }),
+            t("salvage"),
         );
         if (!confirmed) return;
         setLoading(true);
@@ -76,11 +78,11 @@ const RuneVault: React.FC<RuneVaultProps> = ({ onGoldChanged, refreshKey }) => {
 
     const deleteActive = async (id: number) => {
         const item = activeItems.find(i => i.id === id);
-        const name = item ? getRuneName(item.compositeType, 4) : "this item";
+        const name = item ? getRuneName(item.compositeType, 4) : t("this_item");
         const confirmed = await showConfirmAction(
-            "Delete Item",
-            `Are you sure you want to delete ${name}? This cannot be undone.`,
-            "Delete",
+            t("delete_item_title"),
+            t("delete_item_confirm", { name }),
+            t("delete"),
         );
         if (!confirmed) return;
         setLoading(true);
@@ -104,7 +106,7 @@ const RuneVault: React.FC<RuneVaultProps> = ({ onGoldChanged, refreshKey }) => {
             {/* Active Items */}
             <div className={styles.vaultSection}>
                 <div className={styles.vaultSectionHeader}>
-                    Active Items ({activeItems.length} / {activeSlots})
+                    {t("active_items", { count: activeItems.length, slots: activeSlots })}
                 </div>
                 <div className={styles.runeGrid}>
                     {activeItems.map(item => (
@@ -134,7 +136,7 @@ const RuneVault: React.FC<RuneVaultProps> = ({ onGoldChanged, refreshKey }) => {
                             onClick={() => deleteActive(selectedActiveItem.id)}
                             disabled={loading}
                         >
-                            Delete
+                            {t("delete", { ns: "common" })}
                         </button>
                     </div>
                 )}
@@ -143,13 +145,13 @@ const RuneVault: React.FC<RuneVaultProps> = ({ onGoldChanged, refreshKey }) => {
             {/* Item Storage */}
             <div className={styles.vaultSection}>
                 <div className={styles.vaultSectionHeader}>
-                    Item Storage ({storedItems.length})
+                    {t("item_storage", { count: storedItems.length })}
                 </div>
                 <div className={styles.runeGrid}>
                     {storedItems.map(item => (
                         <TooltipWrapper
                             key={item.id}
-                            text={`${getRuneName(item.compositeType, 4)}\n${getRuneDescription(item.compositeType, 4).join("\n")}\nSalvage: ${getSalvageValue()}g`}
+                            text={`${getRuneName(item.compositeType, 4)}\n${getRuneDescription(item.compositeType, 4).join("\n")}\n${t("salvage_tooltip", { value: getSalvageValue() })}`}
                         >
                             <div
                                 className={`${styles.runeSlot} ${selectedStored === item.id ? styles.runeSlotSelected : ""}`}
@@ -173,14 +175,14 @@ const RuneVault: React.FC<RuneVaultProps> = ({ onGoldChanged, refreshKey }) => {
                             onClick={() => activateItem(selectedStoredItem.id)}
                             disabled={loading}
                         >
-                            Activate
+                            {t("activate")}
                         </button>
                         <button
                             className={styles.deleteButton}
                             onClick={() => salvageItem(selectedStoredItem.id)}
                             disabled={loading}
                         >
-                            Salvage ({getSalvageValue()}g)
+                            {t("salvage_value", { value: getSalvageValue() })}
                         </button>
                     </div>
                 )}

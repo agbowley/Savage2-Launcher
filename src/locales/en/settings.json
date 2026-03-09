@@ -1,0 +1,9 @@
+{
+    "heading": "Settings",
+    "language_section": "Language",
+    "language_label": "Language",
+    "language_description": "Choose the display language for the launcher",
+    "notifications_section": "Notifications",
+    "toast_label": "Toast Notifications",
+    "toast_description": "Show pop-up alerts when downloads finish or updates are available (only while minimised to tray)"
+}

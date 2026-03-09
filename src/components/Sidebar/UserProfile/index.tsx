@@ -5,6 +5,7 @@ import { showLoginDialog } from "@app/dialogs/dialogUtil";
 import { tauriFetchJson } from "@app/utils/tauriFetch";
 import { useEffect, useState } from "react";
 import TooltipWrapper from "@app/components/TooltipWrapper";
+import { useTranslation } from "react-i18next";
 
 const LogoutIcon = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -51,6 +52,7 @@ const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 const UserProfile: React.FC = () => {
+    const { t } = useTranslation("sidebar");
     const user = useAuthStore(s => s.user);
     const logout = useAuthStore(s => s.logout);
     const gold = useAuthStore(s => s.gold);
@@ -85,7 +87,7 @@ const UserProfile: React.FC = () => {
                     onClick={showLoginDialog}
                     height={38}
                 >
-                    Sign In
+                    {t("sign_in")}
                 </Button>
             </div>
         );
@@ -127,7 +129,7 @@ const UserProfile: React.FC = () => {
     return (
         <div className={styles.userProfile}>
             {levelInfo ? (
-                <TooltipWrapper text={`Level ${levelInfo.level} — ${levelInfo.currentExp.toLocaleString()} / ${levelInfo.maxExp.toLocaleString()} XP`}>
+                <TooltipWrapper text={t("level_tooltip", { level: levelInfo.level, currentExp: levelInfo.currentExp.toLocaleString(), maxExp: levelInfo.maxExp.toLocaleString() })}>
                     {avatarWithRing}
                 </TooltipWrapper>
             ) : (
@@ -136,7 +138,7 @@ const UserProfile: React.FC = () => {
             <div className={styles.userInfo}>
                 <div className={styles.username}>{user.username}</div>
                 <div className={styles.subtitle}>
-                    {levelInfo && <span>Level {levelInfo.level}</span>}
+                    {levelInfo && <span>{t("level", { level: levelInfo.level })}</span>}
                     {gold != null && (
                         <span className={styles.gold}>
                             <GoldIcon />
@@ -149,10 +151,10 @@ const UserProfile: React.FC = () => {
                             {achievementPoints.toLocaleString()}
                         </span>
                     )}
-                    {!levelInfo && gold == null && achievementPoints == null && <span>Signed in</span>}
+                    {!levelInfo && gold == null && achievementPoints == null && <span>{t("signed_in")}</span>}
                 </div>
             </div>
-            <button className={styles.logoutButton} onClick={logout} title="Sign out">
+            <button className={styles.logoutButton} onClick={logout} title={t("sign_out")}>
                 <LogoutIcon />
             </button>
         </div>

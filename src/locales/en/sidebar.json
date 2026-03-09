@@ -1,0 +1,16 @@
+{
+    "downloads": "Downloads",
+    "downloads_count": "Downloads ({{count}})",
+    "updating": "Updating...",
+    "update_available": "Update available: {{version}}\nClick to update",
+    "download_update": "Download update {{version}}",
+    "sign_in": "Sign In",
+    "sign_out": "Sign out",
+    "signed_in": "Signed in",
+    "level": "Level {{level}}",
+    "level_tooltip": "Level {{level}} — {{currentExp}} / {{maxExp}} XP",
+    "game_clients": "Game Clients",
+    "other_clients": "Other Clients",
+    "testing": "Testing",
+    "legacy": "Legacy"
+}

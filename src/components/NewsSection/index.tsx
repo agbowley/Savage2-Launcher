@@ -3,18 +3,20 @@ import styles from "./NewsSection.module.css";
 import NewsEntry from "./NewsEntry";
 import { useNews } from "@app/hooks/useNews";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface Props {
     startingEntries?: number
 }
 
 const NewsSection: React.FC<Props> = ({ startingEntries }: Props) => {
+    const { t } = useTranslation();
     const { data, error, isLoading, isSuccess } = useNews();
     const [displayCount, setDisplayCount] = useState(startingEntries ? startingEntries : 4);
 
-    if (isLoading) return "Loading...";
+    if (isLoading) return t("loading");
 
-    if (error) return `An error has occurred: ${error}`;
+    if (error) return t("error_occurred", { error });
 
     if (isSuccess) {
         return <div className={styles.container}>
@@ -23,7 +25,7 @@ const NewsSection: React.FC<Props> = ({ startingEntries }: Props) => {
             }
             {data.items.length > displayCount && (
                 <div className={styles.load_more} onClick={() => setDisplayCount(displayCount + 4)}>
-                    Load More...
+                    {t("load_more")}
                 </div>
             )}
             {/* <div className={styles.load_more} onClick={() => setDisplayCount(displayCount + 4)}>Load more...</div> */}

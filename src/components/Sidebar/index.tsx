@@ -11,10 +11,12 @@ import { useLauncherUpdater } from "@app/hooks/useLauncherUpdater";
 import TooltipWrapper from "@app/components/TooltipWrapper";
 import QueueStore from "@app/tasks/queue";
 import Spinner from "@app/components/Spinner";
+import { useTranslation } from "react-i18next";
 
 const DEV_CLICK_THRESHOLD = 12;
 
 const Sidebar: React.FC = () => {
+    const { t } = useTranslation("sidebar");
     const [launcherVersion, setLauncherVersion] = useState("");
     const queue = QueueStore.useQueue();
     const { updateVersion, isUpdating, startUpdate } = useLauncherUpdater();
@@ -58,7 +60,7 @@ const Sidebar: React.FC = () => {
             onClick={handleVersionClick}
         >
             {isUpdating
-                ? <><Spinner size={10} /> Updating...</>
+                ? <><Spinner size={10} /> {t("updating")}</>
                 : <>v{launcherVersion}{hasUpdate && <WarningIcon />}</>
             }
         </div>
@@ -71,7 +73,7 @@ const Sidebar: React.FC = () => {
             <div className={styles.downloads}>
                 <NavLink to="/queue">
                     <SidebarMenuButton icon={<QueueIcon />}>
-                        Downloads {queue.size <= 0 ? "" : `(${queue.size})`}
+                        {queue.size <= 0 ? t("downloads") : t("downloads_count", { count: queue.size })}
                     </SidebarMenuButton>
                 </NavLink>
             </div>
@@ -86,14 +88,14 @@ const Sidebar: React.FC = () => {
 
             <div className={styles.footer}>
                 {hasUpdate ? (
-                    <TooltipWrapper text={`Update available: ${effectiveUpdateVersion}\nClick to update`}>
+                    <TooltipWrapper text={t("update_available", { version: effectiveUpdateVersion })}>
                         {versionContent}
                     </TooltipWrapper>
                 ) : versionContent}
 
                 <div className={styles.socials}>
                     {hasUpdate && !isUpdating && (
-                        <TooltipWrapper text={`Download update ${effectiveUpdateVersion}`} className={styles.updateLink} onClick={handleVersionClick}>
+                        <TooltipWrapper text={t("download_update", { version: effectiveUpdateVersion })} className={styles.updateLink} onClick={handleVersionClick}>
                             <UpdateIcon />
                         </TooltipWrapper>
                     )}

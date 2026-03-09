@@ -3,6 +3,7 @@ import { BaseDialog } from "./BaseDialog";
 import baseStyles from "./BaseDialog.module.css";
 import { closeDialog } from "..";
 import { InformationIcon } from "@app/assets/Icons";
+import i18n from "@app/i18n";
 
 export class DuplicateModDialog extends BaseDialog<Record<string, never>> {
     constructor(props: Record<string, unknown>) {
@@ -18,7 +19,7 @@ export class DuplicateModDialog extends BaseDialog<Record<string, never>> {
     }
 
     getTitle() {
-        return <>Already Installed</>;
+        return <>{i18n.t("already_installed_title", { ns: "dialogs" })}</>;
     }
 
     getInnerContents() {
@@ -28,10 +29,10 @@ export class DuplicateModDialog extends BaseDialog<Record<string, never>> {
         return (
             <div style={{ textAlign: "center" }}>
                 <p>
-                    <strong>{modName}</strong> was not installed because identical files are already present in the local mod <strong>{existingModName}</strong>.
+                    {i18n.t("already_installed_body", { ns: "dialogs", modName, existingModName })}
                 </p>
                 <p style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
-                    If you still want to install this mod, remove the local mod first.
+                    {i18n.t("already_installed_hint", { ns: "dialogs" })}
                 </p>
             </div>
         );
@@ -40,7 +41,7 @@ export class DuplicateModDialog extends BaseDialog<Record<string, never>> {
     getButtons() {
         return (
             <Button color={ButtonColor.GRAY} onClick={() => closeDialog()}>
-                OK
+                {i18n.t("ok", { ns: "common" })}
             </Button>
         );
     }

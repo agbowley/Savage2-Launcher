@@ -1,6 +1,7 @@
 import stylesNormal from "./QueueEntry.module.css";
 import stylesBanner from "./QueueEntryBanner.module.css";
 import { CloseIcon } from "@app/assets/Icons";
+import { useTranslation } from "react-i18next";
 
 interface Props {
     icon?: React.ReactNode;
@@ -13,13 +14,13 @@ interface Props {
     onRemove?: () => void;
 }
 
-function getTaskTypeLabel(taskType?: string): string {
+function getTaskTypeLabel(taskType: string | undefined, t: (key: string) => string): string {
     switch (taskType) {
-        case "download": return "Install";
-        case "update": return "Update";
-        case "uninstall": return "Uninstall";
-        case "repair": return "Repair";
-        default: return "Queued";
+        case "download": return t("install_task");
+        case "update": return t("update_task");
+        case "uninstall": return t("uninstall_task");
+        case "repair": return t("repair_task");
+        default: return t("queued_task");
     }
 }
 
@@ -34,6 +35,7 @@ function getBadgeClass(styles: typeof stylesNormal, taskType?: string): string {
 }
 
 const BaseQueue: React.FC<Props> = ({ icon, name, versionChannel, version, taskType, isMod, bannerMode, onRemove }: Props) => {
+    const { t } = useTranslation();
     // Choose the right style
     let styles = stylesNormal;
     if (bannerMode) {
@@ -51,16 +53,16 @@ const BaseQueue: React.FC<Props> = ({ icon, name, versionChannel, version, taskT
         <div className={styles.extra}>
             {!bannerMode && (taskType || isMod) && (
                 <div className={styles.badges}>
-                    {isMod && <span className={styles.badge_mod}>Mod</span>}
+                    {isMod && <span className={styles.badge_mod}>{t("mod_badge")}</span>}
                     {taskType && (
                         <span className={`${styles.badge} ${getBadgeClass(styles, taskType)}`}>
-                            {getTaskTypeLabel(taskType)}
+                            {getTaskTypeLabel(taskType, t)}
                         </span>
                     )}
                 </div>
             )}
             {onRemove && (
-                <button className={styles.remove_button} onClick={onRemove} title="Remove">
+                <button className={styles.remove_button} onClick={onRemove} title={t("remove")}>
                     <CloseIcon />
                 </button>
             )}

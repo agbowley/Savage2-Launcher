@@ -5,6 +5,7 @@ import { useAuthStore } from "@app/stores/AuthStore";
 import styles from "./LoginDialog.module.css";
 import { open } from "@tauri-apps/api/shell";
 import type { BanInfo } from "@app/types/auth";
+import i18n from "@app/i18n";
 
 interface LoginDialogState {
     email: string;
@@ -39,7 +40,7 @@ export class LoginDialog extends React.Component<Record<string, unknown>, LoginD
         const { email, password } = this.state;
 
         if (!email || !password) {
-            this.setState({ error: "Please enter your email and password." });
+            this.setState({ error: i18n.t("enter_email_password", { ns: "dialogs" }) });
             return;
         }
 
@@ -52,7 +53,7 @@ export class LoginDialog extends React.Component<Record<string, unknown>, LoginD
             const e = err as { status?: number; data?: BanInfo & { code?: string } };
 
             if (e.status === 401) {
-                this.setState({ error: "Invalid email or password.", loading: false });
+                this.setState({ error: i18n.t("invalid_credentials", { ns: "dialogs" }), loading: false });
             } else if (e.status === 400 && e.data?.code === "ACCOUNT_BANNED") {
                 this.setState({ banInfo: e.data, loading: false });
             } else if (e.status === 400 && e.data?.code === "EMAIL_NOT_VERIFIED") {
@@ -62,7 +63,7 @@ export class LoginDialog extends React.Component<Record<string, unknown>, LoginD
                     loading: false,
                 });
             } else {
-                this.setState({ error: "Something went wrong. Please try again.", loading: false });
+                this.setState({ error: i18n.t("something_wrong", { ns: "dialogs" }), loading: false });
             }
         }
     };
@@ -91,15 +92,15 @@ export class LoginDialog extends React.Component<Record<string, unknown>, LoginD
         return <>
             <div className={styles.form}>
                 <div style={{ textAlign: "center", color: "#fff", fontSize: "18px", fontWeight: 700 }}>
-                    Sign In
+                    {i18n.t("sign_in_heading", { ns: "dialogs" })}
                 </div>
 
                 {banInfo && (
                     <div className={styles.banInfo}>
-                        <p><strong>Your account has been banned.</strong></p>
-                        <p>Reason: {banInfo.banReason}</p>
+                        <p><strong>{i18n.t("banned_heading", { ns: "dialogs" })}</strong></p>
+                        <p>{i18n.t("ban_reason", { ns: "dialogs", reason: banInfo.banReason })}</p>
                         {banInfo.bannedUntil && (
-                            <p>Until: {new Date(banInfo.bannedUntil).toLocaleDateString()}</p>
+                            <p>{i18n.t("ban_until", { ns: "dialogs", date: new Date(banInfo.bannedUntil).toLocaleDateString() })}</p>
                         )}
                     </div>
                 )}
@@ -108,16 +109,16 @@ export class LoginDialog extends React.Component<Record<string, unknown>, LoginD
 
                 {needsVerification ? (
                     <div className={styles.verifyNotice}>
-                        <p>Your email address has not been verified. Please check your inbox for a verification email.</p>
+                        <p>{i18n.t("email_not_verified", { ns: "dialogs" })}</p>
                         {resendSuccess ? (
-                            <p style={{ color: "var(--green)" }}>Verification email sent!</p>
+                            <p style={{ color: "var(--green)" }}>{i18n.t("verification_sent", { ns: "dialogs" })}</p>
                         ) : (
                             <button
                                 className={styles.link}
                                 onClick={this.handleResendVerification}
                                 disabled={resendLoading}
                             >
-                                {resendLoading ? "Sending..." : "Resend verification email"}
+                                {resendLoading ? i18n.t("sending", { ns: "dialogs" }) : i18n.t("resend_verification", { ns: "dialogs" })}
                             </button>
                         )}
                     </div>
@@ -125,24 +126,24 @@ export class LoginDialog extends React.Component<Record<string, unknown>, LoginD
                     <form onSubmit={this.handleSubmit}>
                         <div className={styles.form}>
                             <div className={styles.field}>
-                                <label>Email</label>
+                                <label>{i18n.t("email_label", { ns: "dialogs" })}</label>
                                 <input
                                     type="email"
                                     value={email}
                                     onChange={e => this.setState({ email: e.target.value, error: null })}
-                                    placeholder="you@example.com"
+                                    placeholder={i18n.t("email_placeholder", { ns: "dialogs" })}
                                     autoFocus
                                     disabled={loading}
                                 />
                             </div>
 
                             <div className={styles.field}>
-                                <label>Password</label>
+                                <label>{i18n.t("password_label", { ns: "dialogs" })}</label>
                                 <input
                                     type="password"
                                     value={password}
                                     onChange={e => this.setState({ password: e.target.value, error: null })}
-                                    placeholder="Your password"
+                                    placeholder={i18n.t("password_placeholder", { ns: "dialogs" })}
                                     disabled={loading}
                                 />
                             </div>
@@ -152,15 +153,15 @@ export class LoginDialog extends React.Component<Record<string, unknown>, LoginD
                                 disabled={loading || !email || !password}
                                 onClick={this.handleSubmit}
                             >
-                                {loading ? "Signing in..." : "Sign In"}
+                                {loading ? i18n.t("signing_in", { ns: "dialogs" }) : i18n.t("sign_in_heading", { ns: "dialogs" })}
                             </Button>
 
                             <div className={styles.links}>
                                 <button type="button" className={styles.link} onClick={this.handleForgotPassword}>
-                                    Forgot password?
+                                    {i18n.t("forgot_password", { ns: "dialogs" })}
                                 </button>
                                 <button type="button" className={styles.link} onClick={this.handleCreateAccount}>
-                                    Create account
+                                    {i18n.t("create_account_link", { ns: "dialogs" })}
                                 </button>
                             </div>
                         </div>
@@ -170,7 +171,7 @@ export class LoginDialog extends React.Component<Record<string, unknown>, LoginD
 
             <div className={styles.buttons}>
                 <Button color={ButtonColor.GRAY} compact onClick={() => closeDialog()}>
-                    Cancel
+                    {i18n.t("cancel", { ns: "common" })}
                 </Button>
             </div>
         </>;

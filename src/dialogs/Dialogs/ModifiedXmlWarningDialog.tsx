@@ -3,6 +3,7 @@ import { BaseDialog } from "./BaseDialog";
 import baseStyles from "./BaseDialog.module.css";
 import { closeDialog } from "..";
 import { WarningIcon } from "@app/assets/Icons";
+import i18n from "@app/i18n";
 
 export class ModifiedXmlWarningDialog extends BaseDialog<Record<string, never>> {
     constructor(props: Record<string, unknown>) {
@@ -22,27 +23,27 @@ export class ModifiedXmlWarningDialog extends BaseDialog<Record<string, never>> 
         const fileNames = this.props.fileNames as string[];
 
         return <>
-            <p>
-                You have modified XML settings in <strong>{modName}</strong>.
-                Removing this mod will lose your custom settings for the following {fileNames.length === 1 ? "file" : "files"}:
-            </p>
+            <p dangerouslySetInnerHTML={{ __html: i18n.t(
+                fileNames.length === 1 ? "modified_files_body_one" : "modified_files_body",
+                { ns: "dialogs", modName }
+            ) }} />
             <ul style={{ textAlign: "left", margin: "8px 0", paddingLeft: 24 }}>
                 {fileNames.map((f) => (
                     <li key={f} style={{ fontFamily: "monospace", fontSize: "0.9em" }}>{f}</li>
                 ))}
             </ul>
-            <p>Are you sure you want to continue?</p>
+            <p>{i18n.t("modified_files_confirm", { ns: "dialogs" })}</p>
         </>;
     }
 
     getTitle() {
-        return <>Modified Files Warning</>;
+        return <>{i18n.t("modified_files_title", { ns: "dialogs" })}</>;
     }
 
     getButtons() {
         return <>
-            <Button color={ButtonColor.GRAY} onClick={() => closeDialog()}>Cancel</Button>
-            <Button color={ButtonColor.RED} onClick={() => closeDialog("confirm")}>Remove Anyway</Button>
+            <Button color={ButtonColor.GRAY} onClick={() => closeDialog()}>{i18n.t("cancel", { ns: "common" })}</Button>
+            <Button color={ButtonColor.RED} onClick={() => closeDialog("confirm")}>{i18n.t("remove_anyway", { ns: "dialogs" })}</Button>
         </>;
     }
 }

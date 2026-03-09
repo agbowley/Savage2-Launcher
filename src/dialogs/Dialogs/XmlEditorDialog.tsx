@@ -1,6 +1,7 @@
 import Button, { ButtonColor } from "@app/components/Button";
 import { BaseDialog } from "./BaseDialog";
 import { closeDialog } from "..";
+import i18n from "@app/i18n";
 
 interface State {
     content: string;
@@ -20,9 +21,7 @@ export class XmlEditorDialog extends BaseDialog<State> {
     getTitle() {
         const filename = (this.props.filename ?? "file") as string;
         return (
-            <span style={{ fontSize: 16 }}>
-                Edit <code style={{ color: "#64a0ff", fontSize: 14 }}>{filename}</code>
-            </span>
+            <span style={{ fontSize: 16 }} dangerouslySetInnerHTML={{ __html: i18n.t("edit_filename", { ns: "dialogs", filename }) }} />
         );
     }
 
@@ -94,12 +93,12 @@ export class XmlEditorDialog extends BaseDialog<State> {
                 >
                     <span>
                         {hasChanges ? (
-                            <span style={{ color: "#FFB800" }}>Unsaved changes</span>
+                            <span style={{ color: "#FFB800" }}>{i18n.t("unsaved_changes", { ns: "common" })}</span>
                         ) : (
-                            "No changes"
+                            i18n.t("no_changes", { ns: "common" })
                         )}
                     </span>
-                    <span>Ctrl+S to save</span>
+                    <span>{i18n.t("ctrl_s_save", { ns: "common" })}</span>
                 </div>
             </div>
         );
@@ -111,14 +110,14 @@ export class XmlEditorDialog extends BaseDialog<State> {
         return (
             <>
                 <Button color={ButtonColor.GRAY} onClick={() => closeDialog()}>
-                    Cancel
+                    {i18n.t("cancel", { ns: "common" })}
                 </Button>
                 <Button
                     color={hasChanges ? ButtonColor.GREEN : ButtonColor.GRAY}
                     onClick={() => { if (hasChanges) closeDialog(this.state.content); }}
                     disabled={!hasChanges}
                 >
-                    Save
+                    {i18n.t("save", { ns: "common" })}
                 </Button>
             </>
         );

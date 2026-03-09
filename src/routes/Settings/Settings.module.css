@@ -95,3 +95,31 @@
     transform: translateX(16px);
     background: #1a1a1a;
 }
+
+/* ── Language dropdown ── */
+.select {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s;
+    min-width: 140px;
+}
+
+.select:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.select:focus {
+    border-color: rgb(255, 192, 20);
+}
+
+.select option {
+    background: #1a1a1a;
+    color: #fff;
+}

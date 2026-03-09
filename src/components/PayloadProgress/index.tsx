@@ -1,6 +1,7 @@
 import { TaskPayload } from "@app/tasks/payload";
 import Spinner from "@app/components/Spinner";
 import styles from "./progress.module.css";
+import { useTranslation } from "react-i18next";
 
 interface Props {
     payload?: TaskPayload;
@@ -25,9 +26,10 @@ function formatSpeed(bytesPerSec: number): string {
     return `${(bytesPerSec / (1024 * 1024 * 1024)).toFixed(2)} GB/s`;
 }
 
-const PayloadProgress: React.FC<Props> = ({ payload, defaultText = "Loading", fullMode }: Props) => {
+const PayloadProgress: React.FC<Props> = ({ payload, defaultText, fullMode }: Props) => {
+    const { t } = useTranslation("launch");
     if (!payload) {
-        return <span>{defaultText}</span>;
+        return <span>{defaultText || t("loading", { ns: "common" })}</span>;
     }
 
     switch (payload.state) {
@@ -45,7 +47,8 @@ const PayloadProgress: React.FC<Props> = ({ payload, defaultText = "Loading", fu
 };
 
 const ProgressWaiting: React.FC = () => {
-    return (<span>Queued</span>);
+    const { t } = useTranslation("launch");
+    return (<span>{t("queued_status")}</span>);
 };
 
 interface ProgressDownloadingProps {
@@ -54,6 +57,7 @@ interface ProgressDownloadingProps {
 }
 
 const ProgressDownloading: React.FC<ProgressDownloadingProps> = ({ payload, fullMode }: ProgressDownloadingProps) => {
+    const { t } = useTranslation("launch");
     const percent = payload.total > 0
         ? ((payload.current / payload.total) * 100).toFixed(0)
         : "0";
@@ -67,7 +71,7 @@ const ProgressDownloading: React.FC<ProgressDownloadingProps> = ({ payload, full
     return <div className={styles.download_info}>
         <span className={styles.download_left}>
             <Spinner size={12} color={"#2ED9FF"} className={styles.spinner} />
-            Downloading {percent}%
+            {t("downloading_percent", { percent })}
         </span>
         <span className={styles.download_right}>
             <span className={styles.download_size}>
@@ -81,15 +85,18 @@ const ProgressDownloading: React.FC<ProgressDownloadingProps> = ({ payload, full
 };
 
 const ProgressInstalling: React.FC = () => {
-    return (<span>Installing</span>);
+    const { t } = useTranslation("launch");
+    return (<span>{t("installing")}</span>);
 };
 
 const ProgressChecking: React.FC = () => {
-    return (<span>Checking files...</span>);
+    const { t } = useTranslation("launch");
+    return (<span>{t("checking_files")}</span>);
 };
 
 const ProgressVerifying: React.FC = () => {
-    return (<span>Verifying</span>);
+    const { t } = useTranslation("launch");
+    return (<span>{t("verifying")}</span>);
 };
 
 export default PayloadProgress;

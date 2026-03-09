@@ -3,6 +3,7 @@ import { BaseDialog } from "./BaseDialog";
 import baseStyles from "./BaseDialog.module.css";
 import { closeDialog } from "..";
 import { WarningIcon } from "@app/assets/Icons";
+import i18n from "@app/i18n";
 
 interface State {
     deleteFiles: boolean;
@@ -23,7 +24,7 @@ export class DeleteModDialog extends BaseDialog<State> {
     }
 
     getTitle() {
-        return <>Remove Mod</>;
+        return <>{i18n.t("remove_mod_title", { ns: "dialogs" })}</>;
     }
 
     getInnerContents() {
@@ -33,10 +34,10 @@ export class DeleteModDialog extends BaseDialog<State> {
         return (
             <div style={{ textAlign: "center" }}>
                 <p>
-                    Are you sure you want to remove <strong>{modName}</strong>?
+                    {i18n.t("remove_mod_confirm", { ns: "dialogs", modName })}
                 </p>
                 <p style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
-                    This will unregister the mod from the launcher.
+                    {i18n.t("remove_mod_hint", { ns: "dialogs" })}
                 </p>
                 <label
                     style={{
@@ -56,7 +57,7 @@ export class DeleteModDialog extends BaseDialog<State> {
                         checked={this.state.deleteFiles}
                         onChange={(e) => this.setState({ deleteFiles: e.target.checked })}
                     />
-                    Also delete {fileCount} mod file{fileCount !== 1 ? "s" : ""} from disk
+                    {i18n.t("delete_files_checkbox", { ns: "dialogs", fileCount })}
                 </label>
             </div>
         );
@@ -66,13 +67,13 @@ export class DeleteModDialog extends BaseDialog<State> {
         return (
             <>
                 <Button color={ButtonColor.GRAY} onClick={() => closeDialog()}>
-                    Cancel
+                    {i18n.t("cancel", { ns: "common" })}
                 </Button>
                 <Button
                     color={ButtonColor.RED}
                     onClick={() => closeDialog(this.state.deleteFiles ? "delete-files" : "remove-only")}
                 >
-                    Remove
+                    {i18n.t("remove", { ns: "common" })}
                 </Button>
             </>
         );

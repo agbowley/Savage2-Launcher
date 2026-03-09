@@ -4,6 +4,7 @@ import baseStyles from "./BaseDialog.module.css";
 import { closeDialog } from "..";
 import { WarningIcon } from "@app/assets/Icons";
 import type { UnknownModFile } from "@app/types/mods";
+import i18n from "@app/i18n";
 
 interface State {
     /** Map of filename → user-provided mod name (empty string = will ignore) */
@@ -40,7 +41,7 @@ export class UnknownModDialog extends BaseDialog<State> {
     }
 
     getTitle() {
-        return <>Unknown Mods Detected</>;
+        return <>{i18n.t("unknown_mods_title", { ns: "dialogs" })}</>;
     }
 
     getInnerContents() {
@@ -49,8 +50,7 @@ export class UnknownModDialog extends BaseDialog<State> {
         return (
             <div style={{ textAlign: "left", width: "100%" }}>
                 <p style={{ textAlign: "center", marginBottom: 12 }}>
-                    The following mod files were found in your game folder but aren&apos;t tracked by the launcher.
-                    Would you like to register them as custom mods?
+                    {i18n.t("unknown_mods_body", { ns: "dialogs" })}
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 300, overflowY: "auto" }}>
                     {files.map((f) => (
@@ -95,14 +95,14 @@ export class UnknownModDialog extends BaseDialog<State> {
                                         fontFamily: "inherit",
                                     }}
                                 >
-                                    <option value="register">Register as Custom Mod</option>
-                                    <option value="ignore">Ignore</option>
+                                    <option value="register">{i18n.t("register_custom_mod", { ns: "dialogs" })}</option>
+                                    <option value="ignore">{i18n.t("ignore", { ns: "dialogs" })}</option>
                                 </select>
                                 {this.state.actions[f.filename] === "register" && (
                                     <input
                                         type="text"
                                         value={this.state.modNames[f.filename]}
-                                        placeholder="Mod name"
+                                        placeholder={i18n.t("mod_name_placeholder", { ns: "dialogs" })}
                                         onChange={(e) => {
                                             this.setState({
                                                 modNames: {
@@ -136,7 +136,7 @@ export class UnknownModDialog extends BaseDialog<State> {
         return (
             <>
                 <Button color={ButtonColor.GRAY} onClick={() => closeDialog("cancel")}>
-                    Skip
+                    {i18n.t("skip", { ns: "dialogs" })}
                 </Button>
                 <Button
                     color={ButtonColor.GREEN}
@@ -149,7 +149,7 @@ export class UnknownModDialog extends BaseDialog<State> {
                         closeDialog(result);
                     }}
                 >
-                    Confirm
+                    {i18n.t("confirm", { ns: "common" })}
                 </Button>
             </>
         );

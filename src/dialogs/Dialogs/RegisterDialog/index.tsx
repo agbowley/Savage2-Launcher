@@ -3,6 +3,7 @@ import Button, { ButtonColor } from "@app/components/Button";
 import { closeDialog } from "../..";
 import { useAuthStore } from "@app/stores/AuthStore";
 import styles from "./RegisterDialog.module.css";
+import i18n from "@app/i18n";
 
 type Step = "username" | "credentials" | "verify";
 
@@ -78,15 +79,15 @@ export class RegisterDialog extends React.Component<Record<string, unknown>, Reg
         const { username, usernameAvailable } = this.state;
 
         if (!username || username.length < 1 || username.length > 25) {
-            this.setState({ error: "Username must be 1-25 characters." });
+            this.setState({ error: i18n.t("username_length_error", { ns: "dialogs" }) });
             return;
         }
         if (!USERNAME_REGEX.test(username)) {
-            this.setState({ error: "Username can only contain letters, numbers, hyphens, and underscores." });
+            this.setState({ error: i18n.t("username_chars_error", { ns: "dialogs" }) });
             return;
         }
         if (usernameAvailable === false) {
-            this.setState({ error: "This username is already taken." });
+            this.setState({ error: i18n.t("username_taken_error", { ns: "dialogs" }) });
             return;
         }
 
@@ -108,17 +109,17 @@ export class RegisterDialog extends React.Component<Record<string, unknown>, Reg
         const { username, email, password, confirmPassword, referralCode } = this.state;
 
         if (!email) {
-            this.setState({ error: "Please enter your email address." });
+            this.setState({ error: i18n.t("enter_email_error", { ns: "dialogs" }) });
             return;
         }
 
         if (!PASSWORD_REGEX.test(password)) {
-            this.setState({ error: "Password does not meet the requirements." });
+            this.setState({ error: i18n.t("password_requirements_error", { ns: "dialogs" }) });
             return;
         }
 
         if (password !== confirmPassword) {
-            this.setState({ error: "Passwords do not match." });
+            this.setState({ error: i18n.t("passwords_no_match", { ns: "dialogs" }) });
             return;
         }
 
@@ -130,9 +131,9 @@ export class RegisterDialog extends React.Component<Record<string, unknown>, Reg
         } catch (err: unknown) {
             const e = err as { status?: number; data?: string };
             if (e.status === 409) {
-                this.setState({ error: "Username or email is already taken.", loading: false });
+                this.setState({ error: i18n.t("username_email_taken", { ns: "dialogs" }), loading: false });
             } else {
-                this.setState({ error: "Registration failed. Please try again.", loading: false });
+                this.setState({ error: i18n.t("registration_failed", { ns: "dialogs" }), loading: false });
             }
         }
     };
@@ -176,36 +177,36 @@ export class RegisterDialog extends React.Component<Record<string, unknown>, Reg
                 {error && <div className={styles.error}>{error}</div>}
 
                 <div className={styles.field}>
-                    <label>Username</label>
+                    <label>{i18n.t("username_label", { ns: "dialogs" })}</label>
                     <input
                         type="text"
                         value={username}
                         onChange={e => this.handleUsernameChange(e.target.value)}
-                        placeholder="Choose a username"
+                        placeholder={i18n.t("choose_username", { ns: "dialogs" })}
                         maxLength={25}
                         autoFocus
                     />
                     <div className={styles.fieldHint}>
-                        1-25 characters. Letters, numbers, hyphens, underscores only.
+                        {i18n.t("username_hint", { ns: "dialogs" })}
                     </div>
                     {username && !validFormat && (
                         <div className={`${styles.fieldStatus} ${styles.taken}`}>
-                            Invalid characters
+                            {i18n.t("invalid_chars", { ns: "dialogs" })}
                         </div>
                     )}
                     {checkingUsername && (
                         <div className={styles.fieldStatus} style={{ color: "rgba(255,255,255,0.4)" }}>
-                            Checking...
+                            {i18n.t("checking_username", { ns: "dialogs" })}
                         </div>
                     )}
                     {usernameAvailable === true && (
                         <div className={`${styles.fieldStatus} ${styles.available}`}>
-                            Username is available!
+                            {i18n.t("username_available", { ns: "dialogs" })}
                         </div>
                     )}
                     {usernameAvailable === false && (
                         <div className={`${styles.fieldStatus} ${styles.taken}`}>
-                            Username is already taken
+                            {i18n.t("username_already_taken", { ns: "dialogs" })}
                         </div>
                     )}
                 </div>
@@ -215,13 +216,13 @@ export class RegisterDialog extends React.Component<Record<string, unknown>, Reg
                     disabled={!username || !validFormat || usernameAvailable === false || checkingUsername}
                     onClick={this.handleUsernameNext}
                 >
-                    Next
+                    {i18n.t("next", { ns: "common" })}
                 </Button>
 
                 <div className={styles.backLink}>
-                    <span style={{ color: "rgba(255,255,255,0.4)" }}>Already have an account? </span>
+                    <span style={{ color: "rgba(255,255,255,0.4)" }}>{i18n.t("already_have_account", { ns: "dialogs" })} </span>
                     <button type="button" className={styles.link} onClick={this.handleBackToLogin}>
-                        Sign in
+                        {i18n.t("sign_in_link", { ns: "dialogs" })}
                     </button>
                 </div>
             </div>
@@ -238,60 +239,60 @@ export class RegisterDialog extends React.Component<Record<string, unknown>, Reg
                     {error && <div className={styles.error}>{error}</div>}
 
                     <div className={styles.field}>
-                        <label>Email</label>
+                        <label>{i18n.t("email_label", { ns: "dialogs" })}</label>
                         <input
                             type="email"
                             value={email}
                             onChange={e => this.setState({ email: e.target.value, error: null })}
-                            placeholder="you@example.com"
+                            placeholder={i18n.t("email_placeholder", { ns: "dialogs" })}
                             autoFocus
                             disabled={loading}
                         />
                     </div>
 
                     <div className={styles.field}>
-                        <label>Password</label>
+                        <label>{i18n.t("password_label", { ns: "dialogs" })}</label>
                         <input
                             type="password"
                             value={password}
                             onChange={e => this.setState({ password: e.target.value, error: null })}
-                            placeholder="Create a password"
+                            placeholder={i18n.t("create_password_placeholder", { ns: "dialogs" })}
                             disabled={loading}
                         />
                         <ul className={styles.validationList}>
                             <li className={pv.length ? styles.met : styles.unmet}>
-                                {pv.length ? "\u2713" : "\u2022"} At least 8 characters
+                                {pv.length ? "\u2713" : "\u2022"} {i18n.t("pw_8_chars", { ns: "dialogs" })}
                             </li>
                             <li className={pv.uppercase ? styles.met : styles.unmet}>
-                                {pv.uppercase ? "\u2713" : "\u2022"} One uppercase letter
+                                {pv.uppercase ? "\u2713" : "\u2022"} {i18n.t("pw_uppercase", { ns: "dialogs" })}
                             </li>
                             <li className={pv.digit ? styles.met : styles.unmet}>
-                                {pv.digit ? "\u2713" : "\u2022"} One number
+                                {pv.digit ? "\u2713" : "\u2022"} {i18n.t("pw_number", { ns: "dialogs" })}
                             </li>
                             <li className={pv.special ? styles.met : styles.unmet}>
-                                {pv.special ? "\u2713" : "\u2022"} One special character
+                                {pv.special ? "\u2713" : "\u2022"} {i18n.t("pw_special", { ns: "dialogs" })}
                             </li>
                         </ul>
                     </div>
 
                     <div className={styles.field}>
-                        <label>Confirm Password</label>
+                        <label>{i18n.t("confirm_password_label", { ns: "dialogs" })}</label>
                         <input
                             type="password"
                             value={confirmPassword}
                             onChange={e => this.setState({ confirmPassword: e.target.value, error: null })}
-                            placeholder="Confirm your password"
+                            placeholder={i18n.t("confirm_password_placeholder", { ns: "dialogs" })}
                             disabled={loading}
                         />
                     </div>
 
                     <div className={styles.field}>
-                        <label>Referral Code <span style={{ opacity: 0.5 }}>(optional)</span></label>
+                        <label>{i18n.t("referral_label", { ns: "dialogs" })} <span style={{ opacity: 0.5 }}>{i18n.t("optional", { ns: "dialogs" })}</span></label>
                         <input
                             type="text"
                             value={referralCode}
                             onChange={e => this.setState({ referralCode: e.target.value })}
-                            placeholder="Friend's username"
+                            placeholder={i18n.t("referral_placeholder", { ns: "dialogs" })}
                             disabled={loading}
                         />
                     </div>
@@ -301,7 +302,7 @@ export class RegisterDialog extends React.Component<Record<string, unknown>, Reg
                         disabled={loading || !email || !PASSWORD_REGEX.test(password) || password !== confirmPassword}
                         onClick={this.handleRegister}
                     >
-                        {loading ? "Creating account..." : "Create Account"}
+                        {loading ? i18n.t("creating_account", { ns: "dialogs" }) : i18n.t("create_account_heading", { ns: "dialogs" })}
                     </Button>
 
                     <div className={styles.backLink}>
@@ -310,7 +311,7 @@ export class RegisterDialog extends React.Component<Record<string, unknown>, Reg
                             className={styles.link}
                             onClick={() => this.setState({ step: "username", error: null })}
                         >
-                            Back
+                            {i18n.t("back", { ns: "common" })}
                         </button>
                     </div>
                 </div>
@@ -324,13 +325,13 @@ export class RegisterDialog extends React.Component<Record<string, unknown>, Reg
         return (
             <div className={styles.form}>
                 <div className={styles.successMessage}>
-                    <p>Account created! We&apos;ve sent a verification email to <strong>{this.state.email}</strong>.</p>
-                    <p>Please check your inbox and click the verification link to activate your account, then sign in.</p>
+                    <p dangerouslySetInnerHTML={{ __html: i18n.t("account_created", { ns: "dialogs", email: this.state.email }) }} />
+                    <p>{i18n.t("account_created_hint", { ns: "dialogs" })}</p>
                 </div>
 
                 {resendSuccess ? (
                     <p style={{ color: "var(--green)", textAlign: "center", fontSize: "13px" }}>
-                        Verification email resent!
+                        {i18n.t("verification_resent", { ns: "dialogs" })}
                     </p>
                 ) : (
                     <div style={{ textAlign: "center" }}>
@@ -340,7 +341,7 @@ export class RegisterDialog extends React.Component<Record<string, unknown>, Reg
                             disabled={resendLoading}
                             style={{ fontSize: "13px" }}
                         >
-                            {resendLoading ? "Sending..." : "Resend verification email"}
+                            {resendLoading ? i18n.t("sending", { ns: "dialogs" }) : i18n.t("resend_verification", { ns: "dialogs" })}
                         </button>
                     </div>
                 )}
@@ -354,7 +355,7 @@ export class RegisterDialog extends React.Component<Record<string, unknown>, Reg
         return <>
             <div className={styles.form}>
                 <div style={{ textAlign: "center", color: "#fff", fontSize: "18px", fontWeight: 700 }}>
-                    Create Account
+                    {i18n.t("create_account_heading", { ns: "dialogs" })}
                 </div>
 
                 {this.renderStepIndicator()}
@@ -366,7 +367,7 @@ export class RegisterDialog extends React.Component<Record<string, unknown>, Reg
 
             <div className={styles.buttons}>
                 <Button color={ButtonColor.GRAY} compact onClick={() => closeDialog()}>
-                    {step === "verify" ? "Done" : "Cancel"}
+                    {step === "verify" ? i18n.t("done", { ns: "common" }) : i18n.t("cancel", { ns: "common" })}
                 </Button>
             </div>
         </>;

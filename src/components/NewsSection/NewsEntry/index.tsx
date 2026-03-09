@@ -8,12 +8,14 @@ import { intlFormatDistance } from "date-fns";
 import { useNewsAuthorSettings } from "@app/hooks/useNewsAuthor";
 import { useQueries } from "@tanstack/react-query";
 import { getNewsBanner } from "@app/assets/NewsBanners";
+import { useTranslation } from "react-i18next";
 
 interface Props {
     article: ArticleData;
 }
 
 const NewsEntry: React.FC<Props> = ({ article }: Props) => {
+    const { t } = useTranslation("news");
 
     const authors = useQueries({
         queries: [useNewsAuthorSettings(article.author)]
@@ -43,17 +45,16 @@ const NewsEntry: React.FC<Props> = ({ article }: Props) => {
                     <div className={styles.byline}>
                         <img
                             height={20}
-                            alt="Savage 2"
+                            alt=""
                             src={LauncherIcon}
                             style={{ borderRadius: "50%" }}
                         />
                         <div>
-                            by: <span className={styles.author}>{
-                                authors
-                                    .map(({data}) => data?.displayName)
-                                    .filter(authorName => authorName)
-                                    .join(", ")
-                            }</span>
+                            {t("by_author", { author: authors
+                                .map(({data}) => data?.displayName)
+                                .filter(authorName => authorName)
+                                .join(", ")
+                            })}
                         </div>
                     </div>
                 </div>

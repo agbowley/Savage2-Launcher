@@ -5,6 +5,7 @@ import { getNewsBanner } from "@app/assets/NewsBanners";
 import type { ModListItem } from "@app/types/mods";
 import { useNavigate } from "react-router-dom";
 import CachedImage from "@app/components/CachedImage";
+import { useTranslation } from "react-i18next";
 
 interface Props {
     mod: ModListItem;
@@ -32,6 +33,7 @@ const ModCard: React.FC<Props> = ({
     onOpenFolder,
 }: Props) => {
     const navigate = useNavigate();
+    const { t } = useTranslation("mods");
 
     const imageUrl = modItem.primaryImageUrl
         ? `${repositoryBaseURL}${modItem.primaryImageUrl}`
@@ -52,7 +54,7 @@ const ModCard: React.FC<Props> = ({
                 }
             }}
         >
-            {modItem.isPinned && <span className={styles.pinned_badge}>Pinned</span>}
+            {modItem.isPinned && <span className={styles.pinned_badge}>{t("pinned")}</span>}
 
             {isInstalled && (
                 <span className={styles.installed_indicator}>
@@ -78,17 +80,17 @@ const ModCard: React.FC<Props> = ({
                                 <button
                                     className={`${styles.card_action_btn} ${styles.card_folder_btn}`}
                                     onClick={() => onOpenFolder?.(modItem)}
-                                    title="Open mod folder"
+                                    title={t("open_mod_folder")}
                                 >
-                                    <DriveIcon /> Folder
+                                    <DriveIcon /> {t("folder")}
                                 </button>
                             ) : (
                                 <button
                                     className={`${styles.card_action_btn} ${isEnabled ? styles.card_enabled_btn : styles.card_disabled_btn}`}
                                     onClick={() => onToggleEnabled?.(modItem)}
-                                    title={isEnabled ? "Disable mod" : "Enable mod"}
+                                    title={isEnabled ? t("disable_mod") : t("enable_mod")}
                                 >
-                                    {isEnabled ? "Enabled" : "Disabled"}
+                                    {isEnabled ? t("enabled", { ns: "common" }) : t("disabled", { ns: "common" })}
                                 </button>
                             )
                         )}
@@ -96,23 +98,23 @@ const ModCard: React.FC<Props> = ({
                             <button
                                 className={`${styles.card_action_btn} ${styles.card_uninstall_btn}`}
                                 onClick={() => onUninstall?.(modItem)}
-                                title="Remove mod"
+                                title={t("remove_mod")}
                             >
-                                Remove
+                                {t("remove")}
                             </button>
                         ) : (
                             <button
                                 className={`${styles.card_action_btn} ${styles.card_install_btn}`}
                                 onClick={() => onInstall?.(modItem)}
-                                title="Install mod"
+                                title={t("install_mod")}
                                 disabled={isPending}
                             >
-                                {isPending ? "..." : "Install"}
+                                {isPending ? "..." : t("install", { ns: "common" })}
                             </button>
                         )}
                     </div>
                 </div>
-                <span className={styles.author}>by {modItem.author}</span>
+                <span className={styles.author}>{t("by_author", { author: modItem.author })}</span>
 
                 <div className={styles.meta}>
                     <span className={styles.downloads}>

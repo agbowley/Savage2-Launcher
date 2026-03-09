@@ -1,13 +1,11 @@
-export const millisToDisplayLength = (length: number, long = false) => {
+import i18n from "@app/i18n";
+
+export const millisToDisplayLength = (length: number) => {
     const date = new Date(length);
-    if (long) {
-        return `${date.getMinutes()} min ${date.getSeconds()} sec`;
-    } else {
-        return new Intl.DateTimeFormat("en-US", {
-            minute: "numeric",
-            second: "numeric"
-        }).format(date);
-    }
+    return new Intl.DateTimeFormat(i18n.language, {
+        minute: "numeric",
+        second: "numeric"
+    }).format(date);
 };
 
 export const isConsideredNewRelease = (releaseDate: string, newestInSetlist: string) => {

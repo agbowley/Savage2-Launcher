@@ -9,6 +9,7 @@ import Spinner from "@app/components/Spinner";
 import { useNavigate } from "react-router-dom";
 import { useCurrentTask } from "@app/tasks";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface LaunchButtonProps extends React.PropsWithChildren {
     version: S2Version,
@@ -21,6 +22,7 @@ export function LaunchButton(props: LaunchButtonProps) {
     const navigate = useNavigate();
     const currentTask = useCurrentTask();
     const [hoveringPlaying, setHoveringPlaying] = useState(false);
+    const { t } = useTranslation("launch");
 
     // Check if this version's task is queued (not the active/first task)
     const isQueued = version.task != null && currentTask != null && version.task !== currentTask;
@@ -28,12 +30,12 @@ export function LaunchButton(props: LaunchButtonProps) {
     if (isQueued) {
         const buttonChildren = <>
             <TimeIcon width={16} height={16} />
-            Queued
+            {t("queued")}
         </>;
 
         const dropdownChildren = <>
             <DropdownItem onClick={() => version.cancel()}>
-                Cancel
+                {t("cancel", { ns: "common" })}
             </DropdownItem>
         </>;
 
@@ -49,12 +51,12 @@ export function LaunchButton(props: LaunchButtonProps) {
 
     if (version.state === S2States.NEW_UPDATE) {
         const buttonChildren = <>
-            <UpdateIcon /> Install {playName}
+            <UpdateIcon /> {t("install_play", { playName })}
         </>;
 
         const dropdownChildren = <>
             <DropdownItem onClick={() => version.changeInstallLocation()}>
-                Choose Install Location
+                {t("choose_install_location")}
             </DropdownItem>
         </>;
 
@@ -70,24 +72,24 @@ export function LaunchButton(props: LaunchButtonProps) {
 
     if (version.state === S2States.UPDATE_AVAILABLE) {
         const buttonChildren = <>
-            <UpgradeIcon /> Update {playName}
+            <UpgradeIcon /> {t("update_play", { playName })}
         </>;
 
         const dropdownChildren = <>
             <DropdownItem onClick={() => version.play()}>
-                Play Anyway
+                {t("play_anyway")}
             </DropdownItem>
             <DropdownItem onClick={() => version.verifyInstallation()}>
-                Verify Installation
+                {t("verify_installation")}
             </DropdownItem>
             <DropdownItem onClick={() => version.changeInstallLocation()}>
-                Change Install Location
+                {t("change_install_location")}
             </DropdownItem>
             <DropdownItem onClick={() => version.revealFolder()}>
-                Open Install Folder
+                {t("open_install_folder")}
             </DropdownItem>
             <DropdownItem onClick={() => version.uninstall()}>
-                Uninstall
+                {t("uninstall")}
             </DropdownItem>
         </>;
 
@@ -109,7 +111,7 @@ export function LaunchButton(props: LaunchButtonProps) {
 
         const dropdownChildren = <>
             <DropdownItem onClick={() => version.cancel()}>
-                Cancel
+                {t("cancel", { ns: "common" })}
             </DropdownItem>
         </>;
 
@@ -127,12 +129,12 @@ export function LaunchButton(props: LaunchButtonProps) {
     if (version.state === S2States.UPDATING) {
         const buttonChildren = <>
             <Spinner size={16} />
-            <PayloadProgress payload={version.payload} defaultText="Updating" />
+            <PayloadProgress payload={version.payload} defaultText={t("updating")} />
         </>;
 
         const dropdownChildren = <>
             <DropdownItem onClick={() => version.cancel()}>
-                Cancel
+                {t("cancel", { ns: "common" })}
             </DropdownItem>
         </>;
 
@@ -150,12 +152,12 @@ export function LaunchButton(props: LaunchButtonProps) {
     if (version.state === S2States.REPAIRING) {
         const buttonChildren = <>
             <Spinner size={16} />
-            <PayloadProgress payload={version.payload} defaultText="Repairing" />
+            <PayloadProgress payload={version.payload} defaultText={t("repairing")} />
         </>;
 
         const dropdownChildren = <>
             <DropdownItem onClick={() => version.cancel()}>
-                Cancel
+                {t("cancel", { ns: "common" })}
             </DropdownItem>
         </>;
 
@@ -173,12 +175,12 @@ export function LaunchButton(props: LaunchButtonProps) {
     if (version.state === S2States.UNINSTALLING) {
         const buttonChildren = <>
             <Spinner size={16} />
-            <PayloadProgress payload={version.payload} defaultText="Uninstalling" />
+            <PayloadProgress payload={version.payload} defaultText={t("uninstalling")} />
         </>;
 
         const dropdownChildren = <>
             <DropdownItem onClick={() => version.cancel()}>
-                Cancel
+                {t("cancel", { ns: "common" })}
             </DropdownItem>
         </>;
 
@@ -195,25 +197,25 @@ export function LaunchButton(props: LaunchButtonProps) {
 
     if (version.state === S2States.AVAILABLE) {
         const buttonChildren = <>
-            <PlayIcon /> Play {playName}
-            {version.verificationWarning && <WarningIcon width={16} height={16} style={{ marginLeft: 4 }} title="Some files could not be verified" />}
+            <PlayIcon /> {t("play_play", { playName })}
+            {version.verificationWarning && <WarningIcon width={16} height={16} style={{ marginLeft: 4 }} title={t("verification_warning")} />}
         </>;
 
         const dropdownChildren = <>
             <DropdownItem onClick={() => version.verifyInstallation()}>
-                Verify Installation
+                {t("verify_installation")}
             </DropdownItem>
             <DropdownItem onClick={() => version.checkForUpdates()}>
-                Check for Updates
+                {t("check_for_updates")}
             </DropdownItem>
             <DropdownItem onClick={() => version.changeInstallLocation()}>
-                Change Install Location
+                {t("change_install_location")}
             </DropdownItem>
             <DropdownItem onClick={() => version.revealFolder()}>
-                Open Install Folder
+                {t("open_install_folder")}
             </DropdownItem>
             <DropdownItem onClick={() => version.uninstall()}>
-                Uninstall
+                {t("uninstall")}
             </DropdownItem>
         </>;
 
@@ -239,16 +241,16 @@ export function LaunchButton(props: LaunchButtonProps) {
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <rect x="1" y="1" width="10" height="10" rx="1" stroke="currentColor" strokeWidth="2" />
                     </svg>
-                    {" "}Stop
+                    {" "}{t("stop")}
                 </span>
-                : "Playing"}
+                : t("playing")}
         </Button>;
     }
 
     if (version.state === S2States.LOADING) {
         const buttonChildren = <>
             <Spinner size={16} />
-            Verifying
+            {t("verifying")}
         </>;
 
         return <Button
@@ -261,7 +263,7 @@ export function LaunchButton(props: LaunchButtonProps) {
 
     if (version.state === S2States.ERROR) {
         const buttonChildren = <>
-            <ErrorIcon /> Error!
+            <ErrorIcon /> {t("error_exclaim")}
         </>;
 
         return <Button
@@ -274,6 +276,6 @@ export function LaunchButton(props: LaunchButtonProps) {
 
     return <Button
         style={props.style}>
-        Loading...
+        {t("loading", { ns: "common" })}
     </Button>;
 }
