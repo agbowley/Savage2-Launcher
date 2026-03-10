@@ -1,0 +1,18 @@
+{
+    "downloads": "Загрузки",
+    "downloads_count": "Загрузки ({{count}})",
+    "updating": "Обновление...",
+    "update_available": "Доступно обновление: {{version}}\nНажмите для обновления",
+    "download_update": "Скачать обновление {{version}}",
+    "sign_in": "Войти",
+    "sign_out": "Выйти",
+    "signed_in": "Авторизован",
+    "level": "Уровень {{level}}",
+    "level_tooltip": "Уровень {{level}} — {{currentExp}} / {{maxExp}} XP",
+    "game_clients": "Клиенты игры",
+    "other_clients": "Другие клиенты",
+    "testing": "Тестирование",
+    "legacy": "Устаревший",
+    "sign_in_tip": "Войдите, чтобы получить доступ к функциям аккаунта, таким как Конструктор рун и Хранилище рун.",
+    "sign_in_tip_dismiss": "Понятно"
+}

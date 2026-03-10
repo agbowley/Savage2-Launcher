@@ -5,5 +5,7 @@
     "language_description": "Elige el idioma de visualización del launcher",
     "notifications_section": "Notificaciones",
     "toast_label": "Notificaciones emergentes",
-    "toast_description": "Mostrar alertas emergentes cuando las descargas terminen o haya actualizaciones disponibles (solo mientras está minimizado en la bandeja)"
+    "toast_description": "Mostrar alertas emergentes cuando las descargas terminen o haya actualizaciones disponibles (solo mientras está minimizado en la bandeja)",
+    "settings_tip": "Puedes cambiar tu idioma y otras configuraciones aquí.",
+    "settings_tip_dismiss": "Entendido"
 }

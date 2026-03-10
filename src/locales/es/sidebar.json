@@ -12,5 +12,7 @@
     "game_clients": "Clientes de juego",
     "other_clients": "Otros clientes",
     "testing": "Pruebas",
-    "legacy": "Legacy"
+    "legacy": "Legacy",
+    "sign_in_tip": "Inicia sesión para acceder a funciones de cuenta como el Constructor de Runas y la Bóveda de Runas.",
+    "sign_in_tip_dismiss": "Entendido"
 }

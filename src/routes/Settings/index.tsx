@@ -6,6 +6,10 @@ import styles from "./Settings.module.css";
 const LANGUAGES = [
     { code: "en", label: "English" },
     { code: "es", label: "Español" },
+    { code: "de", label: "Deutsch" },
+    { code: "fr", label: "Français" },
+    { code: "pt", label: "Português" },
+    { code: "ru", label: "Русский" },
 ];
 
 function Settings() {
@@ -38,7 +42,7 @@ function Settings() {
                     </div>
                     <select
                         className={styles.select}
-                        value={i18n.language.startsWith("es") ? "es" : "en"}
+                        value={LANGUAGES.find((l) => i18n.language.startsWith(l.code))?.code ?? "en"}
                         onChange={(e) => handleLanguageChange(e.target.value)}
                     >
                         {LANGUAGES.map((lang) => (

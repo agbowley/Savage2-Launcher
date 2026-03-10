@@ -1,0 +1,11 @@
+{
+    "heading": "Paramètres",
+    "language_section": "Langue",
+    "language_label": "Langue",
+    "language_description": "Choisir la langue d'affichage du lanceur",
+    "notifications_section": "Notifications",
+    "toast_label": "Notifications pop-up",
+    "toast_description": "Afficher des alertes pop-up lorsque les téléchargements sont terminés ou que des mises à jour sont disponibles (uniquement lorsque minimisé dans la barre des tâches)",
+    "settings_tip": "Vous pouvez changer votre langue et d'autres paramètres ici.",
+    "settings_tip_dismiss": "Compris"
+}

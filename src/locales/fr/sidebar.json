@@ -1,0 +1,18 @@
+{
+    "downloads": "Téléchargements",
+    "downloads_count": "Téléchargements ({{count}})",
+    "updating": "Mise à jour...",
+    "update_available": "Mise à jour disponible : {{version}}\nCliquez pour mettre à jour",
+    "download_update": "Télécharger la mise à jour {{version}}",
+    "sign_in": "Se connecter",
+    "sign_out": "Se déconnecter",
+    "signed_in": "Connecté",
+    "level": "Niveau {{level}}",
+    "level_tooltip": "Niveau {{level}} — {{currentExp}} / {{maxExp}} XP",
+    "game_clients": "Clients de jeu",
+    "other_clients": "Autres clients",
+    "testing": "Test",
+    "legacy": "Legacy",
+    "sign_in_tip": "Connectez-vous pour accéder aux fonctionnalités du compte comme le Créateur de Runes et le Coffre de Runes.",
+    "sign_in_tip_dismiss": "Compris"
+}

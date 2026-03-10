@@ -1,0 +1,11 @@
+{
+    "heading": "Einstellungen",
+    "language_section": "Sprache",
+    "language_label": "Sprache",
+    "language_description": "Wähle die Anzeigesprache des Launchers",
+    "notifications_section": "Benachrichtigungen",
+    "toast_label": "Popup-Benachrichtigungen",
+    "toast_description": "Pop-up-Benachrichtigungen anzeigen, wenn Downloads abgeschlossen sind oder Updates verfügbar sind (nur wenn in der Taskleiste minimiert)",
+    "settings_tip": "Hier kannst du deine Sprache und andere Einstellungen ändern.",
+    "settings_tip_dismiss": "Verstanden"
+}

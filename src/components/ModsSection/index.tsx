@@ -118,6 +118,20 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
 
     // ---- Import state ----
     const [importMode, setImportMode] = useState(false);
+    const [showBrowseTip, setShowBrowseTip] = useState(
+        () => !localStorage.getItem("mods_browse_tip_dismissed"),
+    );
+    const [showInstalledTip, setShowInstalledTip] = useState(
+        () => !localStorage.getItem("mods_installed_tip_dismissed"),
+    );
+    const dismissBrowseTip = () => {
+        setShowBrowseTip(false);
+        localStorage.setItem("mods_browse_tip_dismissed", "1");
+    };
+    const dismissInstalledTip = () => {
+        setShowInstalledTip(false);
+        localStorage.setItem("mods_installed_tip_dismissed", "1");
+    };
     const [scanning, setScanning] = useState(false);
     const [noLocalMods, setNoLocalMods] = useState(false);
     const [gameFiles, setGameFiles] = useState<ScannedModFile[]>([]);
@@ -513,7 +527,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                 id: modId,
                 apiModId: null,
                 name: groupName,
-                author: "Custom",
+                author: t("custom_author"),
                 installedVersion: "1.0",
                 installedVersionId: null,
                 enabled: true,
@@ -714,6 +728,16 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                     </button>
                                 );
                             })}
+                        </div>
+                    )}
+
+                    {/* Browse tip */}
+                    {showBrowseTip && (
+                        <div className={styles.tip_banner}>
+                            <p>{t("browse_tip")}</p>
+                            <button className={styles.tip_dismiss} onClick={dismissBrowseTip}>
+                                {t("tip_dismiss")}
+                            </button>
                         </div>
                     )}
 
@@ -930,6 +954,16 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
             {/* ========== INSTALLED TAB ========== */}
             {subTab === "installed" && (
                 <>
+                    {/* Installed tip */}
+                    {showInstalledTip && !importMode && (
+                        <div className={styles.tip_banner}>
+                            <p>{t("installed_tip")}</p>
+                            <button className={styles.tip_dismiss} onClick={dismissInstalledTip}>
+                                {t("tip_dismiss")}
+                            </button>
+                        </div>
+                    )}
+
                     {/* Import mode */}
                     {importMode ? (
                         <div className={styles.import_panel}>

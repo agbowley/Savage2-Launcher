@@ -1,0 +1,18 @@
+{
+    "downloads": "Downloads",
+    "downloads_count": "Downloads ({{count}})",
+    "updating": "Atualizando...",
+    "update_available": "Atualização disponível: {{version}}\nClique para atualizar",
+    "download_update": "Baixar atualização {{version}}",
+    "sign_in": "Entrar",
+    "sign_out": "Sair",
+    "signed_in": "Conectado",
+    "level": "Nível {{level}}",
+    "level_tooltip": "Nível {{level}} — {{currentExp}} / {{maxExp}} XP",
+    "game_clients": "Clientes do jogo",
+    "other_clients": "Outros clientes",
+    "testing": "Teste",
+    "legacy": "Legado",
+    "sign_in_tip": "Faça login para acessar recursos da conta como o Construtor de Runas e o Cofre de Runas.",
+    "sign_in_tip_dismiss": "Entendi"
+}

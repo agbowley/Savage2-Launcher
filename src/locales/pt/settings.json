@@ -1,0 +1,11 @@
+{
+    "heading": "Configurações",
+    "language_section": "Idioma",
+    "language_label": "Idioma",
+    "language_description": "Escolha o idioma de exibição do launcher",
+    "notifications_section": "Notificações",
+    "toast_label": "Notificações pop-up",
+    "toast_description": "Mostrar alertas pop-up quando downloads terminarem ou atualizações estiverem disponíveis (apenas quando minimizado na bandeja)",
+    "settings_tip": "Você pode alterar seu idioma e outras configurações aqui.",
+    "settings_tip_dismiss": "Entendi"
+}

@@ -57,6 +57,14 @@ const App: React.FC = () => {
         return () => { unlisten.then((fn) => fn()); };
     }, []);
 
+    // Listen for tray "Language" submenu clicks and sync frontend language
+    useEffect(() => {
+        const unlisten = listen<string>("tray-language-changed", (event) => {
+            i18n.changeLanguage(event.payload);
+        });
+        return () => { unlisten.then((fn) => fn()); };
+    }, []);
+
     // Listen for tray "Play" submenu clicks and launch the game directly
     useEffect(() => {
         const unlisten = listen<string>("tray-play", async (event) => {

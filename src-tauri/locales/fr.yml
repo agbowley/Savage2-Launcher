@@ -1,0 +1,10 @@
+tray:
+  open: Ouvrir
+  notifications: Notifications
+  quit: Quitter
+  play: Jouer
+  community_edition: Community Edition
+  beta_test_client: Client de test bêta
+  legacy_client: Client hérité
+  settings: Paramètres
+  language: Langue

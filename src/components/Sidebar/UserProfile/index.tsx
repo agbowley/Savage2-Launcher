@@ -58,6 +58,13 @@ const UserProfile: React.FC = () => {
     const gold = useAuthStore(s => s.gold);
     const [levelInfo, setLevelInfo] = useState<{ level: number; progress: number; currentExp: number; maxExp: number } | null>(null);
     const [achievementPoints, setAchievementPoints] = useState<number | null>(null);
+    const [showSignInTip, setShowSignInTip] = useState(
+        () => !localStorage.getItem("sign_in_tip_dismissed"),
+    );
+    const dismissSignInTip = () => {
+        setShowSignInTip(false);
+        localStorage.setItem("sign_in_tip_dismissed", "1");
+    };
 
     useEffect(() => {
         if (!user) {
@@ -81,14 +88,25 @@ const UserProfile: React.FC = () => {
     if (!user) {
         return (
             <div className={`${styles.userProfile} ${styles.signedOut}`}>
-                <Button
-                    color={ButtonColor.YELLOW}
-                    className={styles.signInButton}
-                    onClick={showLoginDialog}
-                    height={38}
-                >
-                    {t("sign_in")}
-                </Button>
+                <div className={styles.signInWrapper}>
+                    <Button
+                        color={ButtonColor.YELLOW}
+                        className={styles.signInButton}
+                        onClick={() => { if (showSignInTip) dismissSignInTip(); showLoginDialog(); }}
+                        height={38}
+                    >
+                        {t("sign_in")}
+                    </Button>
+                    {showSignInTip && (
+                        <div className={styles.signInTip}>
+                            <div className={styles.signInTipArrow} />
+                            <p>{t("sign_in_tip")}</p>
+                            <button className={styles.signInTipButton} onClick={dismissSignInTip}>
+                                {t("sign_in_tip_dismiss")}
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
         );
     }

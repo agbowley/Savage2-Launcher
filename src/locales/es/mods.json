@@ -92,5 +92,9 @@
     "active_status": "Activo",
     "inactive_status": "Inactivo",
     "cancel_download": "Cancelar descarga",
-    "local_mod_group": "Grupo de Mods Local {{num}}"
+    "local_mod_group": "Grupo de Mods Local {{num}}",
+    "browse_tip": "Explora y descubre mods de la comunidad. Haz clic en cualquier mod para ver detalles, o usa el botón Instalar para una configuración rápida.",
+    "installed_tip": "Administra tus mods aquí. Usa las flechas para ajustar el orden de carga — los mods cargados después tienen prioridad. También puedes importar mods existentes desde tu carpeta del juego.",
+    "tip_dismiss": "Entendido",
+    "custom_author": "Personalizado"
 }

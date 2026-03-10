@@ -44,5 +44,7 @@
     "queued_status": "En cola",
     "community_edition_desc": "La versión oficial de Savage 2: A Tortured Soul \u2013 Community Edition. Cliente de 64 bits con estabilidad, rendimiento y mejoras de calidad de vida.",
     "legacy_client_desc": "La versión legacy de Savage 2. Esta versión ya no recibe soporte ni actualizaciones, pero está disponible para quienes deseen jugar la versión original del juego o quieran jugar mods/mapas o ver repeticiones que ya no son compatibles con la versión actualizada.",
-    "beta_test_client_desc": "El cliente de pruebas beta para próximas características y parches. Úsalo para ayudar a probar cambios antes de que se publiquen."
+    "beta_test_client_desc": "El cliente de pruebas beta para próximas características y parches. Úsalo para ayudar a probar cambios antes de que se publiquen.",
+    "mods_tab_tip": "Instala y administra mods para el juego directamente en el launcher. Explora creaciones de la comunidad o importa las tuyas.",
+    "mods_tab_tip_dismiss": "Entendido"
 }

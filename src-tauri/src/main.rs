@@ -681,7 +681,7 @@ fn cancel_task(state: tauri::State<'_, State>) -> Result<(), String> {
 #[tauri::command]
 fn set_tray_notifications_label(app: AppHandle, enabled: bool) {
     NOTIFICATIONS_ENABLED.store(enabled, Ordering::SeqCst);
-    let _ = app.tray_handle().get_item("notifications").set_selected(enabled);
+    let _ = app.tray_handle().set_menu(build_tray_menu());
 }
 
 /// Signal that a launcher self-update is about to install.
@@ -739,7 +739,13 @@ fn show_notification(app: AppHandle, title: String, body: String) {
 /// Build the system tray menu with translated labels.
 fn build_tray_menu() -> SystemTrayMenu {
     let show = CustomMenuItem::new("show", t!("tray.open").to_string());
-    let notifications = CustomMenuItem::new("notifications", t!("tray.notifications").to_string()).selected();
+    let notifications = CustomMenuItem::new("notifications", t!("tray.notifications").to_string());
+    let notifications = if NOTIFICATIONS_ENABLED.load(Ordering::SeqCst) {
+        notifications.selected()
+    } else {
+        notifications
+    };
+
     let quit = CustomMenuItem::new("quit", t!("tray.quit").to_string());
 
     let play_ce = CustomMenuItem::new("play_stable", t!("tray.community_edition").to_string()).disabled();
@@ -751,11 +757,36 @@ fn build_tray_menu() -> SystemTrayMenu {
         .add_item(play_legacy);
     let play_submenu = SystemTraySubmenu::new(t!("tray.play").to_string(), play_menu);
 
+    // Language submenu — each item uses "lang_<code>" as its ID.
+    // The currently active locale gets a checkmark.
+    let current_locale = rust_i18n::locale().to_string();
+    let languages = [
+        ("en", "English"),
+        ("es", "Español"),
+        ("de", "Deutsch"),
+        ("fr", "Français"),
+        ("pt", "Português"),
+        ("ru", "Русский"),
+    ];
+    let mut lang_menu = SystemTrayMenu::new();
+    for (code, label) in languages {
+        let item = CustomMenuItem::new(format!("lang_{code}"), label);
+        let item = if current_locale == code { item.selected() } else { item };
+        lang_menu = lang_menu.add_item(item);
+    }
+    let lang_submenu = SystemTraySubmenu::new(t!("tray.language").to_string(), lang_menu);
+
+    // Settings submenu containing Language + Notifications
+    let settings_menu = SystemTrayMenu::new()
+        .add_submenu(lang_submenu)
+        .add_item(notifications);
+    let settings_submenu = SystemTraySubmenu::new(t!("tray.settings").to_string(), settings_menu);
+
     SystemTrayMenu::new()
         .add_item(show)
         .add_submenu(play_submenu)
         .add_native_item(SystemTrayMenuItem::Separator)
-        .add_item(notifications)
+        .add_submenu(settings_submenu)
         .add_native_item(SystemTrayMenuItem::Separator)
         .add_item(quit)
 }
@@ -764,8 +795,6 @@ fn build_tray_menu() -> SystemTrayMenu {
 #[tauri::command]
 fn set_locale(app: AppHandle, locale: String) {
     rust_i18n::set_locale(&locale);
-
-    // Rebuild the entire tray menu so the submenu title is also updated
     let _ = app.tray_handle().set_menu(build_tray_menu());
 }
 
@@ -1059,10 +1088,18 @@ fn main() {
                     let next = !prev;
                     NOTIFICATIONS_ENABLED.store(next, Ordering::SeqCst);
 
-                    let _ = app.tray_handle().get_item("notifications").set_selected(next);
+                    // Rebuild the menu so the checkmark updates
+                    let _ = app.tray_handle().set_menu(build_tray_menu());
 
                     // Sync the frontend store
                     let _ = app.emit_all("notifications-toggled", next);
+                }
+                id if id.starts_with("lang_") => {
+                    let lang_code = &id[5..];
+                    rust_i18n::set_locale(lang_code);
+                    let _ = app.tray_handle().set_menu(build_tray_menu());
+                    // Tell the frontend to switch language too
+                    let _ = app.emit_all("tray-language-changed", lang_code);
                 }
                 "quit" => {
                     app.exit(0);

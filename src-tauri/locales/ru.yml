@@ -1,0 +1,10 @@
+tray:
+  open: Открыть
+  notifications: Уведомления
+  quit: Выход
+  play: Играть
+  community_edition: Community Edition
+  beta_test_client: Бета-тест клиент
+  legacy_client: Устаревший клиент
+  settings: Настройки
+  language: Язык

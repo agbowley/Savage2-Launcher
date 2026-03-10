@@ -12,5 +12,7 @@
     "game_clients": "Game Clients",
     "other_clients": "Other Clients",
     "testing": "Testing",
-    "legacy": "Legacy"
+    "legacy": "Legacy",
+    "sign_in_tip": "Sign in to access account features like the Rune Builder and Rune Vault.",
+    "sign_in_tip_dismiss": "Got it"
 }

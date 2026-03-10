@@ -9,7 +9,7 @@ import ModsSection from "../../ModsSection";
 import { LaunchButton } from "../LaunchButton";
 import { ReleaseChannels } from "@app/hooks/useS2Release";
 import { Link, useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useBrowsePrefsStore } from "@app/stores/BrowsePrefsStore";
 import { useTranslation } from "react-i18next";
 import i18n from "@app/i18n";
@@ -38,6 +38,14 @@ const LaunchPage: React.FC<Props> = ({ version, playName, description, websiteUr
     const activeTab = useBrowsePrefsStore((s) => s.activeTab);
     const setActiveTab = useBrowsePrefsStore((s) => s.setActiveTab);
     const CreatedDate = version.releaseDate ? new Date(version.releaseDate) : INITIAL_RELEASE_DATE;
+
+    const [showModsTip, setShowModsTip] = useState(
+        () => !localStorage.getItem("mods_tab_tip_dismissed"),
+    );
+    const dismissModsTip = () => {
+        setShowModsTip(false);
+        localStorage.setItem("mods_tab_tip_dismissed", "1");
+    };
 
     // Allow location.state override (e.g. back from mod detail page)
     useEffect(() => {
@@ -71,12 +79,23 @@ const LaunchPage: React.FC<Props> = ({ version, playName, description, websiteUr
                     >
                         {t("news")}
                     </button>
-                    <button
-                        className={`${styles.tab_button} ${activeTab === "mods" ? styles.tab_active : ""}`}
-                        onClick={() => setActiveTab("mods")}
-                    >
-                        {t("mods")}
-                    </button>
+                    <div className={styles.mods_tab_wrapper}>
+                        <button
+                            className={`${styles.tab_button} ${activeTab === "mods" ? styles.tab_active : ""}`}
+                            onClick={() => { setActiveTab("mods"); if (showModsTip) dismissModsTip(); }}
+                        >
+                            {t("mods")}
+                        </button>
+                        {showModsTip && (
+                            <div className={styles.mods_tip}>
+                                <div className={styles.mods_tip_arrow} />
+                                <p>{t("mods_tab_tip")}</p>
+                                <button className={styles.mods_tip_dismiss} onClick={dismissModsTip}>
+                                    {t("mods_tab_tip_dismiss")}
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
                 {activeTab === "news" ? <NewsSection /> : <ModsSection channel={channel} />}
             </div>

@@ -1,9 +1,11 @@
 import { appWindow } from "@tauri-apps/api/window";
 
 import styles from "./titlebar.module.css";
-import { CloseIcon, MinimizeIcon } from "@app/assets/Icons";
+import { CloseIcon, MinimizeIcon, SettingsIcon } from "@app/assets/Icons";
 import LauncherIcon from "@app/assets/SourceIcons/Official.png";
 import { useTranslation } from "react-i18next";
+import Router from "@app/routes";
+import { useState, useEffect } from "react";
 
 let clickCount = 0;
 let clickTimer: ReturnType<typeof setTimeout> | null = null;
@@ -34,17 +36,53 @@ const TitleBar: React.FC = () => {
         }
     }
 
-    const { t } = useTranslation();
+    const { t } = useTranslation("settings");
+    const { t: tCommon } = useTranslation();
+
+    const [showTip, setShowTip] = useState(false);
+
+    useEffect(() => {
+        const dismissed = localStorage.getItem("settings_tip_dismissed");
+        if (!dismissed) {
+            const timer = setTimeout(() => setShowTip(true), 1500);
+            return () => clearTimeout(timer);
+        }
+    }, []);
+
+    const dismissTip = () => {
+        setShowTip(false);
+        localStorage.setItem("settings_tip_dismissed", "1");
+    };
+
+    const handleSettingsClick = () => {
+        if (showTip) dismissTip();
+        Router.navigate("/settings");
+    };
 
     return <div
         onMouseDown={handleMouseDown}
         className={styles.title_bar}>
         <div className={styles.text}>
             <img src={LauncherIcon} height={18} alt="Savage 2" />
-            {t("savage2_launcher")}
+            {tCommon("savage2_launcher")}
         </div>
 
         <div className={styles.buttons}>
+            <div className={styles.settings_wrapper}>
+                <div onClick={handleSettingsClick} className={styles.button}>
+                    <SettingsIcon />
+                </div>
+                {showTip && (
+                    <div className={styles.tip}>
+                        <div className={styles.tip_arrow} />
+                        <p>{t("settings_tip")}</p>
+                        <button className={styles.tip_button} onClick={dismissTip}>
+                            {t("settings_tip_dismiss")}
+                        </button>
+                    </div>
+                )}
+            </div>
+
             <div onClick={() => appWindow.minimize()} className={styles.button}>
                 <MinimizeIcon />
             </div>

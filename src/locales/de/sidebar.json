@@ -1,0 +1,18 @@
+{
+    "downloads": "Downloads",
+    "downloads_count": "Downloads ({{count}})",
+    "updating": "Aktualisierung...",
+    "update_available": "Update verfügbar: {{version}}\nKlicke zum Aktualisieren",
+    "download_update": "Update {{version}} herunterladen",
+    "sign_in": "Anmelden",
+    "sign_out": "Abmelden",
+    "signed_in": "Angemeldet",
+    "level": "Stufe {{level}}",
+    "level_tooltip": "Stufe {{level}} — {{currentExp}} / {{maxExp}} EP",
+    "game_clients": "Spielclients",
+    "other_clients": "Andere Clients",
+    "testing": "Testen",
+    "legacy": "Legacy",
+    "sign_in_tip": "Melde dich an, um auf Kontofunktionen wie den Runen-Baumeister und den Runen-Tresor zuzugreifen.",
+    "sign_in_tip_dismiss": "Verstanden"
+}

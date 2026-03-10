@@ -254,3 +254,67 @@ a.info_entry:hover {
     color: #ffffff;
     border-bottom-color: var(--accent);
 }
+
+/* ---- One-time mods tab tip (overlay) ---- */
+.mods_tab_wrapper {
+    position: relative;
+}
+
+.mods_tip {
+    position: absolute;
+    top: 50%;
+    left: 100%;
+    transform: translateY(-50%);
+    margin-left: 10px;
+    width: 240px;
+    padding: 12px;
+    background: #1a1a2e;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    z-index: 200;
+    animation: modsTipFadeIn 0.3s ease;
+}
+
+.mods_tip_arrow {
+    position: absolute;
+    left: -6px;
+    top: 50%;
+    margin-top: -6px;
+    width: 12px;
+    height: 12px;
+    background: #1a1a2e;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    border-left: 1px solid rgba(255, 255, 255, 0.15);
+    transform: rotate(45deg);
+}
+
+.mods_tip p {
+    margin: 0 0 10px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.mods_tip_dismiss {
+    display: block;
+    width: 100%;
+    padding: 6px 0;
+    border: none;
+    border-radius: 4px;
+    background: #4a6cf7;
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.mods_tip_dismiss:hover {
+    filter: brightness(1.15);
+}
+
+@keyframes modsTipFadeIn {
+    from { opacity: 0; transform: translateY(-50%) translateX(-4px); }
+    to { opacity: 1; transform: translateY(-50%) translateX(0); }
+}

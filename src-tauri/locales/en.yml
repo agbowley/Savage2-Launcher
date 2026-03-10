@@ -6,3 +6,5 @@ tray:
   community_edition: Community Edition
   beta_test_client: Beta Test Client
   legacy_client: Legacy Client
+  settings: Settings
+  language: Language
