@@ -1,6 +1,7 @@
 import { tauriFetchText } from "@app/utils/tauriFetch";
 import { useQuery } from "@tanstack/react-query";
 import { type } from "@tauri-apps/api/os";
+import { invoke } from "@tauri-apps/api/tauri";
 import { getS2ChannelChangelogUrl, getS2ChangelogUrl, ReleaseChannels, useS2Release } from "./useS2Release";
 
 /**
@@ -20,6 +21,17 @@ export const useChangelog = (channel: ReleaseChannels) => {
         queryKey: ["Changelog", channel],
         gcTime: 10 * 60 * 1000,
         queryFn: async (): Promise<string> => {
+            // Try reading the local change_log.txt from the game's install directory
+            try {
+                const local = await invoke<string | null>("read_local_changelog", {
+                    appName: "Savage 2",
+                    profile: releaseData.tag_name,
+                });
+                if (local) return local;
+            } catch {
+                // Local file not available, fall through to remote
+            }
+
             const platformType = await type();
 
             // Try the channel-specific changelog first (e.g. .../latest/change_log.txt)

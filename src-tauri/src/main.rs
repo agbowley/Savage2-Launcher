@@ -496,6 +496,21 @@ fn get_install_path(
 }
 
 #[tauri::command(async)]
+fn read_local_changelog(
+    state: tauri::State<'_, State>,
+    app_name: String,
+    profile: String,
+) -> Result<Option<String>, String> {
+    let app_profile = create_app_profile(app_name, &state, profile)?;
+    let install_path = app_profile.get_install_path()?;
+    let changelog_path = std::path::Path::new(&install_path).join("change_log.txt");
+    match std::fs::read_to_string(&changelog_path) {
+        Ok(text) if !text.trim().is_empty() => Ok(Some(text)),
+        _ => Ok(None),
+    }
+}
+
+#[tauri::command(async)]
 fn detect_installed_version(
     state: tauri::State<'_, State>,
     app_name: String,
@@ -1135,6 +1150,7 @@ fn main() {
             reveal_folder,
             get_installed_version,
             get_install_path,
+            read_local_changelog,
             detect_installed_version,
             save_installed_version,
             fetch_remote_version,
