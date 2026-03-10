@@ -24,10 +24,13 @@ const LoadingScreen: React.FC<Props> = (props: Props) => {
     useEffect(() => {
         (async () => {
             try {
+                const start = Date.now();
                 await invoke("init");
 
-                // Add a tiny bit of delay so the loading screen doesn't just instantly disappear
-                await new Promise(r => setTimeout(r, 250));
+                // Ensure the loading bar animation (1s) finishes before hiding
+                const elapsed = Date.now() - start;
+                const remaining = Math.max(1000 - elapsed, 0);
+                await new Promise(r => setTimeout(r, remaining));
             } catch (e) {
                 console.error(e);
                 logError(JSON.stringify(serializeError(e)));

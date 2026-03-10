@@ -28,9 +28,7 @@ export class DuplicateModDialog extends BaseDialog<Record<string, never>> {
 
         return (
             <div style={{ textAlign: "center" }}>
-                <p>
-                    {i18n.t("already_installed_body", { ns: "dialogs", modName, existingModName })}
-                </p>
+                <p dangerouslySetInnerHTML={{ __html: i18n.t("already_installed_body", { ns: "dialogs", modName, existingModName }) }} />
                 <p style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
                     {i18n.t("already_installed_hint", { ns: "dialogs" })}
                 </p>

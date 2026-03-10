@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { ModSortBy } from "@app/types/mods";
 
-type ActiveTab = "news" | "mods";
+type ActiveTab = "news" | "mods" | "servers";
 type SubTab = "browse" | "installed";
 
 export interface CachedTag {

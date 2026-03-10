@@ -20,9 +20,7 @@ export class UninstallDialog extends BaseDialog<Record<string, never>> {
 
     getInnerContents() {
         return <>
-            <p>
-                {i18n.t("confirm_uninstall_body", { ns: "dialogs", appName: this.props.appName as string })}
-            </p>
+            <p dangerouslySetInnerHTML={{ __html: i18n.t("confirm_uninstall_body", { ns: "dialogs", appName: this.props.appName as string }) }} />
         </>;
     }
 

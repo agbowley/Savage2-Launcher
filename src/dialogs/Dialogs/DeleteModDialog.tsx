@@ -33,9 +33,7 @@ export class DeleteModDialog extends BaseDialog<State> {
 
         return (
             <div style={{ textAlign: "center" }}>
-                <p>
-                    {i18n.t("remove_mod_confirm", { ns: "dialogs", modName })}
-                </p>
+                <p dangerouslySetInnerHTML={{ __html: i18n.t("remove_mod_confirm", { ns: "dialogs", modName }) }} />
                 <p style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
                     {i18n.t("remove_mod_hint", { ns: "dialogs" })}
                 </p>

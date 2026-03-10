@@ -1,0 +1,387 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    flex: 1 0 0;
+    align-self: stretch;
+    gap: 8px;
+}
+
+/* ---- Filter bar ---- */
+.filter_bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.search_input {
+    flex: 1 1 160px;
+    min-width: 120px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: #ffffff;
+    font-size: 12px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.search_input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.search_input:focus {
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.player_count {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.hide_empty_label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.hide_empty_label input {
+    accent-color: var(--accent);
+}
+
+/* ---- Table ---- */
+.table_wrapper {
+    flex: 1;
+    overflow-y: auto;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    table-layout: fixed;
+}
+
+.table thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.table th {
+    padding: 6px 4px;
+    text-align: left;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.55);
+    background: rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    font-size: 11px;
+}
+
+.table th:hover {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.sort_indicator {
+    margin-left: 3px;
+    font-size: 9px;
+    opacity: 0.7;
+}
+
+/* Column widths */
+.col_official { width: 18px; text-align: center; }
+.col_name { width: 25%; }
+.col_map { width: 95px; }
+.col_players { width: 65px; }
+.col_ping { width: 50px; }
+.col_location { width: 70px; }
+.col_info { width: 24px; cursor: default; }
+.col_join { width: 24px; cursor: default; }
+.col_pin { width: 24px; cursor: default; }
+
+.official_cell {
+    text-align: center;
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+}
+
+.table td {
+    padding: 4px 4px;
+    color: rgba(255, 255, 255, 0.85);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.table tbody tr {
+    transition: background 0.15s;
+}
+
+.table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* ---- Pinned row highlight ---- */
+.row_pinned {
+    background: rgba(250, 204, 21, 0.06);
+}
+
+.row_pinned:hover {
+    background: rgba(250, 204, 21, 0.10);
+}
+
+/* ---- Server name cell ---- */
+.name_cell {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow: hidden;
+}
+
+.lock_icon {
+    flex-shrink: 0;
+    opacity: 0.5;
+    font-size: 11px;
+}
+
+.official_badge {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+}
+
+/* ---- Marquee overflow ---- */
+.marquee_wrapper {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    position: relative;
+}
+
+.marquee_text {
+    display: inline-block;
+    white-space: nowrap;
+}
+
+/* Only animate when the text actually overflows */
+td:hover .marquee_overflows {
+    overflow: visible;
+}
+
+td:hover .marquee_overflows .marquee_text {
+    animation: marquee 5s linear 0.3s infinite;
+}
+
+@keyframes marquee {
+    0%   { transform: translateX(0); }
+    10%  { transform: translateX(0); }
+    90%  { transform: translateX(calc(-100% + 60px)); }
+    100% { transform: translateX(calc(-100% + 60px)); }
+}
+
+/* ---- Info button ---- */
+.info_cell {
+    text-align: center;
+    padding: 0 !important;
+}
+
+.info_button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+    padding: 2px;
+    line-height: 1;
+    transition: color 0.15s;
+}
+
+.info_button:hover {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* ---- Join button ---- */
+.join_cell {
+    text-align: center;
+    padding: 0 !important;
+}
+
+.join_button {
+    background: none;
+    border: none;
+    cursor: default;
+    padding: 2px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(74, 222, 128, 0.35);
+}
+
+.join_button:not(:disabled) {
+    cursor: pointer;
+    color: rgba(74, 222, 128, 0.7);
+}
+
+.join_button:not(:disabled):hover {
+    color: #4ade80;
+}
+
+/* ---- Quick Connect ---- */
+.quick_connect {
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 12px;
+    font-family: inherit;
+    cursor: default;
+    white-space: nowrap;
+}
+
+/* ---- Pin button ---- */
+.pin_cell {
+    text-align: center;
+    padding: 0 !important;
+}
+
+.pin_button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.55);
+    padding: 2px;
+    line-height: 1;
+    transition: color 0.15s, transform 0.15s;
+    transform: rotate(30deg);
+}
+
+.pin_button:hover {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.pin_active {
+    color: #facc15;
+    transform: rotate(0deg);
+}
+
+.pin_active:hover {
+    color: #fde047;
+}
+
+/* ---- Detail overlay ---- */
+.overlay_backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.15s ease;
+}
+
+.overlay_panel {
+    background: #1a1a2e;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 24px;
+    min-width: 340px;
+    max-width: 440px;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    animation: slideUp 0.2s ease;
+}
+
+.overlay_close {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 20px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 4px;
+    transition: color 0.15s;
+}
+
+.overlay_close:hover {
+    color: #fff;
+}
+
+.overlay_title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 16px;
+    padding-right: 24px;
+}
+
+.overlay_grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 6px 14px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.overlay_label {
+    color: rgba(255, 255, 255, 0.45);
+    text-transform: uppercase;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    align-self: center;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { transform: translateY(10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* ---- Empty / loading states ---- */
+.center_message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 40px;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 13px;
+    flex: 1;
+}
+
+.error_text {
+    color: #f87171;
+}

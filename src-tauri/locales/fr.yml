@@ -3,7 +3,7 @@ tray:
   notifications: Notifications
   quit: Quitter
   play: Jouer
-  community_edition: Community Edition
+  community_edition: Édition Communautaire
   beta_test_client: Client de test bêta
   legacy_client: Client hérité
   settings: Paramètres

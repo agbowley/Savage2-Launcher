@@ -6,6 +6,7 @@ import TooltipWrapper from "../../TooltipWrapper";
 import { intlFormatDistance } from "date-fns";
 import NewsSection from "../../NewsSection";
 import ModsSection from "../../ModsSection";
+import ServerBrowser from "../../ServerBrowser";
 import { LaunchButton } from "../LaunchButton";
 import { ReleaseChannels } from "@app/hooks/useS2Release";
 import { Link, useLocation } from "react-router-dom";
@@ -50,7 +51,7 @@ const LaunchPage: React.FC<Props> = ({ version, playName, description, websiteUr
     // Allow location.state override (e.g. back from mod detail page)
     useEffect(() => {
         const stateTab = (location.state as { activeTab?: string } | null)?.activeTab;
-        if (stateTab === "mods" || stateTab === "news") {
+        if (stateTab === "mods" || stateTab === "news" || stateTab === "servers") {
             setActiveTab(stateTab);
         }
     }, [location.state, setActiveTab]);
@@ -96,8 +97,20 @@ const LaunchPage: React.FC<Props> = ({ version, playName, description, websiteUr
                             </div>
                         )}
                     </div>
+                    <button
+                        className={`${styles.tab_button} ${activeTab === "servers" ? styles.tab_active : ""}`}
+                        onClick={() => setActiveTab("servers")}
+                    >
+                        {t("servers")}
+                    </button>
                 </div>
-                {activeTab === "news" ? <NewsSection /> : <ModsSection channel={channel} />}
+                {activeTab === "news" ? (
+                    <NewsSection />
+                ) : activeTab === "mods" ? (
+                    <ModsSection channel={channel} />
+                ) : (
+                    <ServerBrowser latestVersion={version.latestVersion} />
+                )}
             </div>
             <div className={styles.sidebar}>
                 <LaunchButton style={{ width: "100%" }} version={version} playName={""} />

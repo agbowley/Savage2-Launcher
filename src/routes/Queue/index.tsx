@@ -3,7 +3,6 @@ import QueueSection from "@app/components/Queue/QueueSection";
 import PayloadProgress from "@app/components/PayloadProgress";
 import HistoryEntryComponent from "@app/components/Queue/HistoryEntry";
 import * as Progress from "@radix-ui/react-progress";
-import { useState } from "react";
 import { QueueIcon, QueueListIcon, TimeIcon } from "@app/assets/Icons";
 import QueueStore from "@app/tasks/queue";
 import { usePayload } from "@app/tasks/payload";
@@ -16,7 +15,6 @@ import { useTranslation } from "react-i18next";
 
 function Queue() {
     const { t } = useTranslation();
-    const [lastWasEmpty, setLastWasEmpty] = useState(false);
     const navigate = useNavigate();
 
     const queue = QueueStore.useQueue();
@@ -35,14 +33,16 @@ function Queue() {
     const progressValue = getProgressValue();
     const isIndeterminate = currentTask != null && progressValue === null;
 
-    function getBanner() {
-        if (currentTask) {
-            if (lastWasEmpty) {
-                setLastWasEmpty(false);
-            }
+    return <div className={styles.page}>
+        <div className={styles.header}>
+            <h1 className={styles.heading}>
+                <QueueIcon /> {t("downloads")}
+            </h1>
+        </div>
 
-            return <div className={styles.banner}>
-                <div className={styles.banner_header}>
+        {currentTask && (
+            <div className={styles.download_section}>
+                <div className={styles.download_header}>
                     <div
                         className={styles.banner_entry_link}
                         onClick={() => {
@@ -77,24 +77,10 @@ function Queue() {
                         />
                     </Progress.Root>
                 </div>
-            </div>;
-        } else {
-            // Make sure to update the start time when it becomes empty
-            if (!lastWasEmpty) {
-                setLastWasEmpty(true);
-            }
+            </div>
+        )}
 
-            return <div className={styles.empty_banner}>
-                <h1 className={styles.empty_banner_header}>
-                    <QueueIcon /> {t("downloads")}
-                </h1>
-            </div>;
-        }
-    }
-
-    return <>
-        {getBanner()}
-        <div className={styles.main}>
+        <div className={styles.content}>
             {queue.size > 1 && (
                 <QueueSection icon={<QueueListIcon />} title={t("queued_actions")}>
                     {Array.from(queue).splice(1).map(downloader =>
@@ -124,7 +110,7 @@ function Queue() {
                 }
             </QueueSection>
         </div>
-    </>;
+    </div>;
 }
 
 export default Queue;

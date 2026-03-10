@@ -6,6 +6,7 @@ rust_i18n::i18n!("locales", fallback = "en");
 mod utils;
 mod app_profile;
 mod mods;
+mod server_browser;
 
 use app_profile::AppProfile;
 // use app_profile::official_setlist::OfficialSetlistProfile;
@@ -1196,6 +1197,9 @@ fn main() {
             mods::uninstall_map,
             mods::read_mod_file_content,
             mods::write_mod_file_content,
+
+            // Server browser
+            server_browser::fetch_servers,
         ])
         .setup(|app| {
             let window = app.get_window("main").unwrap();
