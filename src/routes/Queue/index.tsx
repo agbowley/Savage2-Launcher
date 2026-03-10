@@ -49,7 +49,9 @@ function Queue() {
                             const tag = currentTask.taskTag;
                             const profile = currentTask.profile;
                             if (tag === "Savage 2") {
-                                navigate(`/s2/${profile}`);
+                                const channel = profile === "latest" ? "stable"
+                                    : profile === "beta" ? "nightly" : profile;
+                                navigate(`/s2/${channel}`);
                             } else if (tag === "mod") {
                                 const modTask = currentTask as ModDownloadTask;
                                 navigate(`/mods/${modTask.modSlug}`);

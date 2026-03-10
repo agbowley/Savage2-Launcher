@@ -23,7 +23,7 @@
     "error_init": "Ha ocurrido un error al intentar inicializar el launcher. Por favor, repórtalo en nuestro Discord e incluye el siguiente mensaje de error:",
     "error_report": "Ha ocurrido un error. Por favor, repórtalo en nuestro Discord o GitHub.",
     "close_launcher": "Cerrar Launcher",
-    "downloads": "DESCARGAS",
+    "downloads": "Descargas",
     "queued_actions": "ACCIONES EN COLA",
     "history": "HISTORIAL",
     "clear_history": "Limpiar Historial",

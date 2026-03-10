@@ -23,7 +23,7 @@
     "error_init": "An error has occurred when attempted to initalize the launcher. Please report this on our Discord and include the following error message:",
     "error_report": "An error has occurred. Please report this to our Discord or GitHub.",
     "close_launcher": "Close Launcher",
-    "downloads": "DOWNLOADS",
+    "downloads": "Downloads",
     "queued_actions": "QUEUED ACTIONS",
     "history": "HISTORY",
     "clear_history": "Clear History",

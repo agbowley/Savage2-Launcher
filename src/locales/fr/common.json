@@ -23,7 +23,7 @@
     "error_init": "Une erreur s'est produite lors du démarrage du lanceur. Veuillez signaler ceci sur notre Discord en incluant le message d'erreur suivant :",
     "error_report": "Une erreur s'est produite. Veuillez la signaler sur notre Discord ou GitHub.",
     "close_launcher": "Fermer le lanceur",
-    "downloads": "TÉLÉCHARGEMENTS",
+    "downloads": "Téléchargements",
     "queued_actions": "FILE D'ATTENTE",
     "history": "HISTORIQUE",
     "clear_history": "Effacer l'historique",
