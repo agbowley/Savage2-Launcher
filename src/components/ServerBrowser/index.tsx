@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { invoke } from "@tauri-apps/api/tauri";
 import { useServers, type ServerEntry } from "@app/hooks/useServers";
 import { useServerFavourites } from "@app/stores/ServerFavouritesStore";
 import { useAuthStore } from "@app/stores/AuthStore";
@@ -9,6 +10,13 @@ import TooltipWrapper from "../TooltipWrapper";
 import LauncherIcon from "@app/assets/SourceIcons/Official.png";
 import { PlayIcon } from "@app/assets/Icons";
 import styles from "./ServerBrowser.module.css";
+import type { MsAuthResponse } from "@app/types/auth";
+
+const FastForwardIcon = () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+        <path d="M13 6v12l8.5-6L13 6zM3 6v12l8.5-6L3 6z" />
+    </svg>
+);
 
 type SortKey = "name" | "map" | "players" | "ping" | "location" | "official";
 
@@ -112,6 +120,24 @@ const ServerBrowser: React.FC<Props> = ({ latestVersion, onConnect }) => {
             await showLoginDialog();
             return;
         }
+
+        // Pre-validate MS credentials; if they're stale, prompt re-login
+        const { user, msPassword } = useAuthStore.getState();
+        if (!user || !msPassword) {
+            await showLoginDialog();
+            return;
+        }
+        try {
+            const msAuth = await invoke<MsAuthResponse>("ms_authenticate", {
+                username: user.username,
+                password: msPassword,
+            });
+            useAuthStore.setState({ msCookie: msAuth.cookie, msAccountId: msAuth.accountId });
+        } catch {
+            await showLoginDialog();
+            return;
+        }
+
         const target = pickQuickConnectServer(servers, favourites);
         if (target) {
             onConnect(`${target.ip}:${target.port}`);
@@ -224,6 +250,7 @@ const ServerBrowser: React.FC<Props> = ({ latestVersion, onConnect }) => {
                         className={styles.quick_connect}
                         onClick={handleQuickConnect}
                     >
+                        <FastForwardIcon />
                         {t("servers_quick_connect")}
                     </button>
                 </TooltipWrapper>
