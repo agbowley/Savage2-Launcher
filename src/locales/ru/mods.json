@@ -67,6 +67,7 @@
     "no_versions": "Версии недоступны.",
     "download_install": "Скачать и установить",
     "update_to": "Обновить до {{version}}",
+    "update_mod": "Обновить",
     "latest_badge": "Последняя",
     "current_badge": "Текущая",
     "loading_mod_details": "Загрузка деталей мода...",

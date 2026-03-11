@@ -67,6 +67,7 @@
     "no_versions": "No versions available.",
     "download_install": "Download & Install",
     "update_to": "Update to {{version}}",
+    "update_mod": "Update",
     "latest_badge": "Latest",
     "current_badge": "Current",
     "loading_mod_details": "Loading mod details...",

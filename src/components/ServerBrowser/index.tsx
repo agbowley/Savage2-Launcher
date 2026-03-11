@@ -251,8 +251,6 @@ const ServerBrowser: React.FC<Props> = ({ latestVersion }) => {
                             <span>{detailServer.minLevel}–{detailServer.maxLevel}</span>
                             <span className={styles.overlay_label}>{t("servers_detail_password")}</span>
                             <span>{detailServer.passworded ? "✔" : "✖"}</span>
-                            <span className={styles.overlay_label}>{t("servers_detail_description")}</span>
-                            <span>{detailServer.description || "—"}</span>
                         </div>
                     </div>
                 </div>

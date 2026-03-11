@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/tauri";
 import styles from "./ModPage.module.css";
 import { useModDetail } from "@app/hooks/useModDetail";
 import { useModsStore } from "@app/stores/ModsStore";
-import { BackIcon, DownloadIcon, DriveIcon, CheckmarkIcon } from "@app/assets/Icons";
+import { BackIcon, DownloadIcon, DriveIcon, CheckmarkIcon, UpgradeIcon } from "@app/assets/Icons";
 import { repositoryBaseURL } from "@app/utils/consts";
 import CachedImage from "@app/components/CachedImage";
 import { addTask } from "@app/tasks";
@@ -599,11 +599,11 @@ const ModPage: React.FC = () => {
                                 <div className={styles.action_row}>
                                     {latestVersion && installedMod.installedVersion !== latestVersion.version && (
                                         <button
-                                            className={`${styles.install_button} ${styles.install_button_primary}`}
+                                            className={`${styles.install_button} ${styles.install_button_update}`}
                                             onClick={() => handleInstall(latestVersion)}
                                             disabled={installing}
                                         >
-                                            {t("update_to", { version: `v${latestVersion.version}` })}
+                                            <UpgradeIcon /> {t("update_to", { version: `v${latestVersion.version}` })}
                                         </button>
                                     )}
                                     <button
@@ -630,11 +630,11 @@ const ModPage: React.FC = () => {
                                     <div className={styles.action_row}>
                                         {latestVersion && installedMod.installedVersion !== latestVersion.version && (
                                             <button
-                                                className={`${styles.install_button} ${styles.install_button_primary}`}
+                                                className={`${styles.install_button} ${styles.install_button_update}`}
                                                 onClick={() => handleInstall(latestVersion)}
                                                 disabled={installing}
                                             >
-                                                {t("update_to", { version: `v${latestVersion.version}` })}
+                                                <UpgradeIcon /> {t("update_to", { version: `v${latestVersion.version}` })}
                                             </button>
                                         )}
                                         <button

@@ -55,12 +55,6 @@
     min-width: 0;
 }
 
-.name_row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
 .author {
     font-size: 11px;
     font-weight: 400;
@@ -149,8 +143,8 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    margin-left: auto;
-    flex-shrink: 0;
+    margin-top: auto;
+    padding-top: 6px;
 }
 
 .card_action_btn {
@@ -197,6 +191,26 @@
     background: rgba(255, 50, 50, 0.25);
     color: #ff8888;
     border-color: rgba(255, 50, 50, 0.4);
+}
+
+.card_update_btn {
+    background: rgba(46, 217, 255, 0.15);
+    color: #2ED9FF;
+    border-color: rgba(46, 217, 255, 0.25);
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.card_update_btn:hover {
+    background: rgba(46, 217, 255, 0.25);
+    color: #5ae3ff;
+    border-color: rgba(46, 217, 255, 0.4);
+}
+
+.card_update_btn svg {
+    width: 10px;
+    height: 10px;
 }
 
 .card_enabled_btn {

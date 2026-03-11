@@ -1,6 +1,6 @@
 import styles from "./ModCard.module.css";
 import { repositoryBaseURL } from "@app/utils/consts";
-import { CheckmarkIcon, DownloadIcon, DriveIcon } from "@app/assets/Icons";
+import { CheckmarkIcon, DownloadIcon, DriveIcon, UpgradeIcon } from "@app/assets/Icons";
 import { getNewsBanner } from "@app/assets/NewsBanners";
 import type { ModListItem } from "@app/types/mods";
 import { useNavigate } from "react-router-dom";
@@ -13,11 +13,13 @@ interface Props {
     isEnabled?: boolean;
     isTool?: boolean;
     isPending?: boolean;
+    hasUpdate?: boolean;
     channel: string;
     onInstall?: (mod: ModListItem) => void;
     onUninstall?: (mod: ModListItem) => void;
     onToggleEnabled?: (mod: ModListItem) => void;
     onOpenFolder?: (mod: ModListItem) => void;
+    onUpdate?: (mod: ModListItem) => void;
 }
 
 const ModCard: React.FC<Props> = ({
@@ -26,11 +28,13 @@ const ModCard: React.FC<Props> = ({
     isEnabled,
     isTool,
     isPending,
+    hasUpdate,
     channel,
     onInstall,
     onUninstall,
     onToggleEnabled,
     onOpenFolder,
+    onUpdate,
 }: Props) => {
     const navigate = useNavigate();
     const { t } = useTranslation("mods");
@@ -71,49 +75,7 @@ const ModCard: React.FC<Props> = ({
             </div>
 
             <div className={styles.body}>
-                <div className={styles.name_row}>
-                    <span className={styles.name} title={modItem.name}>{modItem.name}</span>
-                    {/* Quick actions — aligned right on the name row */}
-                    <div className={styles.card_actions} onClick={(e) => e.stopPropagation()}>
-                        {isInstalled && (
-                            isTool ? (
-                                <button
-                                    className={`${styles.card_action_btn} ${styles.card_folder_btn}`}
-                                    onClick={() => onOpenFolder?.(modItem)}
-                                    title={t("open_mod_folder")}
-                                >
-                                    <DriveIcon /> {t("folder")}
-                                </button>
-                            ) : (
-                                <button
-                                    className={`${styles.card_action_btn} ${isEnabled ? styles.card_enabled_btn : styles.card_disabled_btn}`}
-                                    onClick={() => onToggleEnabled?.(modItem)}
-                                    title={isEnabled ? t("disable_mod") : t("enable_mod")}
-                                >
-                                    {isEnabled ? t("enabled", { ns: "common" }) : t("disabled", { ns: "common" })}
-                                </button>
-                            )
-                        )}
-                        {isInstalled ? (
-                            <button
-                                className={`${styles.card_action_btn} ${styles.card_uninstall_btn}`}
-                                onClick={() => onUninstall?.(modItem)}
-                                title={t("remove_mod")}
-                            >
-                                {t("remove")}
-                            </button>
-                        ) : (
-                            <button
-                                className={`${styles.card_action_btn} ${styles.card_install_btn}`}
-                                onClick={() => onInstall?.(modItem)}
-                                title={t("install_mod")}
-                                disabled={isPending}
-                            >
-                                {isPending ? "..." : t("install", { ns: "common" })}
-                            </button>
-                        )}
-                    </div>
-                </div>
+                <span className={styles.name} title={modItem.name}>{modItem.name}</span>
                 <span className={styles.author}>{t("by_author", { author: modItem.author })}</span>
 
                 <div className={styles.meta}>
@@ -140,6 +102,55 @@ const ModCard: React.FC<Props> = ({
                         ))}
                     </div>
                 )}
+
+                <div className={styles.card_actions} onClick={(e) => e.stopPropagation()}>
+                    {isInstalled && (
+                        isTool ? (
+                            <button
+                                className={`${styles.card_action_btn} ${styles.card_folder_btn}`}
+                                onClick={() => onOpenFolder?.(modItem)}
+                                title={t("open_mod_folder")}
+                            >
+                                <DriveIcon /> {t("folder")}
+                            </button>
+                        ) : (
+                            <button
+                                className={`${styles.card_action_btn} ${isEnabled ? styles.card_enabled_btn : styles.card_disabled_btn}`}
+                                onClick={() => onToggleEnabled?.(modItem)}
+                                title={isEnabled ? t("disable_mod") : t("enable_mod")}
+                            >
+                                {isEnabled ? t("enabled", { ns: "common" }) : t("disabled", { ns: "common" })}
+                            </button>
+                        )
+                    )}
+                    {isInstalled && hasUpdate && (
+                        <button
+                            className={`${styles.card_action_btn} ${styles.card_update_btn}`}
+                            onClick={() => onUpdate?.(modItem)}
+                            title={t("update_mod")}
+                        >
+                            <UpgradeIcon /> {t("update_mod")}
+                        </button>
+                    )}
+                    {isInstalled ? (
+                        <button
+                            className={`${styles.card_action_btn} ${styles.card_uninstall_btn}`}
+                            onClick={() => onUninstall?.(modItem)}
+                            title={t("remove_mod")}
+                        >
+                            {t("remove")}
+                        </button>
+                    ) : (
+                        <button
+                            className={`${styles.card_action_btn} ${styles.card_install_btn}`}
+                            onClick={() => onInstall?.(modItem)}
+                            title={t("install_mod")}
+                            disabled={isPending}
+                        >
+                            {isPending ? "..." : t("install", { ns: "common" })}
+                        </button>
+                    )}
+                </div>
             </div>
         </div>
     );

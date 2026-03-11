@@ -218,6 +218,25 @@
     opacity: 0.9;
 }
 
+.install_button_update {
+    background: rgba(46, 217, 255, 0.2);
+    color: #2ED9FF;
+    border: 1px solid rgba(46, 217, 255, 0.3);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.install_button_update:hover {
+    background: rgba(46, 217, 255, 0.3);
+}
+
+.install_button_update svg {
+    width: 16px;
+    height: 16px;
+}
+
 .install_button_danger {
     background: rgba(255, 60, 60, 0.2);
     color: #ff6666;

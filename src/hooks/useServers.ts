@@ -8,7 +8,6 @@ export interface ServerEntry {
     port: number;
     players: number;
     maxPlayers: number;
-    description: string;
     official: boolean;
     minLevel: number;
     maxLevel: number;

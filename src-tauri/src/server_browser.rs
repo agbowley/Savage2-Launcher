@@ -32,7 +32,6 @@ struct MasterServerEntry {
     id: String,
     ip: String,
     port: u16,
-    description: String,
     official: bool,
     min_level: u32,
     max_level: u32,
@@ -63,7 +62,6 @@ pub struct ServerEntry {
     pub port: u16,
     pub players: u8,
     pub max_players: u8,
-    pub description: String,
     pub official: bool,
     pub min_level: u32,
     pub max_level: u32,
@@ -164,7 +162,6 @@ fn parse_php_server_list(data: &[u8]) -> Result<Vec<MasterServerEntry>, String> 
             id: fields.get("id").cloned().unwrap_or_default(),
             ip: fields.get("ip").cloned().unwrap_or_default(),
             port,
-            description: fields.get("description").cloned().unwrap_or_default(),
             official: fields.get("official").map_or(false, |v| v == "1"),
             min_level: fields
                 .get("minlevel")
@@ -351,7 +348,6 @@ pub async fn fetch_servers() -> Result<Vec<ServerEntry>, String> {
                 port: master.port,
                 players: info.num_players,
                 max_players: info.max_players,
-                description: master.description.clone(),
                 official: master.official,
                 min_level: master.min_level,
                 max_level: master.max_level,

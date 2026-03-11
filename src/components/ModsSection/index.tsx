@@ -4,7 +4,7 @@ import styles from "./ModsSection.module.css";
 import ModCard from "./ModCard";
 import { useMods } from "@app/hooks/useMods";
 import { useModsStore } from "@app/stores/ModsStore";
-import { PuzzleIcon, DownloadIcon, DriveIcon, InformationIcon } from "@app/assets/Icons";
+import { PuzzleIcon, DownloadIcon, DriveIcon, InformationIcon, UpgradeIcon } from "@app/assets/Icons";
 import TooltipWrapper from "@app/components/TooltipWrapper";
 import { ReleaseChannels } from "@app/hooks/useS2Release";
 import type { ModSortBy, InstalledMod, InstalledModFile, ScannedModFile, ModDetail, ModListItem } from "@app/types/mods";
@@ -102,6 +102,14 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
         search: search || undefined,
     });
 
+    // Fetch all mods (unfiltered) for update detection on the installed tab
+    const { data: allModsData } = useMods({
+        page: 1,
+        pageSize: 500,
+        sortBy: "downloads",
+        sortDesc: true,
+    });
+
     const installedMods = useModsStore((s) => s.getMods(profile));
     const addMod = useModsStore((s) => s.addMod);
     const setModEnabled = useModsStore((s) => s.setModEnabled);
@@ -110,6 +118,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
     const reorderMods = useModsStore((s) => s.reorderMods);
     const toManifest = useModsStore((s) => s.toManifest);
     const getMods = useModsStore((s) => s.getMods);
+    const updateModVersion = useModsStore((s) => s.updateModVersion);
 
     // Split installed entries into regular mods, tool mods, and maps
     const regularMods = useMemo(() => installedMods.filter((m) => !m.isMap && !isToolMod(m.files)), [installedMods]);
@@ -151,6 +160,17 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
         }
         return map;
     }, [installedMods]);
+
+    // Map API mod id → latest version string from API data (for update detection)
+    const latestVersionByApiId = useMemo(() => {
+        const map = new Map<number, string>();
+        if (allModsData) {
+            for (const item of allModsData.items) {
+                map.set(item.id, item.latestVersion);
+            }
+        }
+        return map;
+    }, [allModsData]);
 
     // ---- Collect unique tags (only from unfiltered results to prevent disappearing chips) ----
     const cachedTags = useBrowsePrefsStore((s) => s.cachedTags);
@@ -456,6 +476,201 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
             setPendingInstalls((prev) => { const next = new Set(prev); next.delete(modItem.id); return next; });
         }
     }, [profile, pendingInstalls, getMods, addMod, toManifest]);
+
+    // ---- Quick update from browse / installed ----
+    const handleQuickUpdate = useCallback(async (modItem: ModListItem) => {
+        if (pendingInstalls.has(modItem.id)) return;
+        const inst = installedByApiId.get(modItem.id);
+        if (!inst) return;
+        setPendingInstalls((prev) => new Set(prev).add(modItem.id));
+
+        try {
+            const detail = await tauriFetchJson<ModDetail>(
+                `${repositoryBaseURL}/api/mods/${modItem.id}`,
+            );
+            const latestVersion = detail.versions.find((v) => v.isLatest) ?? detail.versions[0];
+            if (!latestVersion) return;
+
+            const task = new ModDownloadTask(
+                profile,
+                detail.id,
+                detail.slug,
+                detail.name,
+                detail.author,
+                latestVersion.version,
+                latestVersion.id,
+                latestVersion.downloadUrl,
+                latestVersion.fileName,
+                () => {
+                    const isTool = isToolMod(task.extractedFiles);
+
+                    // Check for duplicate files in other mods (skip the mod being upgraded)
+                    const existingMods = getMods(profile);
+                    const newHashes = new Set(task.extractedFiles.map((f) => f.hash).filter(Boolean));
+                    if (newHashes.size > 0) {
+                        for (const existing of existingMods) {
+                            if (existing.id === inst.id) continue;
+                            const match = existing.files.some((f) => f.hash && newHashes.has(f.hash));
+                            if (match) {
+                                showDuplicateModDialog(detail.name, existing.name);
+                                invoke("delete_mod_files", { profile, modId: detail.slug }).catch(showErrorDialog);
+                                setPendingInstalls((prev) => { const next = new Set(prev); next.delete(modItem.id); return next; });
+                                return;
+                            }
+                        }
+                    }
+
+                    const oldLoadOrder = inst.loadOrder;
+                    const wasEnabled = inst.enabled;
+
+                    // Disable old files from /game/ first
+                    const disablePromise = inst.isMap
+                        ? invoke("disable_map", { profile, modId: inst.id })
+                        : isTool || isToolMod(inst.files)
+                            ? Promise.resolve()
+                            : wasEnabled
+                                ? invoke("disable_mod", { profile, modId: inst.id })
+                                : Promise.resolve();
+
+                    disablePromise.then(() => {
+                        const newFiles = task.extractedFiles.map((f) => ({ ...f, enabled: wasEnabled }));
+                        updateModVersion(profile, inst.id, latestVersion.version, latestVersion.id, newFiles);
+
+                        useDownloadHistory.getState().addEntry({
+                            game: "Savage 2",
+                            channel,
+                            type: "update",
+                            version: latestVersion.version,
+                            previousVersion: inst.installedVersion ?? null,
+                            modName: detail.name,
+                        });
+
+                        const manifest = toManifest(profile);
+                        return invoke("save_mod_manifest", { profile, manifest }).then(() => {
+                            if (isTool || isToolMod(inst.files)) return;
+                            if (inst.isMap) {
+                                return invoke("enable_map", { profile, modId: inst.id });
+                            }
+                            if (!wasEnabled) return;
+                            return invoke<string[]>("enable_mod", {
+                                profile, modId: inst.id, loadOrder: oldLoadOrder,
+                            }).then((conflicts) => {
+                                if (conflicts && conflicts.length > 0) {
+                                    showFileConflictDialog(conflicts);
+                                }
+                            });
+                        });
+                    }).catch(showErrorDialog).finally(() => {
+                        setPendingInstalls((prev) => { const next = new Set(prev); next.delete(modItem.id); return next; });
+                    });
+                },
+            );
+
+            task.onError = () => setPendingInstalls((prev) => { const next = new Set(prev); next.delete(modItem.id); return next; });
+            task.onCancel = () => setPendingInstalls((prev) => { const next = new Set(prev); next.delete(modItem.id); return next; });
+
+            addTask(task);
+        } catch (err) {
+            console.error("Failed to start mod update:", err);
+            setPendingInstalls((prev) => { const next = new Set(prev); next.delete(modItem.id); return next; });
+        }
+    }, [profile, pendingInstalls, installedByApiId, getMods, updateModVersion, toManifest]);
+
+    // ---- Quick update from installed tab (takes InstalledMod directly) ----
+    const handleInstalledUpdate = useCallback(async (mod: InstalledMod) => {
+        if (mod.apiModId === null) return;
+        if (pendingInstalls.has(mod.apiModId)) return;
+        setPendingInstalls((prev) => new Set(prev).add(mod.apiModId!));
+
+        try {
+            const detail = await tauriFetchJson<ModDetail>(
+                `${repositoryBaseURL}/api/mods/${mod.apiModId}`,
+            );
+            const latestVersion = detail.versions.find((v) => v.isLatest) ?? detail.versions[0];
+            if (!latestVersion) return;
+
+            const task = new ModDownloadTask(
+                profile,
+                detail.id,
+                detail.slug,
+                detail.name,
+                detail.author,
+                latestVersion.version,
+                latestVersion.id,
+                latestVersion.downloadUrl,
+                latestVersion.fileName,
+                () => {
+                    const isTool = isToolMod(task.extractedFiles);
+
+                    const existingMods = getMods(profile);
+                    const newHashes = new Set(task.extractedFiles.map((f) => f.hash).filter(Boolean));
+                    if (newHashes.size > 0) {
+                        for (const existing of existingMods) {
+                            if (existing.id === mod.id) continue;
+                            const match = existing.files.some((f) => f.hash && newHashes.has(f.hash));
+                            if (match) {
+                                showDuplicateModDialog(detail.name, existing.name);
+                                invoke("delete_mod_files", { profile, modId: detail.slug }).catch(showErrorDialog);
+                                setPendingInstalls((prev) => { const next = new Set(prev); next.delete(mod.apiModId!); return next; });
+                                return;
+                            }
+                        }
+                    }
+
+                    const oldLoadOrder = mod.loadOrder;
+                    const wasEnabled = mod.enabled;
+
+                    const disablePromise = mod.isMap
+                        ? invoke("disable_map", { profile, modId: mod.id })
+                        : isTool || isToolMod(mod.files)
+                            ? Promise.resolve()
+                            : wasEnabled
+                                ? invoke("disable_mod", { profile, modId: mod.id })
+                                : Promise.resolve();
+
+                    disablePromise.then(() => {
+                        const newFiles = task.extractedFiles.map((f) => ({ ...f, enabled: wasEnabled }));
+                        updateModVersion(profile, mod.id, latestVersion.version, latestVersion.id, newFiles);
+
+                        useDownloadHistory.getState().addEntry({
+                            game: "Savage 2",
+                            channel,
+                            type: "update",
+                            version: latestVersion.version,
+                            previousVersion: mod.installedVersion ?? null,
+                            modName: detail.name,
+                        });
+
+                        const manifest = toManifest(profile);
+                        return invoke("save_mod_manifest", { profile, manifest }).then(() => {
+                            if (isTool || isToolMod(mod.files)) return;
+                            if (mod.isMap) {
+                                return invoke("enable_map", { profile, modId: mod.id });
+                            }
+                            if (!wasEnabled) return;
+                            return invoke<string[]>("enable_mod", {
+                                profile, modId: mod.id, loadOrder: oldLoadOrder,
+                            }).then((conflicts) => {
+                                if (conflicts && conflicts.length > 0) {
+                                    showFileConflictDialog(conflicts);
+                                }
+                            });
+                        });
+                    }).catch(showErrorDialog).finally(() => {
+                        setPendingInstalls((prev) => { const next = new Set(prev); next.delete(mod.apiModId!); return next; });
+                    });
+                },
+            );
+
+            task.onError = () => setPendingInstalls((prev) => { const next = new Set(prev); next.delete(mod.apiModId!); return next; });
+            task.onCancel = () => setPendingInstalls((prev) => { const next = new Set(prev); next.delete(mod.apiModId!); return next; });
+
+            addTask(task);
+        } catch (err) {
+            console.error("Failed to start mod update:", err);
+            setPendingInstalls((prev) => { const next = new Set(prev); next.delete(mod.apiModId!); return next; });
+        }
+    }, [profile, pendingInstalls, getMods, updateModVersion, toManifest]);
 
     // ---- Import: scan game folder ----
     const handleStartImport = useCallback(async () => {
@@ -832,6 +1047,16 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                                 </button>
                                                             )
                                                         )}
+                                                        {inst && inst.installedVersion !== modItem.latestVersion && (
+                                                            <button
+                                                                className={`${styles.action_button} ${styles.action_button_update}`}
+                                                                onClick={() => handleQuickUpdate(modItem)}
+                                                                disabled={pendingInstalls.has(modItem.id)}
+                                                                title={t("update_mod")}
+                                                            >
+                                                                <UpgradeIcon /> {t("update_mod")}
+                                                            </button>
+                                                        )}
                                                         {inst ? (
                                                             <button
                                                                 className={`${styles.action_button} ${styles.action_button_danger}`}
@@ -916,6 +1141,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                 isEnabled={inst?.enabled}
                                                 isTool={inst ? isToolMod(inst.files) : false}
                                                 isPending={pendingInstalls.has(modItem.id)}
+                                                hasUpdate={inst ? inst.installedVersion !== modItem.latestVersion : false}
                                                 channel={channel}
                                                 onInstall={handleQuickInstall}
                                                 onUninstall={(m) => {
@@ -930,6 +1156,7 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                     const installed = installedByApiId.get(m.id);
                                                     if (installed) invoke("reveal_mod_folder", { profile, modId: installed.id }).catch(showErrorDialog);
                                                 }}
+                                                onUpdate={handleQuickUpdate}
                                             />
                                         );
                                     })}
@@ -1136,6 +1363,19 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                                     >
                                                                         {someFilesEnabled ? t("enabled", { ns: "common" }) : t("disabled", { ns: "common" })}
                                                                     </button>
+                                                                    {mod.apiModId !== null && (() => {
+                                                                        const latest = latestVersionByApiId.get(mod.apiModId);
+                                                                        return latest && mod.installedVersion !== latest;
+                                                                    })() && (
+                                                                        <button
+                                                                            className={`${styles.action_button} ${styles.action_button_update}`}
+                                                                            onClick={() => handleInstalledUpdate(mod)}
+                                                                            disabled={pendingInstalls.has(mod.apiModId!)}
+                                                                            title={t("update_mod")}
+                                                                        >
+                                                                            <UpgradeIcon /> {t("update_mod")}
+                                                                        </button>
+                                                                    )}
                                                                     <button
                                                                         className={`${styles.action_button} ${styles.action_button_danger}`}
                                                                         onClick={() => handleDelete(mod)}
@@ -1237,6 +1477,19 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                         >
                                                             {map.enabled ? t("enabled", { ns: "common" }) : t("disabled", { ns: "common" })}
                                                         </button>
+                                                        {map.apiModId !== null && (() => {
+                                                            const latest = latestVersionByApiId.get(map.apiModId);
+                                                            return latest && map.installedVersion !== latest;
+                                                        })() && (
+                                                            <button
+                                                                className={`${styles.action_button} ${styles.action_button_update}`}
+                                                                onClick={() => handleInstalledUpdate(map)}
+                                                                disabled={pendingInstalls.has(map.apiModId!)}
+                                                                title={t("update_mod")}
+                                                            >
+                                                                <UpgradeIcon /> {t("update_mod")}
+                                                            </button>
+                                                        )}
                                                         <button
                                                             className={`${styles.action_button} ${styles.action_button_danger}`}
                                                             onClick={() => handleDeleteMap(map)}
@@ -1290,6 +1543,19 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                                         >
                                                             <DriveIcon /> {t("open_folder")}
                                                         </button>
+                                                        {mod.apiModId !== null && (() => {
+                                                            const latest = latestVersionByApiId.get(mod.apiModId);
+                                                            return latest && mod.installedVersion !== latest;
+                                                        })() && (
+                                                            <button
+                                                                className={`${styles.action_button} ${styles.action_button_update}`}
+                                                                onClick={() => handleInstalledUpdate(mod)}
+                                                                disabled={pendingInstalls.has(mod.apiModId!)}
+                                                                title={t("update_mod")}
+                                                            >
+                                                                <UpgradeIcon /> {t("update_mod")}
+                                                            </button>
+                                                        )}
                                                         <button
                                                             className={`${styles.action_button} ${styles.action_button_danger}`}
                                                             onClick={() => handleDelete(mod)}
