@@ -2,6 +2,8 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useServers, type ServerEntry } from "@app/hooks/useServers";
 import { useServerFavourites } from "@app/stores/ServerFavouritesStore";
+import { useAuthStore } from "@app/stores/AuthStore";
+import { showLoginDialog } from "@app/dialogs/dialogUtil";
 import Spinner from "../Spinner";
 import TooltipWrapper from "../TooltipWrapper";
 import LauncherIcon from "@app/assets/SourceIcons/Official.png";
@@ -33,19 +35,84 @@ const MarqueeCell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 interface Props {
     latestVersion: string | null;
+    onConnect?: (address: string) => void;
+}
+
+/** Pick the best server to quick-connect to.
+ *  Priority: favourited servers first, then by highest player count.
+ *  Within each group, prefer servers with ping <100, then <200, then any.
+ *  If all servers are empty, fall back to favourited → lowest ping, then any → lowest ping. */
+function pickQuickConnectServer(
+    servers: ServerEntry[],
+    favourites: string[],
+): ServerEntry | null {
+    const online = servers.filter((s) => s.online && !s.passworded);
+    if (online.length === 0) return null;
+
+    const bestInBracket = (pool: ServerEntry[]): ServerEntry | null => {
+        for (const maxPing of [100, 200, Infinity]) {
+            const bracket = pool.filter((s) => s.ping < maxPing);
+            if (bracket.length > 0) {
+                return bracket.reduce((a, b) => (b.players > a.players ? b : a));
+            }
+        }
+        return null;
+    };
+
+    const lowestPing = (pool: ServerEntry[]): ServerEntry | null => {
+        if (pool.length === 0) return null;
+        return pool.reduce((a, b) => (a.ping < b.ping ? a : b));
+    };
+
+    // Populated servers (at least 1 player)
+    const populated = online.filter((s) => s.players > 0);
+
+    if (populated.length > 0) {
+        // Try favourited populated servers first
+        const favPool = populated.filter((s) => favourites.includes(s.id));
+        if (favPool.length > 0) {
+            const pick = bestInBracket(favPool);
+            if (pick) return pick;
+        }
+        // Fall back to all populated servers
+        const pick = bestInBracket(populated);
+        if (pick) return pick;
+    }
+
+    // All servers are empty — pick by lowest ping, favourites first
+    const favEmpty = online.filter((s) => favourites.includes(s.id));
+    if (favEmpty.length > 0) {
+        return lowestPing(favEmpty);
+    }
+    return lowestPing(online);
 }
 
 // eslint-disable-next-line react/prop-types
-const ServerBrowser: React.FC<Props> = ({ latestVersion }) => {
+const ServerBrowser: React.FC<Props> = ({ latestVersion, onConnect }) => {
     const { t } = useTranslation("launch");
     const { data: servers, isLoading, isError, error } = useServers(latestVersion);
     const { favourites, toggleFavourite } = useServerFavourites();
+    const isLoggedIn = useAuthStore((s) => s.user !== null && s.authToken !== null);
 
     const [search, setSearch] = useState("");
     const [hideEmpty, setHideEmpty] = useState(false);
     const [sortKey, setSortKey] = useState<SortKey>("ping");
     const [sortDesc, setSortDesc] = useState(false);
     const [detailServer, setDetailServer] = useState<ServerEntry | null>(null);
+
+    const hasMsCredentials = useAuthStore((s) => s.msPassword !== null);
+
+    const handleQuickConnect = useCallback(async () => {
+        if (!servers || !onConnect) return;
+        if (!isLoggedIn || !hasMsCredentials) {
+            await showLoginDialog();
+            return;
+        }
+        const target = pickQuickConnectServer(servers, favourites);
+        if (target) {
+            onConnect(`${target.ip}:${target.port}`);
+        }
+    }, [servers, favourites, onConnect, isLoggedIn, hasMsCredentials]);
 
     const handleSort = (key: SortKey) => {
         if (sortKey === key) {
@@ -148,9 +215,14 @@ const ServerBrowser: React.FC<Props> = ({ latestVersion }) => {
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                 />
-                <button className={styles.quick_connect} disabled>
-                    {t("servers_quick_connect")}
-                </button>
+                <TooltipWrapper text={t("servers_quick_connect_tip")}>
+                    <button
+                        className={styles.quick_connect}
+                        onClick={handleQuickConnect}
+                    >
+                        {t("servers_quick_connect")}
+                    </button>
+                </TooltipWrapper>
                 <label className={styles.hide_empty_label}>
                     <input
                         type="checkbox"
@@ -205,6 +277,8 @@ const ServerBrowser: React.FC<Props> = ({ latestVersion }) => {
                                 isPinned={favourites.includes(srv.id)}
                                 onTogglePin={toggleFavourite}
                                 onShowDetail={setDetailServer}
+                                canConnect={!!onConnect && isLoggedIn}
+                                onConnect={onConnect}
                             />
                         ))}
                         {filtered.length === 0 && (
@@ -276,9 +350,11 @@ interface RowProps {
     isPinned: boolean;
     onTogglePin: (id: string) => void;
     onShowDetail: (srv: ServerEntry) => void;
+    canConnect: boolean;
+    onConnect?: (address: string) => void;
 }
 
-const ServerRow: React.FC<RowProps> = ({ server: srv, t, isPinned, onTogglePin, onShowDetail }: RowProps) => {
+const ServerRow: React.FC<RowProps> = ({ server: srv, t, isPinned, onTogglePin, onShowDetail, canConnect, onConnect }: RowProps) => {
     return (
         <tr className={isPinned ? styles.row_pinned : undefined}>
             <td className={styles.official_cell}>
@@ -309,9 +385,15 @@ const ServerRow: React.FC<RowProps> = ({ server: srv, t, isPinned, onTogglePin, 
                 <MarqueeCell>{srv.location || "—"}</MarqueeCell>
             </td>
             <td className={styles.join_cell}>
-                <button className={styles.join_button} disabled>
-                    <PlayIcon width={10} height={10} />
-                </button>
+                <TooltipWrapper text={canConnect ? t("servers_connect") : t("servers_connect_login")}>
+                    <button
+                        className={styles.join_button}
+                        disabled={!canConnect}
+                        onClick={() => onConnect?.(`${srv.ip}:${srv.port}`)}
+                    >
+                        <PlayIcon width={10} height={10} />
+                    </button>
+                </TooltipWrapper>
             </td>
             <td className={styles.info_cell}>
                 <button

@@ -53,6 +53,8 @@
     "servers_search": "Buscar servidores...",
     "servers_hide_empty": "Ocultar vacíos",
     "servers_quick_connect": "Conexión rápida",
+    "servers_quick_connect_tip": "Conectar automáticamente al mejor servidor disponible",
+    "servers_sign_in_required": "Inicia sesión para usar esta función.",
     "servers_total_players": "{{count}} jugadores en línea",
     "servers_col_name": "Servidor",
     "servers_col_map": "Mapa",

@@ -45,3 +45,8 @@ export interface DecodedJwt {
     permissionLevel: string;
     exp: number;
 }
+
+export interface MsAuthResponse {
+    cookie: string;
+    accountId: number;
+}

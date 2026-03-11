@@ -53,6 +53,8 @@
     "servers_search": "Поиск серверов...",
     "servers_hide_empty": "Скрыть пустые",
     "servers_quick_connect": "Быстрое подключение",
+    "servers_quick_connect_tip": "Автоматически подключиться к лучшему доступному серверу",
+    "servers_sign_in_required": "Войдите в аккаунт, чтобы использовать эту функцию.",
     "servers_total_players": "{{count}} игроков онлайн",
     "servers_col_name": "Сервер",
     "servers_col_map": "Карта",

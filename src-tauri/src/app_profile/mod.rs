@@ -7,6 +7,15 @@ use crate::utils::CancelToken;
 // pub mod official_setlist;
 pub mod s2;
 
+/// Optional parameters for launching with a server connection.
+#[derive(Default, Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LaunchOptions {
+    pub connect_address: Option<String>,
+    pub ms_username: Option<String>,
+    pub ms_password: Option<String>,
+}
+
 pub const PUB_KEY: &str = "";
 
 #[derive(Clone, serde::Serialize)]
@@ -83,6 +92,7 @@ pub trait AppProfile {
         &self,
         profile: String,
         on_exit: Box<dyn FnOnce() + Send>,
+        options: LaunchOptions,
     ) -> Result<(), String>;
 
     fn reveal_folder(

@@ -109,7 +109,10 @@ const LaunchPage: React.FC<Props> = ({ version, playName, description, websiteUr
                 ) : activeTab === "mods" ? (
                     <ModsSection channel={channel} />
                 ) : (
-                    <ServerBrowser latestVersion={version.latestVersion} />
+                    <ServerBrowser
+                        latestVersion={version.latestVersion}
+                        onConnect={(address) => version.connectToServer(address)}
+                    />
                 )}
             </div>
             <div className={styles.sidebar}>

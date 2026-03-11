@@ -256,6 +256,19 @@ td:hover .marquee_overflows .marquee_text {
     font-family: inherit;
     cursor: default;
     white-space: nowrap;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.quick_connect:not(:disabled) {
+    color: rgba(255, 255, 255, 0.85);
+    border-color: rgba(255, 255, 255, 0.25);
+    cursor: pointer;
+}
+
+.quick_connect:not(:disabled):hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.4);
+    color: #fff;
 }
 
 /* ---- Pin button ---- */

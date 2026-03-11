@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { invoke } from "@tauri-apps/api/tauri";
 import { tauriFetchPost, tauriFetchPostText, tauriFetchAuthJson } from "@app/utils/tauriFetch";
 import { authBaseURL } from "@app/utils/consts";
 import type {
@@ -9,6 +10,7 @@ import type {
     CheckExistsResponse,
     DecodedJwt,
     BanInfo,
+    MsAuthResponse,
 } from "@app/types/auth";
 
 interface AuthState {
@@ -16,6 +18,9 @@ interface AuthState {
     refreshToken: string | null;
     user: AuthUser | null;
     gold: number | null;
+    msCookie: string | null;
+    msAccountId: number | null;
+    msPassword: string | null;
 
     login: (email: string, password: string) => Promise<void>;
     register: (username: string, email: string, password: string, referralCode?: string) => Promise<void>;
@@ -84,6 +89,9 @@ export const useAuthStore = create<AuthState>()(
             refreshToken: null,
             user: null,
             gold: null,
+            msCookie: null,
+            msAccountId: null,
+            msPassword: null,
 
             login: async (email: string, password: string) => {
                 const data = await tauriFetchPost<LoginResponse>(
@@ -92,10 +100,32 @@ export const useAuthStore = create<AuthState>()(
                 );
 
                 const user = extractUser(data.token);
-                set({ authToken: data.token, refreshToken: data.refreshToken, user });
+
+                // Encrypt the MS password before storing so it's never at rest in plaintext.
+                let encryptedPassword: string | null = null;
+                try {
+                    encryptedPassword = await invoke<string>("encrypt_string", { plaintext: password });
+                } catch (e) {
+                    console.warn("Failed to encrypt password, storing as-is:", e);
+                    encryptedPassword = password;
+                }
+
+                set({ authToken: data.token, refreshToken: data.refreshToken, user, msPassword: encryptedPassword });
                 scheduleTokenRefresh(get);
                 // Fetch gold after login
                 get().fetchGold();
+
+                // Authenticate with the game master server using the username
+                // so the user receives a session cookie for game server connections.
+                try {
+                    const msAuth = await invoke<MsAuthResponse>("ms_authenticate", {
+                        username: user.username,
+                        password,
+                    });
+                    set({ msCookie: msAuth.cookie, msAccountId: msAuth.accountId });
+                } catch (e) {
+                    console.warn("Master server auth failed (non-blocking):", e);
+                }
             },
 
             register: async (username: string, email: string, password: string, referralCode?: string) => {
@@ -125,7 +155,7 @@ export const useAuthStore = create<AuthState>()(
                     clearTimeout(refreshTimer);
                     refreshTimer = null;
                 }
-                set({ authToken: null, refreshToken: null, user: null, gold: null });
+                set({ authToken: null, refreshToken: null, user: null, gold: null, msCookie: null, msAccountId: null, msPassword: null });
             },
 
             refreshSession: async () => {
@@ -165,6 +195,21 @@ export const useAuthStore = create<AuthState>()(
                             // JWT still valid, just schedule the next refresh
                             scheduleTokenRefresh(get);
                             get().fetchGold();
+
+                            // Re-authenticate with the master server if we have
+                            // persisted credentials so the cookie stays fresh.
+                            const { msPassword, user } = get();
+                            if (msPassword && user) {
+                                try {
+                                    const msAuth = await invoke<MsAuthResponse>("ms_authenticate", {
+                                        username: user.username,
+                                        password: msPassword,
+                                    });
+                                    set({ msCookie: msAuth.cookie, msAccountId: msAuth.accountId });
+                                } catch {
+                                    // Non-blocking — the user can still try connecting later
+                                }
+                            }
                             return;
                         }
                     } catch {
@@ -173,7 +218,23 @@ export const useAuthStore = create<AuthState>()(
                 }
 
                 // JWT expired or missing, attempt refresh
-                await get().refreshSession();
+                const refreshed = await get().refreshSession();
+
+                // After successful refresh, re-authenticate with master server
+                if (refreshed) {
+                    const { msPassword, user } = get();
+                    if (msPassword && user) {
+                        try {
+                            const msAuth = await invoke<MsAuthResponse>("ms_authenticate", {
+                                username: user.username,
+                                password: msPassword,
+                            });
+                            set({ msCookie: msAuth.cookie, msAccountId: msAuth.accountId });
+                        } catch {
+                            // Non-blocking
+                        }
+                    }
+                }
             },
 
             isLoggedIn: () => {
@@ -205,6 +266,9 @@ export const useAuthStore = create<AuthState>()(
                 authToken: state.authToken,
                 refreshToken: state.refreshToken,
                 user: state.user,
+                msCookie: state.msCookie,
+                msAccountId: state.msAccountId,
+                msPassword: state.msPassword,
             }),
         },
     ),

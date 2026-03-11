@@ -26,6 +26,11 @@ static MASTER_CACHE: Mutex<Option<(Vec<MasterServerEntry>, Instant)>> = Mutex::n
 /// if a server temporarily stops responding, we still show its last-known data.
 static LAST_SEEN: Mutex<Option<HashMap<String, (ServerEntry, Instant)>>> = Mutex::new(None);
 
+/// Sliding window of ping samples per server (server ID → Vec<(timestamp, ping_ms)>).
+/// The displayed ping is the minimum value observed within the last 60 seconds.
+const PING_WINDOW_SECS: u64 = 60;
+static PING_HISTORY: Mutex<Option<HashMap<String, Vec<(Instant, u32)>>>> = Mutex::new(None);
+
 /// An entry from the master server's PHP-serialized response.
 #[derive(Debug, Clone)]
 struct MasterServerEntry {
@@ -335,6 +340,33 @@ pub async fn fetch_servers() -> Result<Vec<ServerEntry>, String> {
 
     let now = Instant::now();
 
+    // Record raw ping samples and compute smoothed (minimum-over-window) values
+    let mut ping_cache = PING_HISTORY.lock().map_err(|e| e.to_string())?;
+    let history = ping_cache.get_or_insert_with(HashMap::new);
+    let cutoff = now - Duration::from_secs(PING_WINDOW_SECS);
+
+    for (master, udp_result) in master_entries.iter().zip(results.iter()) {
+        if let Some((_, ping)) = udp_result {
+            let samples = history.entry(master.id.clone()).or_insert_with(Vec::new);
+            samples.push((now, *ping));
+            // Evict samples older than the window
+            samples.retain(|(ts, _)| *ts >= cutoff);
+        } else {
+            // Evict stale samples even when the server didn't respond
+            if let Some(samples) = history.get_mut(&master.id) {
+                samples.retain(|(ts, _)| *ts >= cutoff);
+            }
+        }
+    }
+
+    // Helper: get the smoothed ping (minimum over the sliding window)
+    let smoothed_ping = |id: &str, raw: u32| -> u32 {
+        history
+            .get(id)
+            .and_then(|samples| samples.iter().map(|(_, p)| *p).min())
+            .unwrap_or(raw)
+    };
+
     // Update LAST_SEEN cache with fresh UDP responses
     let mut cache = LAST_SEEN.lock().map_err(|e| e.to_string())?;
     let seen = cache.get_or_insert_with(HashMap::new);
@@ -359,12 +391,18 @@ pub async fn fetch_servers() -> Result<Vec<ServerEntry>, String> {
                 min_players: info.min_players,
                 version: info.version.clone(),
                 passworded: info.passworded,
-                ping: *ping,
+                ping: smoothed_ping(&master.id, *ping),
                 online: true,
             };
             seen.insert(master.id.clone(), (entry, now));
         }
     }
+
+    // Evict ping history for servers no longer in the master list
+    let master_ids: std::collections::HashSet<String> =
+        master_entries.iter().map(|e| e.id.clone()).collect();
+    history.retain(|id, _| master_ids.contains(id));
+    drop(ping_cache);
 
     // Build output: only include servers that have responded to UDP at least once.
     // - If UDP responded this cycle → live data (online=true)
@@ -391,8 +429,6 @@ pub async fn fetch_servers() -> Result<Vec<ServerEntry>, String> {
         .collect();
 
     // Evict cache entries no longer in the master list
-    let master_ids: std::collections::HashSet<String> =
-        master_entries.iter().map(|e| e.id.clone()).collect();
     seen.retain(|id, _| master_ids.contains(id));
 
     drop(cache);

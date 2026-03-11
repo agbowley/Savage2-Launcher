@@ -51,6 +51,11 @@ rust-i18n = "3"
 sys-locale = "0.3"
 phpserz = { version = "0.3", features = ["serde"] }
 tokio = { version = "1", features = ["rt", "sync"] }
+urlencoding = "2"
+aes-gcm = "0.10"
+rand = "0.8"
+hex = "0.4"
+machine-uid = "0.5"
 
 [target.'cfg(windows)'.dependencies]
 tauri-winrt-notification = "0.7"

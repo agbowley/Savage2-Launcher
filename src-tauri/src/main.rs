@@ -364,12 +364,204 @@ fn is_game_running(profile: String) -> bool {
     guard.as_ref().map_or(false, |map| map.contains_key(&profile))
 }
 
+/// Response from the master-server `f=auth` endpoint.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MsAuthResponse {
+    pub cookie: String,
+    pub account_id: i32,
+}
+
+// ── Credential encryption ───────────────────────────────────────────────
+//
+// Encrypts / decrypts short strings (passwords) at rest using AES-256-GCM.
+// The key is derived from a stable machine identifier so the encrypted blob
+// is tied to this device.
+
+mod credential_crypto {
+    use aes_gcm::{
+        aead::{Aead, KeyInit},
+        Aes256Gcm, Nonce,
+    };
+    use sha2::{Sha256, Digest};
+
+    const APP_SALT: &[u8] = b"savage2-launcher-credential-key";
+
+    /// Derive a 256-bit key from the machine ID + salt.
+    fn derive_key() -> [u8; 32] {
+        let machine_id = machine_uid::get().unwrap_or_else(|_| "fallback-id".to_string());
+        let mut hasher = Sha256::new();
+        hasher.update(APP_SALT);
+        hasher.update(machine_id.as_bytes());
+        hasher.finalize().into()
+    }
+
+    /// Encrypt a plaintext string.  Returns a hex-encoded `nonce:ciphertext`.
+    pub fn encrypt(plaintext: &str) -> Result<String, String> {
+        let key = derive_key();
+        let cipher = Aes256Gcm::new_from_slice(&key)
+            .map_err(|e| format!("Cipher init error: {e}"))?;
+
+        let mut nonce_bytes = [0u8; 12];
+        rand::RngCore::fill_bytes(&mut rand::rngs::OsRng, &mut nonce_bytes);
+        let nonce = Nonce::from_slice(&nonce_bytes);
+
+        let ciphertext = cipher
+            .encrypt(nonce, plaintext.as_bytes())
+            .map_err(|e| format!("Encryption error: {e}"))?;
+
+        Ok(format!("{}:{}", hex::encode(nonce_bytes), hex::encode(ciphertext)))
+    }
+
+    /// Decrypt a hex-encoded `nonce:ciphertext` back to the original string.
+    pub fn decrypt(encrypted: &str) -> Result<String, String> {
+        let (nonce_hex, ct_hex) = encrypted
+            .split_once(':')
+            .ok_or("Invalid encrypted format")?;
+
+        let nonce_bytes = hex::decode(nonce_hex)
+            .map_err(|e| format!("Nonce decode error: {e}"))?;
+        let ciphertext = hex::decode(ct_hex)
+            .map_err(|e| format!("Ciphertext decode error: {e}"))?;
+
+        let key = derive_key();
+        let cipher = Aes256Gcm::new_from_slice(&key)
+            .map_err(|e| format!("Cipher init error: {e}"))?;
+        let nonce = Nonce::from_slice(&nonce_bytes);
+
+        let plaintext = cipher
+            .decrypt(nonce, ciphertext.as_ref())
+            .map_err(|_| "Decryption failed — credentials may have been stored on a different device".to_string())?;
+
+        String::from_utf8(plaintext)
+            .map_err(|e| format!("UTF-8 decode error: {e}"))
+    }
+}
+
+/// Encrypt a string for secure storage on disk.
+#[tauri::command]
+fn encrypt_string(plaintext: String) -> Result<String, String> {
+    credential_crypto::encrypt(&plaintext)
+}
+
+/// Decrypt back from the encrypted blob.
+#[tauri::command]
+fn decrypt_string(encrypted: String) -> Result<String, String> {
+    credential_crypto::decrypt(&encrypted)
+}
+
+/// Authenticate with the game master server.
+///
+/// Sends `f=auth` with the user's **username** and password. The master server
+/// returns a PHP-serialised response containing a session cookie and account ID
+/// that the game client needs when connecting to a game server.
+#[tauri::command(async)]
+async fn ms_authenticate(username: String, password: String) -> Result<MsAuthResponse, String> {
+    use phpserz::{PhpParser, PhpToken};
+
+    // The password may arrive encrypted from the frontend — try to decrypt.
+    let password = credential_crypto::decrypt(&password).unwrap_or(password);
+
+    const MS_AUTH_URL: &str =
+        "https://masterserver1.talesofnewerth.com/irc_updater/irc_requester.php";
+
+    let client = reqwest::Client::new();
+    let resp = client
+        .post(MS_AUTH_URL)
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .body(format!(
+            "f=auth&email={}&password={}",
+            urlencoding::encode(&username),
+            urlencoding::encode(&password),
+        ))
+        .timeout(std::time::Duration::from_secs(15))
+        .send()
+        .await
+        .map_err(|e| format!("Master server auth request failed: {e}"))?;
+
+    let body = resp
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read MS auth response: {e}"))?;
+
+    // Parse the PHP-serialized response
+    let mut parser = PhpParser::new(&body);
+    let top = parser
+        .read_token()
+        .map_err(|e| format!("PHP parse error: {e}"))?;
+
+    let num_fields = match top {
+        PhpToken::Array { elements } => elements,
+        _ => return Err("Unexpected response format from master server".into()),
+    };
+
+    let mut fields: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    for _ in 0..num_fields {
+        let k = parser.read_token().map_err(|e| format!("PHP parse error: {e}"))?;
+        let v = parser.read_token().map_err(|e| format!("PHP parse error: {e}"))?;
+
+        let key = match &k {
+            PhpToken::String(s) => String::from_utf8_lossy(s.as_bytes()).to_string(),
+            PhpToken::Integer(i) => i.to_string(),
+            _ => continue,
+        };
+        let val = match &v {
+            PhpToken::String(s) => String::from_utf8_lossy(s.as_bytes()).to_string(),
+            PhpToken::Integer(i) => i.to_string(),
+            PhpToken::Array { .. } => {
+                // Skip nested arrays (buddy_list, player_stats, etc.)
+                // We need to consume all tokens in the nested array
+                fn skip_array(parser: &mut PhpParser, elements: u32) {
+                    for _ in 0..elements {
+                        if let Ok(ak) = parser.read_token() {
+                            if let Ok(av) = parser.read_token() {
+                                if let PhpToken::Array { elements: inner } = av {
+                                    skip_array(parser, inner);
+                                    let _ = parser.next_token(); // End token
+                                }
+                            }
+                            let _ = ak; // suppress warning
+                        }
+                    }
+                }
+                if let PhpToken::Array { elements: n } = v {
+                    skip_array(&mut parser, n);
+                    let _ = parser.next_token(); // End token
+                }
+                continue;
+            }
+            _ => continue,
+        };
+        fields.insert(key, val);
+    }
+
+    // Check for error response
+    if let Some(error) = fields.get("error") {
+        return Err(error.clone());
+    }
+
+    let cookie = fields
+        .get("cookie")
+        .ok_or("Master server response missing cookie")?
+        .clone();
+    let account_id: i32 = fields
+        .get("account_id")
+        .ok_or("Master server response missing account_id")?
+        .parse()
+        .map_err(|_| "Invalid account_id in MS response")?;
+
+    Ok(MsAuthResponse { cookie, account_id })
+}
+
 #[tauri::command(async)]
 fn launch(
     state: tauri::State<'_, State>,
     app_handle: AppHandle,
     app_name: String,
-    profile: String
+    profile: String,
+    connect_address: Option<String>,
+    ms_username: Option<String>,
+    ms_password: Option<String>,
 ) -> Result<(), String> {
     // Check if THIS profile is already running (other profiles are allowed)
     {
@@ -399,7 +591,15 @@ fn launch(
         })
     };
 
-    match app_profile.launch(profile.clone(), on_exit) {
+    let launch_options = app_profile::LaunchOptions {
+        connect_address,
+        ms_username,
+        ms_password: ms_password.map(|enc| {
+            credential_crypto::decrypt(&enc).unwrap_or(enc)
+        }),
+    };
+
+    match app_profile.launch(profile.clone(), on_exit, launch_options) {
         Ok(()) => Ok(()),
         Err(e) => {
             // Clean up in case launch() partially stored a process
@@ -1200,6 +1400,13 @@ fn main() {
 
             // Server browser
             server_browser::fetch_servers,
+
+            // Master server auth
+            ms_authenticate,
+
+            // Credential encryption
+            encrypt_string,
+            decrypt_string,
         ])
         .setup(|app| {
             let window = app.get_window("main").unwrap();

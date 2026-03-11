@@ -1340,7 +1340,7 @@ impl AppProfile for S2AppProfile {
         self.find_game_folder().join("manifest.json").exists()
     }
 
-    fn launch(&self, profile: String, on_exit: Box<dyn FnOnce() + Send>) -> Result<(), String> {
+    fn launch(&self, profile: String, on_exit: Box<dyn FnOnce() + Send>, options: crate::app_profile::LaunchOptions) -> Result<(), String> {
         let game_path = self.get_exec()?;
         let game_folder = self.find_game_folder();
 
@@ -1353,8 +1353,45 @@ impl AppProfile for S2AppProfile {
         std::fs::create_dir_all(&autoexec_dir)
             .map_err(|e| format!("Failed to create game/ directory: {}", e))?;
         let autoexec_path = autoexec_dir.join("autoexec.cfg");
-        std::fs::write(&autoexec_path, LAUNCHER_AUTOEXEC)
+
+        // Build autoexec contents: always disable built-in updater, optionally
+        // authenticate with the master server and connect to a game server.
+        //
+        // net_cookie and net_accountid are CVAR_READONLY in the engine, so they
+        // cannot be set from console commands.  Instead we use the game's own
+        // SetUsername / SetPassword / Login commands which trigger an async HTTP
+        // auth request.  CClientLogin::ProcessResponse then sets the cvars via
+        // the C++ API (bypassing the readonly check) and marks the session as
+        // connected (m_bConnected = true), which is what the game checks for
+        // CC-menu access, server-browser-on-disconnect, etc.
+        //
+        // Because Login is async, we use the engine's Sleep command (works in
+        // script context) to delay the Connect until the auth response has been
+        // processed.
+        let mut autoexec = String::from(LAUNCHER_AUTOEXEC);
+        if let (Some(username), Some(password)) = (&options.ms_username, &options.ms_password) {
+            autoexec.push_str(&format!("SetUsername {}\n", username));
+            autoexec.push_str(&format!("SetPassword {}\n", password));
+            autoexec.push_str("Login\n");
+        }
+        if let Some(addr) = &options.connect_address {
+            // Give the async Login HTTP request a brief window to complete
+            // before connecting.  500 ms is enough for most networks and
+            // keeps the menu flash barely noticeable.
+            if options.ms_username.is_some() && options.ms_password.is_some() {
+                autoexec.push_str("Sleep 500\n");
+            }
+            autoexec.push_str(&format!("Connect {}\n", addr));
+        }
+
+        std::fs::write(&autoexec_path, &autoexec)
             .map_err(|e| format!("Failed to write autoexec.cfg: {}", e))?;
+
+        // If autoexec.cfg contains credentials, schedule cleanup after the game
+        // has read the file (during engine init).  We overwrite it with the
+        // safe baseline so the plaintext password doesn't linger on disk.
+        let has_credentials = options.ms_username.is_some() && options.ms_password.is_some();
+        let cleanup_path = autoexec_path.clone();
 
         self.log_message(&format!("Launching game from: {}", game_path.display()));
 
@@ -1375,6 +1412,12 @@ impl AppProfile for S2AppProfile {
                 // Wait for the child process in a background thread, then
                 // notify the frontend that the game has exited.
                 std::thread::spawn(move || {
+                    // Scrub credentials from autoexec.cfg after the game has
+                    // had time to read it during engine init (~5 seconds).
+                    if has_credentials {
+                        std::thread::sleep(std::time::Duration::from_secs(5));
+                        let _ = std::fs::write(&cleanup_path, LAUNCHER_AUTOEXEC);
+                    }
                     let _ = child.wait();
                     on_exit();
                 });
@@ -1461,6 +1504,10 @@ impl AppProfile for S2AppProfile {
                         map.insert(profile, crate::GameProcess::Elevated(h_process as usize));
                     }
                     std::thread::spawn(move || {
+                        if has_credentials {
+                            std::thread::sleep(std::time::Duration::from_secs(5));
+                            let _ = std::fs::write(&cleanup_path, LAUNCHER_AUTOEXEC);
+                        }
                         WaitForSingleObject(h_process, INFINITE);
                         CloseHandle(h_process);
                         on_exit();

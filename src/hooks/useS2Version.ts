@@ -11,8 +11,10 @@ import { addTask, cancelTask, useTask } from "@app/tasks";
 import { usePayload, TaskPayload } from "@app/tasks/payload";
 import { IBaseTask } from "@app/tasks/Processors/base";
 import { useDownloadHistory } from "@app/stores/DownloadHistoryStore";
+import { useAuthStore } from "@app/stores/AuthStore";
 import { showToast } from "@app/utils/toast";
 import i18n from "@app/i18n";
+import type { MsAuthResponse } from "@app/types/auth";
 
 const channelNameKeys: Record<string, string> = {
     stable: "community_edition",
@@ -40,6 +42,7 @@ export enum S2States {
 export type S2Version = {
     state: S2States,
     play: () => Promise<void>,
+    connectToServer: (address: string) => Promise<void>,
     stopGame: () => Promise<void>,
     download: () => Promise<void>,
     cancel: () => Promise<void>,
@@ -268,6 +271,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         return {
             state,
             play: async () => {},
+            connectToServer: async () => {},
             stopGame: async () => {},
             download: async () => {},
             cancel: async () => {},
@@ -350,9 +354,108 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
                 }
             }
 
+            const { msPassword: pw, user: authUser } = useAuthStore.getState();
             await invoke("launch", {
                 appName: "Savage 2",
-                profile
+                profile,
+                ...(authUser && pw ? { msUsername: authUser.username, msPassword: pw } : {}),
+            });
+
+            setState(S2States.PLAYING);
+        } catch (e) {
+            const errMsg = e as string;
+            if (errMsg === "CANCELLED") {
+                setState(S2States.AVAILABLE);
+                return;
+            }
+            setState(S2States.ERROR);
+            showErrorDialog(errMsg);
+            console.error(e);
+        }
+    };
+
+    const connectToServer = async (address: string) => {
+        if (!releaseData) return;
+
+        const { msPassword, user } = useAuthStore.getState();
+        if (!user || !msPassword) {
+            showErrorDialog("You must be logged in to connect to a server.");
+            return;
+        }
+
+        setState(S2States.LOADING);
+
+        try {
+            // Pre-validate master server credentials before launching.
+            // This catches expired sessions or an unreachable master server
+            // early, instead of failing silently inside the game.
+            try {
+                const msAuth = await invoke<MsAuthResponse>("ms_authenticate", {
+                    username: user.username,
+                    password: msPassword,
+                });
+                useAuthStore.setState({ msCookie: msAuth.cookie, msAccountId: msAuth.accountId });
+            } catch (e) {
+                console.warn("MS pre-validation failed:", e);
+                showToast(i18n.t("servers_auth_warning", { ns: "launch" }), "warning");
+            }
+            // Verify game files before launching, same as play()
+            const platformType = await type();
+            const manifestUrl = getS2ManifestUrl(releaseData, platformType);
+            if (manifestUrl) {
+                let needsRepair = false;
+                try {
+                    needsRepair = await invoke("verify_files", {
+                        appName: "Savage 2",
+                        profile,
+                        manifestUrl
+                    }) as boolean;
+                } catch (e) {
+                    console.warn("File verification failed, launching anyway:", e);
+                }
+
+                if (needsRepair) {
+                    setState(S2States.REPAIRING);
+
+                    const repairTask = new S2PatchUpdate(
+                        manifestUrl,
+                        releaseData.channel,
+                        profile,
+                        () => {}
+                    );
+
+                    await new Promise<void>((resolve, reject) => {
+                        repairTask.onFinish = () => resolve();
+                        repairTask.onError = (err) => reject(err);
+                        repairTask.onCancel = () => reject("CANCELLED");
+                        addTask(repairTask);
+                    });
+
+                    useDownloadHistory.getState().addEntry({
+                        game: "Savage 2",
+                        channel: releaseData.channel,
+                        type: "repair",
+                        version: installedVersion,
+                        previousVersion: null,
+                        repairedFiles: repairTask.repairedFiles,
+                    });
+
+                    if (repairTask.skippedFiles.length > 0) {
+                        setVerificationWarning(true);
+                    } else {
+                        setVerificationWarning(false);
+                    }
+
+                    setState(S2States.LOADING);
+                }
+            }
+
+            await invoke("launch", {
+                appName: "Savage 2",
+                profile,
+                connectAddress: address,
+                msUsername: user.username,
+                msPassword,
             });
 
             setState(S2States.PLAYING);
@@ -712,6 +815,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
     return {
         state,
         play,
+        connectToServer,
         stopGame,
         download,
         cancel,
