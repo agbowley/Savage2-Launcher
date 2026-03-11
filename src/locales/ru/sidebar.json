@@ -7,6 +7,8 @@
     "sign_in": "Войти",
     "sign_out": "Выйти",
     "signed_in": "Авторизован",
+    "add_account": "Добавить аккаунт",
+    "account_menu": "Меню аккаунта",
     "level": "Уровень {{level}}",
     "level_tooltip": "Уровень {{level}} — {{currentExp}} / {{maxExp}} XP",
     "game_clients": "Клиенты игры",

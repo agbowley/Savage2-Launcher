@@ -40,7 +40,7 @@ interface Props {
 
 /** Pick the best server to quick-connect to.
  *  Priority: favourited servers first, then by highest player count.
- *  Within each group, prefer servers with ping <100, then <200, then any.
+ *  Tiebreaker: prefer official servers, then lower ping brackets (<100, <200, any).
  *  If all servers are empty, fall back to favourited → lowest ping, then any → lowest ping. */
 function pickQuickConnectServer(
     servers: ServerEntry[],
@@ -53,7 +53,11 @@ function pickQuickConnectServer(
         for (const maxPing of [100, 200, Infinity]) {
             const bracket = pool.filter((s) => s.ping < maxPing);
             if (bracket.length > 0) {
-                return bracket.reduce((a, b) => (b.players > a.players ? b : a));
+                return bracket.reduce((a, b) => {
+                    if (b.players !== a.players) return b.players > a.players ? b : a;
+                    if (b.official !== a.official) return b.official ? b : a;
+                    return a;
+                });
             }
         }
         return null;

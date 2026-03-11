@@ -7,6 +7,8 @@
     "sign_in": "Se connecter",
     "sign_out": "Se déconnecter",
     "signed_in": "Connecté",
+    "add_account": "Ajouter un compte",
+    "account_menu": "Menu du compte",
     "level": "Niveau {{level}}",
     "level_tooltip": "Niveau {{level}} — {{currentExp}} / {{maxExp}} XP",
     "game_clients": "Clients de jeu",

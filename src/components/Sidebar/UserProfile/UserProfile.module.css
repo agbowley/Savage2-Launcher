@@ -7,6 +7,7 @@
     background: rgba(255, 255, 255, 0);
     transition: background 0.1s;
     cursor: pointer;
+    position: relative;
 }
 
 .userProfile.signedOut {
@@ -101,7 +102,7 @@
     flex-shrink: 0;
 }
 
-.logoutButton {
+.menuButton {
     background: none;
     border: none;
     color: rgba(255, 255, 255, 0.35);
@@ -109,17 +110,157 @@
     padding: 4px;
     display: flex;
     align-items: center;
-    transition: color 0.15s;
+    transition: color 0.15s, transform 0.15s;
     flex-shrink: 0;
 }
 
-.logoutButton:hover {
+.menuButton:hover {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.menuButton svg {
+    width: 16px;
+    height: 16px;
+}
+
+.menuButtonOpen {
+    transform: rotate(180deg);
+}
+
+/* Account dropdown menu */
+.menuOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 199;
+}
+
+.accountMenu {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    right: 0;
+    min-width: 190px;
+    background: #1a1a2e;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    z-index: 200;
+    padding: 4px;
+    animation: menuFadeIn 0.12s ease;
+}
+
+.accountMenuItem {
+    display: flex;
+    align-items: center;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.accountSwitch {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 8px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    font-size: 13px;
+    text-align: left;
+    border-radius: 6px;
+    transition: background 0.1s;
+}
+
+.accountSwitch:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.accountInitial {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 11px;
+    color: var(--accent);
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+
+.accountName {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.removeButton {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.25);
+    cursor: pointer;
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    transition: color 0.15s;
+    flex-shrink: 0;
+    border-radius: 4px;
+}
+
+.removeButton:hover {
     color: #F32B37;
 }
 
-.logoutButton svg {
-    width: 16px;
-    height: 16px;
+.removeButton svg {
+    width: 12px;
+    height: 12px;
+}
+
+.menuDivider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 4px 0;
+}
+
+.menuAction {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 7px 8px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    font-size: 13px;
+    text-align: left;
+    border-radius: 6px;
+    transition: background 0.1s;
+}
+
+.menuAction:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.menuAction svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.signOutAction {
+    color: #F32B37;
+}
+
+.signOutAction:hover {
+    background: rgba(243, 43, 55, 0.1);
+}
+
+@keyframes menuFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .signInButton {

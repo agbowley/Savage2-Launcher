@@ -11,6 +11,7 @@ import type {
     DecodedJwt,
     BanInfo,
     MsAuthResponse,
+    SavedAccount,
 } from "@app/types/auth";
 
 interface AuthState {
@@ -21,12 +22,15 @@ interface AuthState {
     msCookie: string | null;
     msAccountId: number | null;
     msPassword: string | null;
+    savedAccounts: SavedAccount[];
 
     login: (email: string, password: string) => Promise<void>;
     register: (username: string, email: string, password: string, referralCode?: string) => Promise<void>;
     checkUsernameExists: (username: string) => Promise<boolean>;
     resendVerification: (email: string) => Promise<void>;
     logout: () => void;
+    switchAccount: (email: string) => Promise<void>;
+    removeAccount: (email: string) => void;
     refreshSession: () => Promise<boolean>;
     restoreSession: () => Promise<void>;
     isLoggedIn: () => boolean;
@@ -92,6 +96,7 @@ export const useAuthStore = create<AuthState>()(
             msCookie: null,
             msAccountId: null,
             msPassword: null,
+            savedAccounts: [],
 
             login: async (email: string, password: string) => {
                 const data = await tauriFetchPost<LoginResponse>(
@@ -99,7 +104,7 @@ export const useAuthStore = create<AuthState>()(
                     { email, password },
                 );
 
-                const user = extractUser(data.token);
+                const newUser = extractUser(data.token);
 
                 // Encrypt the MS password before storing so it's never at rest in plaintext.
                 let encryptedPassword: string | null = null;
@@ -110,16 +115,32 @@ export const useAuthStore = create<AuthState>()(
                     encryptedPassword = password;
                 }
 
-                set({ authToken: data.token, refreshToken: data.refreshToken, user, msPassword: encryptedPassword });
+                // Park the current account before switching (if logged into a different account)
+                const { user: prev, authToken: prevToken, refreshToken: prevRefresh, msPassword: prevPass, msCookie: prevCookie, msAccountId: prevMsId, savedAccounts } = get();
+                let newSaved = savedAccounts.filter(a => a.email !== email);
+                if (prev && prevToken && prevRefresh && prevPass && prev.email !== email) {
+                    newSaved = newSaved.filter(a => a.email !== prev.email);
+                    newSaved.push({
+                        email: prev.email,
+                        username: prev.username,
+                        accountId: prev.accountId,
+                        authToken: prevToken,
+                        refreshToken: prevRefresh,
+                        msPassword: prevPass,
+                        msCookie: prevCookie,
+                        msAccountId: prevMsId,
+                    });
+                }
+
+                set({ authToken: data.token, refreshToken: data.refreshToken, user: newUser, msPassword: encryptedPassword, savedAccounts: newSaved, gold: null });
                 scheduleTokenRefresh(get);
-                // Fetch gold after login
                 get().fetchGold();
 
                 // Authenticate with the game master server using the username
                 // so the user receives a session cookie for game server connections.
                 try {
                     const msAuth = await invoke<MsAuthResponse>("ms_authenticate", {
-                        username: user.username,
+                        username: newUser.username,
                         password,
                     });
                     set({ msCookie: msAuth.cookie, msAccountId: msAuth.accountId });
@@ -156,6 +177,51 @@ export const useAuthStore = create<AuthState>()(
                     refreshTimer = null;
                 }
                 set({ authToken: null, refreshToken: null, user: null, gold: null, msCookie: null, msAccountId: null, msPassword: null });
+            },
+
+            switchAccount: async (email: string) => {
+                const { authToken, refreshToken, user, msPassword, msCookie, msAccountId, savedAccounts } = get();
+                const idx = savedAccounts.findIndex(a => a.email === email);
+                if (idx === -1) return;
+
+                const target = savedAccounts[idx];
+                const updated = savedAccounts.filter((_, i) => i !== idx);
+
+                // Park current account
+                if (user && authToken && refreshToken && msPassword) {
+                    updated.push({
+                        email: user.email,
+                        username: user.username,
+                        accountId: user.accountId,
+                        authToken,
+                        refreshToken,
+                        msPassword,
+                        msCookie,
+                        msAccountId,
+                    });
+                }
+
+                if (refreshTimer) {
+                    clearTimeout(refreshTimer);
+                    refreshTimer = null;
+                }
+
+                set({
+                    authToken: target.authToken,
+                    refreshToken: target.refreshToken,
+                    user: { email: target.email, username: target.username, accountId: target.accountId },
+                    msPassword: target.msPassword,
+                    msCookie: target.msCookie,
+                    msAccountId: target.msAccountId,
+                    savedAccounts: updated,
+                    gold: null,
+                });
+
+                await get().restoreSession();
+            },
+
+            removeAccount: (email: string) => {
+                set({ savedAccounts: get().savedAccounts.filter(a => a.email !== email) });
             },
 
             refreshSession: async () => {
@@ -269,6 +335,7 @@ export const useAuthStore = create<AuthState>()(
                 msCookie: state.msCookie,
                 msAccountId: state.msAccountId,
                 msPassword: state.msPassword,
+                savedAccounts: state.savedAccounts,
             }),
         },
     ),

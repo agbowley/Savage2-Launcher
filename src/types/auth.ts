@@ -50,3 +50,14 @@ export interface MsAuthResponse {
     cookie: string;
     accountId: number;
 }
+
+export interface SavedAccount {
+    email: string;
+    username: string;
+    accountId: string;
+    authToken: string;
+    refreshToken: string;
+    msPassword: string;
+    msCookie: string | null;
+    msAccountId: number | null;
+}

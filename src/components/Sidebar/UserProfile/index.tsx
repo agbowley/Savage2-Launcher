@@ -15,6 +15,26 @@ const LogoutIcon = () => (
     </svg>
 );
 
+const ChevronIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="6 9 12 15 18 9" />
+    </svg>
+);
+
+const AddIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19" />
+        <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+);
+
+const RemoveIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+);
+
 const GoldIcon = () => (
     <svg viewBox="0 0 24 24" fill="none" className={styles.goldIcon}>
         <circle cx="12" cy="12" r="10" fill="#FFD700" />
@@ -56,6 +76,10 @@ const UserProfile: React.FC = () => {
     const user = useAuthStore(s => s.user);
     const logout = useAuthStore(s => s.logout);
     const gold = useAuthStore(s => s.gold);
+    const savedAccounts = useAuthStore(s => s.savedAccounts);
+    const switchAccount = useAuthStore(s => s.switchAccount);
+    const removeAccount = useAuthStore(s => s.removeAccount);
+    const [menuOpen, setMenuOpen] = useState(false);
     const [levelInfo, setLevelInfo] = useState<{ level: number; progress: number; currentExp: number; maxExp: number } | null>(null);
     const [achievementPoints, setAchievementPoints] = useState<number | null>(null);
     const [showSignInTip, setShowSignInTip] = useState(
@@ -65,6 +89,15 @@ const UserProfile: React.FC = () => {
         setShowSignInTip(false);
         localStorage.setItem("sign_in_tip_dismissed", "1");
     };
+
+    useEffect(() => {
+        if (!menuOpen) return;
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") setMenuOpen(false);
+        };
+        window.addEventListener("keydown", onKeyDown);
+        return () => window.removeEventListener("keydown", onKeyDown);
+    }, [menuOpen]);
 
     useEffect(() => {
         if (!user) {
@@ -84,6 +117,45 @@ const UserProfile: React.FC = () => {
             })
             .catch(() => { /* stats unavailable */ });
     }, [user]);
+
+    const toggleMenu = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setMenuOpen(v => !v);
+    };
+
+    const closeMenu = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setMenuOpen(false);
+    };
+
+    const handleSwitch = (e: React.MouseEvent, email: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setMenuOpen(false);
+        switchAccount(email);
+    };
+
+    const handleRemove = (e: React.MouseEvent, email: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+        removeAccount(email);
+    };
+
+    const handleAddAccount = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setMenuOpen(false);
+        showLoginDialog();
+    };
+
+    const handleSignOut = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setMenuOpen(false);
+        logout();
+    };
 
     if (!user) {
         return (
@@ -172,9 +244,41 @@ const UserProfile: React.FC = () => {
                     {!levelInfo && gold == null && achievementPoints == null && <span>{t("signed_in")}</span>}
                 </div>
             </div>
-            <button className={styles.logoutButton} onClick={logout} title={t("sign_out")}>
-                <LogoutIcon />
+            <button className={`${styles.menuButton} ${menuOpen ? styles.menuButtonOpen : ""}`} onClick={toggleMenu} title={t("account_menu")}>
+                <ChevronIcon />
             </button>
+
+            {menuOpen && (
+                <>
+                    <div className={styles.menuOverlay} onClick={closeMenu} />
+                    <div className={styles.accountMenu}>
+                        {savedAccounts.length > 0 && (
+                            <>
+                                {savedAccounts.map(acc => (
+                                    <div key={acc.email} className={styles.accountMenuItem}>
+                                        <button className={styles.accountSwitch} onClick={(e) => handleSwitch(e, acc.email)}>
+                                            <span className={styles.accountInitial}>{acc.username.charAt(0)}</span>
+                                            <span className={styles.accountName}>{acc.username}</span>
+                                        </button>
+                                        <button className={styles.removeButton} onClick={(e) => handleRemove(e, acc.email)}>
+                                            <RemoveIcon />
+                                        </button>
+                                    </div>
+                                ))}
+                                <div className={styles.menuDivider} />
+                            </>
+                        )}
+                        <button className={styles.menuAction} onClick={handleAddAccount}>
+                            <AddIcon />
+                            {t("add_account")}
+                        </button>
+                        <button className={`${styles.menuAction} ${styles.signOutAction}`} onClick={handleSignOut}>
+                            <LogoutIcon />
+                            {t("sign_out")}
+                        </button>
+                    </div>
+                </>
+            )}
         </div>
     );
 };

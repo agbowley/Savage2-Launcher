@@ -7,6 +7,8 @@
     "sign_in": "Anmelden",
     "sign_out": "Abmelden",
     "signed_in": "Angemeldet",
+    "add_account": "Konto hinzufügen",
+    "account_menu": "Kontomenü",
     "level": "Stufe {{level}}",
     "level_tooltip": "Stufe {{level}} — {{currentExp}} / {{maxExp}} EP",
     "game_clients": "Spielclients",
