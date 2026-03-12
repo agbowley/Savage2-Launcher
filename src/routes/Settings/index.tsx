@@ -16,6 +16,8 @@ function Settings() {
     const { t, i18n } = useTranslation("settings");
     const toastsEnabled = useToastStore((s) => s.toastsEnabled);
     const setToastsEnabled = useToastStore((s) => s.setToastsEnabled);
+    const autoLogin = useToastStore((s) => s.autoLogin);
+    const setAutoLogin = useToastStore((s) => s.setAutoLogin);
 
     const handleToggle = (enabled: boolean) => {
         setToastsEnabled(enabled);
@@ -69,6 +71,27 @@ function Settings() {
                             type="checkbox"
                             checked={toastsEnabled}
                             onChange={(e) => handleToggle(e.target.checked)}
+                        />
+                        <span className={styles.slider} />
+                    </label>
+                </div>
+            </div>
+
+            <div className={styles.section}>
+                <div className={styles.section_title}>{t("game_section")}</div>
+
+                <div className={styles.row}>
+                    <div className={styles.row_text}>
+                        <span className={styles.row_label}>{t("auto_login_label")}</span>
+                        <span className={styles.row_description}>
+                            {t("auto_login_description")}
+                        </span>
+                    </div>
+                    <label className={styles.toggle}>
+                        <input
+                            type="checkbox"
+                            checked={autoLogin}
+                            onChange={(e) => setAutoLogin(e.target.checked)}
                         />
                         <span className={styles.slider} />
                     </label>

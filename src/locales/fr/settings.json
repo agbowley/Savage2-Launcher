@@ -6,6 +6,9 @@
     "notifications_section": "Notifications",
     "toast_label": "Notifications pop-up",
     "toast_description": "Afficher des alertes pop-up lorsque les téléchargements sont terminés ou que des mises à jour sont disponibles (uniquement lorsque minimisé dans la barre des tâches)",
+    "game_section": "Jeu",
+    "auto_login_label": "Connexion automatique",
+    "auto_login_description": "Me connecter automatiquement lorsque je lance Savage 2",
     "settings_tip": "Vous pouvez changer votre langue et d'autres paramètres ici.",
     "settings_tip_dismiss": "Compris"
 }

@@ -12,6 +12,7 @@ import { usePayload, TaskPayload } from "@app/tasks/payload";
 import { IBaseTask } from "@app/tasks/Processors/base";
 import { useDownloadHistory } from "@app/stores/DownloadHistoryStore";
 import { useAuthStore } from "@app/stores/AuthStore";
+import { useToastStore } from "@app/stores/ToastStore";
 import { showToast } from "@app/utils/toast";
 import i18n from "@app/i18n";
 import type { MsAuthResponse } from "@app/types/auth";
@@ -355,10 +356,11 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
             }
 
             const { msPassword: pw, user: authUser } = useAuthStore.getState();
+            const { autoLogin } = useToastStore.getState();
             await invoke("launch", {
                 appName: "Savage 2",
                 profile,
-                ...(authUser && pw ? { msUsername: authUser.username, msPassword: pw } : {}),
+                ...(autoLogin && authUser && pw ? { msUsername: authUser.username, msPassword: pw } : {}),
             });
 
             setState(S2States.PLAYING);

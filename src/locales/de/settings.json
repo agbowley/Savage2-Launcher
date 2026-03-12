@@ -6,6 +6,9 @@
     "notifications_section": "Benachrichtigungen",
     "toast_label": "Popup-Benachrichtigungen",
     "toast_description": "Pop-up-Benachrichtigungen anzeigen, wenn Downloads abgeschlossen sind oder Updates verfügbar sind (nur wenn in der Taskleiste minimiert)",
+    "game_section": "Spiel",
+    "auto_login_label": "Automatische Anmeldung",
+    "auto_login_description": "Mich automatisch anmelden, wenn ich Savage 2 starte",
     "settings_tip": "Hier kannst du deine Sprache und andere Einstellungen ändern.",
     "settings_tip_dismiss": "Verstanden"
 }

@@ -6,6 +6,9 @@
     "notifications_section": "Notificaciones",
     "toast_label": "Notificaciones emergentes",
     "toast_description": "Mostrar alertas emergentes cuando las descargas terminen o haya actualizaciones disponibles (solo mientras está minimizado en la bandeja)",
+    "game_section": "Juego",
+    "auto_login_label": "Inicio de sesión automático",
+    "auto_login_description": "Iniciar sesión automáticamente cuando inicie Savage 2",
     "settings_tip": "Puedes cambiar tu idioma y otras configuraciones aquí.",
     "settings_tip_dismiss": "Entendido"
 }

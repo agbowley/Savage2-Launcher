@@ -6,6 +6,9 @@
     "notifications_section": "Notifications",
     "toast_label": "Toast Notifications",
     "toast_description": "Show pop-up alerts when downloads finish or updates are available (only while minimised to tray)",
+    "game_section": "Game",
+    "auto_login_label": "Auto Login",
+    "auto_login_description": "Automatically log me in when I start Savage 2",
     "settings_tip": "You can change your language and other settings here.",
     "settings_tip_dismiss": "Got it"
 }
