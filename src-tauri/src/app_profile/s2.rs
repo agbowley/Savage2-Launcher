@@ -647,6 +647,36 @@ impl S2AppProfile {
         }
     }
 
+    /// Recursively set executable permissions on game binaries and scripts (Unix only).
+    #[cfg(unix)]
+    fn set_executable_recursive(dir: &Path) {
+        use std::os::unix::fs::PermissionsExt;
+        let entries = match fs::read_dir(dir) {
+            Ok(e) => e,
+            Err(_) => return,
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                Self::set_executable_recursive(&path);
+                continue;
+            }
+            let name = path.file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("");
+            if name == "savage2" || name == "savage2.x86_64"
+                || name.ends_with(".sh")
+                || name.ends_with(".so")
+            {
+                if let Ok(metadata) = fs::metadata(&path) {
+                    let mut perms = metadata.permissions();
+                    perms.set_mode(perms.mode() | 0o755);
+                    let _ = fs::set_permissions(&path, perms);
+                }
+            }
+        }
+    }
+
     /// Try to load a manifest: fetch from the remote URL first, then fall back
     /// to a local `manifest.json` in the game folder.  Returns `None` only if
     /// both sources are unavailable or unparseable.
@@ -1061,6 +1091,22 @@ impl AppProfile for S2AppProfile {
         let manifest_path = game_folder.join("manifest.json");
         let _ = std::fs::write(&manifest_path, &manifest_text);
 
+        // Ensure game binaries have executable permissions after patching (Unix only)
+        #[cfg(unix)]
+        {
+            Self::set_executable_recursive(&game_folder);
+            if let Ok(exec_path) = self.find_exec() {
+                if exec_path.exists() {
+                    use std::os::unix::fs::PermissionsExt;
+                    if let Ok(metadata) = fs::metadata(&exec_path) {
+                        let mut perms = metadata.permissions();
+                        perms.set_mode(perms.mode() | 0o755);
+                        let _ = fs::set_permissions(&exec_path, perms);
+                    }
+                }
+            }
+        }
+
         Ok(PatchResult { repaired, skipped })
     }
 
@@ -1261,11 +1307,81 @@ impl AppProfile for S2AppProfile {
             } else {
                 self.log_message(".NET Framework already installed. Skipping.");
             }
+
+            // ── Post-install verification ────────────────────────────────────
+            // Some users report that the redistributable installers don't
+            // complete properly on the first attempt.  Re-check and retry once.
+            if !self.is_directx_installed() {
+                self.log_message("DirectX was not detected after installation — retrying...");
+                let dxsetup_extracted = install_folder.join("directxredist/DXSETUP.exe");
+                let dx_redist_packed = install_folder.join("directx_Jun2010_redist.exe");
+
+                if dxsetup_extracted.exists() {
+                    let _ = self.run_installer_with_elevation(&dxsetup_extracted, "/silent").await;
+                } else if dx_redist_packed.exists() {
+                    let dx_temp = self.temp_folder.join("directx_redist_retry");
+                    let _ = std::fs::create_dir_all(&dx_temp);
+                    let extract_args = format!("/Q /C /T:{}", dx_temp.display());
+                    if self.run_installer_with_elevation(&dx_redist_packed, &extract_args).await.is_ok() {
+                        let extracted_setup = dx_temp.join("DXSETUP.exe");
+                        if extracted_setup.exists() {
+                            let _ = self.run_installer_with_elevation(&extracted_setup, "/silent").await;
+                        }
+                    }
+                    let _ = std::fs::remove_dir_all(&dx_temp);
+                }
+
+                if self.is_directx_installed() {
+                    self.log_message("DirectX installed successfully on retry.");
+                } else {
+                    self.log_message("WARNING: DirectX installation could not be verified after retry.");
+                }
+            }
+
+            if !self.is_vcredist_installed() {
+                self.log_message("VC++ Redistributable was not detected after installation — retrying...");
+                let vcredist_x64 = install_folder.join("VC_redist.x64.exe");
+                let vcredist_x86_new = install_folder.join("VC_redist.x86.exe");
+                let vcredist_x86_legacy = install_folder.join("vcredist_x86.exe");
+
+                let vcredist = if vcredist_x64.exists() { Some(vcredist_x64) }
+                    else if vcredist_x86_new.exists() { Some(vcredist_x86_new) }
+                    else if vcredist_x86_legacy.exists() { Some(vcredist_x86_legacy) }
+                    else { None };
+
+                if let Some(installer) = vcredist {
+                    let _ = self.run_installer_with_elevation(&installer, "/install /quiet /norestart").await;
+                }
+
+                if self.is_vcredist_installed() {
+                    self.log_message("VC++ Redistributable installed successfully on retry.");
+                } else {
+                    self.log_message("WARNING: VC++ Redistributable installation could not be verified after retry.");
+                }
+            }
         }
 
-        #[cfg(not(target_os = "windows"))]
+        #[cfg(unix)]
         {
-            self.log_message("Non-Windows platform — skipping runtime dependency installation.");
+            self.log_message("Setting executable permissions on game binaries...");
+            let game_folder = self.find_game_folder();
+            Self::set_executable_recursive(&game_folder);
+
+            match self.find_exec() {
+                Ok(exec_path) if exec_path.exists() => {
+                    use std::os::unix::fs::PermissionsExt;
+                    let metadata = fs::metadata(&exec_path)
+                        .map_err(|e| format!("Failed to read permissions for {}: {}", exec_path.display(), e))?;
+                    let mut perms = metadata.permissions();
+                    perms.set_mode(perms.mode() | 0o755);
+                    fs::set_permissions(&exec_path, perms)
+                        .map_err(|e| format!("Failed to set executable permissions on {}: {}", exec_path.display(), e))?;
+                    self.log_message(&format!("Set executable permissions on: {}", exec_path.display()));
+                }
+                _ => {
+                    self.log_message("Game executable not found — skipping permission fix.");
+                }
+            }
         }
 
         Ok(())

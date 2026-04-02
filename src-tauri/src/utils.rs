@@ -183,15 +183,25 @@ pub fn extract(from: &Path, to: &Path) -> Result<(), String> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        // Walk the extracted directory and make common game executables executable
-        if let Ok(entries) = std::fs::read_dir(to) {
+
+        fn set_executable_recursive(dir: &Path) {
+            let entries = match std::fs::read_dir(dir) {
+                Ok(e) => e,
+                Err(_) => return,
+            };
             for entry in entries.flatten() {
                 let path = entry.path();
+                if path.is_dir() {
+                    set_executable_recursive(&path);
+                    continue;
+                }
                 let name = path.file_name()
                     .and_then(|n| n.to_str())
                     .unwrap_or("");
-                // Mark known game executables and .sh scripts as executable
-                if name == "savage2.x86_64" || name == "savage2" || name.ends_with(".sh") {
+                if name == "savage2" || name == "savage2.x86_64"
+                    || name.ends_with(".sh")
+                    || name.ends_with(".so")
+                {
                     if let Ok(metadata) = std::fs::metadata(&path) {
                         let mut perms = metadata.permissions();
                         perms.set_mode(perms.mode() | 0o755);
@@ -200,6 +210,8 @@ pub fn extract(from: &Path, to: &Path) -> Result<(), String> {
                 }
             }
         }
+
+        set_executable_recursive(to);
     }
 
     Ok(())
