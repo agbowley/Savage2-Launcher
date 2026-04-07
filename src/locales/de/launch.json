@@ -1,4 +1,5 @@
 {
+    "play": "Spielen",
     "queued": "In Warteschlange",
     "install_play": "{{playName}} installieren",
     "choose_install_location": "Installationsort wählen",

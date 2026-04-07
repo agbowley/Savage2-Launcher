@@ -1,4 +1,5 @@
 {
+    "play": "Играть",
     "queued": "В очереди",
     "install_play": "Установить {{playName}}",
     "choose_install_location": "Выбрать папку установки",

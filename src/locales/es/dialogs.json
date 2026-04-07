@@ -101,5 +101,13 @@
     "account_created": "¡Cuenta creada! Hemos enviado un correo de verificación a <strong>{{email}}</strong>.",
     "account_created_hint": "Por favor, revisa tu bandeja de entrada y haz clic en el enlace de verificación para activar tu cuenta, luego inicia sesión.",
     "verification_resent": "¡Correo de verificación reenviado!",
-    "edit_filename": "Editar <code>{{filename}}</code>"
+    "edit_filename": "Editar <code>{{filename}}</code>",
+    "outdated_mods_title": "Mods desactualizados detectados",
+    "outdated_mods_body": "Los siguientes mods instalados tienen actualizaciones disponibles:",
+    "outdated_mods_updating": "Actualizando...",
+    "outdated_mods_updated": "Actualizado",
+    "outdated_mods_update_all": "Actualizar todo",
+    "outdated_mods_play_anyway": "Jugar de todas formas",
+    "outdated_mods_dont_warn": "No mostrar esta advertencia de nuevo",
+    "outdated_mods_version_info": "{{installed}} → {{latest}}"
 }

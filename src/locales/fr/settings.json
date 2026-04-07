@@ -9,6 +9,8 @@
     "game_section": "Jeu",
     "auto_login_label": "Connexion automatique",
     "auto_login_description": "Me connecter automatiquement lorsque je lance Savage 2",
+    "outdated_mods_warn_label": "Avertissement mods obsolètes",
+    "outdated_mods_warn_description": "Afficher un avertissement avant le lancement lorsque des mods installés ont des mises à jour disponibles",
     "settings_tip": "Vous pouvez changer votre langue et d'autres paramètres ici.",
     "settings_tip_dismiss": "Compris"
 }

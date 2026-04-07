@@ -18,6 +18,8 @@ function Settings() {
     const setToastsEnabled = useToastStore((s) => s.setToastsEnabled);
     const autoLogin = useToastStore((s) => s.autoLogin);
     const setAutoLogin = useToastStore((s) => s.setAutoLogin);
+    const skipOutdatedModsWarning = useToastStore((s) => s.skipOutdatedModsWarning);
+    const setSkipOutdatedModsWarning = useToastStore((s) => s.setSkipOutdatedModsWarning);
 
     const handleToggle = (enabled: boolean) => {
         setToastsEnabled(enabled);
@@ -92,6 +94,23 @@ function Settings() {
                             type="checkbox"
                             checked={autoLogin}
                             onChange={(e) => setAutoLogin(e.target.checked)}
+                        />
+                        <span className={styles.slider} />
+                    </label>
+                </div>
+
+                <div className={styles.row}>
+                    <div className={styles.row_text}>
+                        <span className={styles.row_label}>{t("outdated_mods_warn_label")}</span>
+                        <span className={styles.row_description}>
+                            {t("outdated_mods_warn_description")}
+                        </span>
+                    </div>
+                    <label className={styles.toggle}>
+                        <input
+                            type="checkbox"
+                            checked={!skipOutdatedModsWarning}
+                            onChange={(e) => setSkipOutdatedModsWarning(!e.target.checked)}
                         />
                         <span className={styles.slider} />
                     </label>

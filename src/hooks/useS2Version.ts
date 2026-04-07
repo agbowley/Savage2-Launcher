@@ -6,16 +6,21 @@ import { open } from "@tauri-apps/api/dialog";
 import { listen } from "@tauri-apps/api/event";
 import { useS2State } from "@app/stores/S2StateStore";
 import { S2Download, S2PatchUpdate, S2Uninstall } from "@app/tasks/Processors/S2";
-import { showErrorDialog, showInstallFolderDialog, showUninstallDialog } from "@app/dialogs/dialogUtil";
+import { showErrorDialog, showInstallFolderDialog, showOutdatedModsDialog, showUninstallDialog } from "@app/dialogs/dialogUtil";
 import { addTask, cancelTask, useTask } from "@app/tasks";
 import { usePayload, TaskPayload } from "@app/tasks/payload";
 import { IBaseTask } from "@app/tasks/Processors/base";
 import { useDownloadHistory } from "@app/stores/DownloadHistoryStore";
 import { useAuthStore } from "@app/stores/AuthStore";
 import { useToastStore } from "@app/stores/ToastStore";
+import { useModsStore } from "@app/stores/ModsStore";
 import { showToast } from "@app/utils/toast";
+import { tauriFetchJson } from "@app/utils/tauriFetch";
+import { repositoryBaseURL } from "@app/utils/consts";
 import i18n from "@app/i18n";
 import type { MsAuthResponse } from "@app/types/auth";
+import type { ModListResponse } from "@app/types/mods";
+import type { OutdatedModEntry } from "@app/dialogs/Dialogs/OutdatedModsDialog";
 
 const channelNameKeys: Record<string, string> = {
     stable: "community_edition",
@@ -42,7 +47,7 @@ export enum S2States {
 
 export type S2Version = {
     state: S2States,
-    play: () => Promise<void>,
+    play: (skipVerification?: boolean) => Promise<void>,
     connectToServer: (address: string) => Promise<void>,
     stopGame: () => Promise<void>,
     download: () => Promise<void>,
@@ -71,6 +76,42 @@ type VersionCache = {
     releaseDate: string | null;
 };
 const versionCache = new Map<string, VersionCache>();
+
+const MODS_API_URL = `${repositoryBaseURL}/api/mods`;
+
+/** Fetch latest mod versions from API and compare with installed mods. */
+async function getOutdatedMods(profile: string): Promise<OutdatedModEntry[]> {
+    const installedMods = useModsStore.getState().getMods(profile);
+    const apiMods = installedMods.filter((m) => m.apiModId !== null);
+    if (apiMods.length === 0) return [];
+
+    try {
+        const params = new URLSearchParams({
+            page: "1",
+            pageSize: "500",
+            sortBy: "downloads",
+            sortDesc: "true",
+        });
+        const data = await tauriFetchJson<ModListResponse>(`${MODS_API_URL}?${params.toString()}`);
+
+        const latestByApiId = new Map<number, string>();
+        for (const item of data.items) {
+            latestByApiId.set(item.id, item.latestVersion);
+        }
+
+        const outdated: OutdatedModEntry[] = [];
+        for (const mod of apiMods) {
+            const latest = latestByApiId.get(mod.apiModId!);
+            if (latest && mod.installedVersion !== latest) {
+                outdated.push({ mod, latestVersion: latest, apiModId: mod.apiModId! });
+            }
+        }
+        return outdated;
+    } catch (e) {
+        console.warn("Failed to check for outdated mods:", e);
+        return [];
+    }
+}
 
 export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profileName: ReleaseChannels): S2Version => {
     const profile = releaseData?.tag_name || profileName;
@@ -290,8 +331,21 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         };
     }
 
-    const play = async () => {
+    const play = async (skipVerification?: boolean) => {
         if (!releaseData) return;
+
+        // Check for outdated mods before launching
+        const { skipOutdatedModsWarning } = useToastStore.getState();
+        if (!skipOutdatedModsWarning) {
+            const outdated = await getOutdatedMods(profile);
+            if (outdated.length > 0) {
+                const result = await showOutdatedModsDialog(outdated, profile, releaseData.channel);
+                if (!result || result.action === "cancel") return;
+                if (result.dontShowAgain) {
+                    useToastStore.getState().setSkipOutdatedModsWarning(true);
+                }
+            }
+        }
 
         setState(S2States.LOADING);
 
@@ -299,7 +353,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
             // Verify game files against the manifest before launching.
             // If any files are missing or corrupted, repair them first.
             const platformType = await type();
-            const manifestUrl = getS2ManifestUrl(releaseData, platformType);
+            const manifestUrl = !skipVerification ? getS2ManifestUrl(releaseData, platformType) : null;
             if (manifestUrl) {
                 let needsRepair = false;
                 try {
@@ -383,6 +437,19 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         if (!user || !msPassword) {
             showErrorDialog("You must be logged in to connect to a server.");
             return;
+        }
+
+        // Check for outdated mods before launching
+        const { skipOutdatedModsWarning } = useToastStore.getState();
+        if (!skipOutdatedModsWarning) {
+            const outdated = await getOutdatedMods(profile);
+            if (outdated.length > 0) {
+                const result = await showOutdatedModsDialog(outdated, profile, releaseData.channel);
+                if (!result || result.action === "cancel") return;
+                if (result.dontShowAgain) {
+                    useToastStore.getState().setSkipOutdatedModsWarning(true);
+                }
+            }
         }
 
         setState(S2States.LOADING);

@@ -9,6 +9,8 @@
     "game_section": "Игра",
     "auto_login_label": "Автоматический вход",
     "auto_login_description": "Автоматически входить в аккаунт при запуске Savage 2",
+    "outdated_mods_warn_label": "Предупреждение об устаревших модах",
+    "outdated_mods_warn_description": "Показывать предупреждение перед запуском, когда для установленных модов доступны обновления",
     "settings_tip": "Здесь вы можете изменить язык и другие настройки.",
     "settings_tip_dismiss": "Понятно"
 }

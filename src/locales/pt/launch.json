@@ -1,4 +1,5 @@
 {
+    "play": "Jogar",
     "queued": "Na fila",
     "install_play": "Instalar {{playName}}",
     "choose_install_location": "Escolher local de instalação",

@@ -1,4 +1,5 @@
 {
+    "play": "Play",
     "queued": "Queued",
     "install_play": "Install {{playName}}",
     "choose_install_location": "Choose Install Location",

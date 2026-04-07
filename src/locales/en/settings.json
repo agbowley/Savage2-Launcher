@@ -9,6 +9,8 @@
     "game_section": "Game",
     "auto_login_label": "Auto Login",
     "auto_login_description": "Automatically log me in when I start Savage 2",
+    "outdated_mods_warn_label": "Outdated Mods Warning",
+    "outdated_mods_warn_description": "Show a warning before launching when installed mods have updates available",
     "settings_tip": "You can change your language and other settings here.",
     "settings_tip_dismiss": "Got it"
 }

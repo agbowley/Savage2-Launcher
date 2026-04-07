@@ -76,7 +76,7 @@ export function LaunchButton(props: LaunchButtonProps) {
         </>;
 
         const dropdownChildren = <>
-            <DropdownItem onClick={() => version.play()}>
+            <DropdownItem onClick={() => version.play(true)}>
                 {t("play_anyway")}
             </DropdownItem>
             <DropdownItem onClick={() => version.verifyInstallation()}>

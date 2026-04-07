@@ -12,6 +12,8 @@ import { LoginDialog } from "./Dialogs/LoginDialog";
 import { RegisterDialog } from "./Dialogs/RegisterDialog";
 import { ConfirmActionDialog } from "./Dialogs/ConfirmActionDialog";
 import { GoldHistoryDialog } from "./Dialogs/GoldHistoryDialog";
+import { OutdatedModsDialog } from "./Dialogs/OutdatedModsDialog";
+import type { OutdatedModEntry } from "./Dialogs/OutdatedModsDialog";
 import { createAndShowDialog } from ".";
 import type { UnknownModFile } from "@app/types/mods";
 import { ButtonColor } from "@app/components/Button";
@@ -127,5 +129,29 @@ export async function showRegisterDialog(): Promise<void> {
     // If user clicked "Sign in" from register, open login dialog
     if (result === "login") {
         await showLoginDialog();
+    }
+}
+
+export interface OutdatedModsResult {
+    action: "cancel" | "play";
+    dontShowAgain: boolean;
+}
+
+export async function showOutdatedModsDialog(
+    outdatedMods: OutdatedModEntry[],
+    profile: string,
+    channel: string,
+): Promise<OutdatedModsResult | null> {
+    const result = await createAndShowDialog(OutdatedModsDialog, {
+        outdatedMods,
+        profile,
+        channel,
+        wide: true,
+    });
+    if (!result || result === "cancel") return { action: "cancel", dontShowAgain: false };
+    try {
+        return JSON.parse(result) as OutdatedModsResult;
+    } catch {
+        return null;
     }
 }

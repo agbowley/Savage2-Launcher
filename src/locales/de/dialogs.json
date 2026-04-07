@@ -101,5 +101,13 @@
     "account_created": "Konto erstellt! Wir haben eine Bestätigungs-E-Mail an <strong>{{email}}</strong> gesendet.",
     "account_created_hint": "Bitte überprüfe deinen Posteingang und klicke auf den Bestätigungslink, um dein Konto zu aktivieren. Melde dich anschließend an.",
     "verification_resent": "Bestätigungs-E-Mail erneut gesendet!",
-    "edit_filename": "<code>{{filename}}</code> bearbeiten"
+    "edit_filename": "<code>{{filename}}</code> bearbeiten",
+    "outdated_mods_title": "Veraltete Mods erkannt",
+    "outdated_mods_body": "Für die folgenden installierten Mods sind Updates verfügbar:",
+    "outdated_mods_updating": "Wird aktualisiert...",
+    "outdated_mods_updated": "Aktualisiert",
+    "outdated_mods_update_all": "Alle aktualisieren",
+    "outdated_mods_play_anyway": "Trotzdem spielen",
+    "outdated_mods_dont_warn": "Diese Warnung nicht mehr anzeigen",
+    "outdated_mods_version_info": "{{installed}} → {{latest}}"
 }

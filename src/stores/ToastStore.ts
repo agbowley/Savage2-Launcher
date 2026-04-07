@@ -6,6 +6,8 @@ interface ToastState {
     setToastsEnabled: (enabled: boolean) => void;
     autoLogin: boolean;
     setAutoLogin: (enabled: boolean) => void;
+    skipOutdatedModsWarning: boolean;
+    setSkipOutdatedModsWarning: (enabled: boolean) => void;
 }
 
 export const useToastStore = create<ToastState>()(
@@ -15,6 +17,8 @@ export const useToastStore = create<ToastState>()(
             setToastsEnabled: (enabled) => set({ toastsEnabled: enabled }),
             autoLogin: false,
             setAutoLogin: (enabled) => set({ autoLogin: enabled }),
+            skipOutdatedModsWarning: false,
+            setSkipOutdatedModsWarning: (enabled) => set({ skipOutdatedModsWarning: enabled }),
         }),
         {
             name: "toast-settings",

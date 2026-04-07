@@ -101,5 +101,13 @@
     "account_created": "Аккаунт создан! Мы отправили письмо с подтверждением на <strong>{{email}}</strong>.",
     "account_created_hint": "Пожалуйста, проверьте вашу почту и нажмите на ссылку подтверждения для активации аккаунта, затем войдите.",
     "verification_resent": "Письмо с подтверждением отправлено повторно!",
-    "edit_filename": "Редактировать <code>{{filename}}</code>"
+    "edit_filename": "Редактировать <code>{{filename}}</code>",
+    "outdated_mods_title": "Обнаружены устаревшие моды",
+    "outdated_mods_body": "Для следующих установленных модов доступны обновления:",
+    "outdated_mods_updating": "Обновление...",
+    "outdated_mods_updated": "Обновлено",
+    "outdated_mods_update_all": "Обновить все",
+    "outdated_mods_play_anyway": "Играть в любом случае",
+    "outdated_mods_dont_warn": "Больше не показывать это предупреждение",
+    "outdated_mods_version_info": "{{installed}} → {{latest}}"
 }
