@@ -77,6 +77,19 @@ export class OutdatedModsDialog extends BaseDialog<State> {
 
         const { getMods, updateModVersion, toManifest } = useModsStore.getState();
 
+        // Save content of user-modified XML files before the download overwrites staging
+        const modifiedXmlBackups = new Map<string, string>();
+        for (const f of mod.files) {
+            if (f.modified && f.type === "xml") {
+                try {
+                    const content = await invoke<string>("read_mod_file_content", {
+                        profile, modId: mod.id, filename: f.filename,
+                    });
+                    modifiedXmlBackups.set(f.filename.toLowerCase(), content);
+                } catch { /* file may not exist */ }
+            }
+        }
+
         return new Promise<void>((resolve, reject) => {
             const task = new ModDownloadTask(
                 profile,
@@ -118,7 +131,12 @@ export class OutdatedModsDialog extends BaseDialog<State> {
                                 : Promise.resolve();
 
                     disablePromise.then(() => {
-                        const newFiles = task.extractedFiles.map((f) => ({ ...f, enabled: wasEnabled }));
+                        // Carry forward per-file enabled/modified state from old files
+                        const oldFileState = new Map(mod.files.map((f) => [f.filename.toLowerCase(), { enabled: f.enabled, modified: f.modified }]));
+                        const newFiles = task.extractedFiles.map((f) => {
+                            const old = oldFileState.get(f.filename.toLowerCase());
+                            return { ...f, enabled: old?.enabled ?? wasEnabled, modified: old?.modified };
+                        });
                         updateModVersion(profile, mod.id, latestVersion.version, latestVersion.id, newFiles);
 
                         useDownloadHistory.getState().addEntry({
@@ -131,14 +149,27 @@ export class OutdatedModsDialog extends BaseDialog<State> {
                         });
 
                         const manifest = toManifest(profile);
-                        return invoke("save_mod_manifest", { profile, manifest }).then(() => {
+                        return invoke("save_mod_manifest", { profile, manifest }).then(async () => {
+                            // Restore user-modified XML files
+                            for (const [key, content] of modifiedXmlBackups) {
+                                const match = newFiles.find((f) => f.filename.toLowerCase() === key);
+                                if (match) {
+                                    try {
+                                        await invoke("write_mod_file_content", {
+                                            profile, modId: mod.id, filename: match.filename,
+                                            content, loadOrder: oldLoadOrder, isEnabled: match.enabled,
+                                        });
+                                    } catch { /* best effort */ }
+                                }
+                            }
                             if (isTool || isToolMod(mod.files)) return;
                             if (mod.isMap) {
                                 return invoke("enable_map", { profile, modId: mod.id });
                             }
-                            if (!wasEnabled) return;
+                            const enabledFilenames = newFiles.filter((f) => f.enabled).map((f) => f.filename);
+                            if (enabledFilenames.length === 0) return;
                             return invoke<string[]>("enable_mod", {
-                                profile, modId: mod.id, loadOrder: oldLoadOrder,
+                                profile, modId: mod.id, loadOrder: oldLoadOrder, filenames: enabledFilenames,
                             }).then((conflicts) => {
                                 if (conflicts && conflicts.length > 0) {
                                     showFileConflictDialog(conflicts);

@@ -222,7 +222,8 @@ pub fn scan_game_mods(
         // Skip resources0.s2z (the base game)
         if name.to_lowercase() == "resources0.s2z" { continue; }
 
-        if is_resources_file(&name) {
+        let lower = name.to_lowercase();
+        if is_resources_file(&name) || lower.ends_with(".xml") {
             let metadata = fs::metadata(&path)
                 .map_err(|e| format!("Failed to read metadata for {}: {}", name, e))?;
             let hash = sha256_file(&path)?;
@@ -868,6 +869,16 @@ pub fn detect_unknown_mods(
         .map(|f| f.to_lowercase())
         .collect();
 
+    // Build exact-match set for non-.s2z files (e.g. .xml)
+    let mut known_exact: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for m in &manifest.mods {
+        for f in &m.files {
+            if !f.filename.to_lowercase().ends_with(".s2z") {
+                known_exact.insert(f.filename.to_lowercase());
+            }
+        }
+    }
+
     let mut unknown = Vec::new();
     let entries = fs::read_dir(&game_folder)
         .map_err(|e| format!("Failed to read game folder: {}", e))?;
@@ -886,7 +897,21 @@ pub fn detect_unknown_mods(
         // Skip ignored files
         if ignored.contains(&name.to_lowercase()) { continue; }
 
-        if is_resources_file(&name) {
+        let lower_name = name.to_lowercase();
+
+        if lower_name.ends_with(".xml") {
+            // XML files: exact match
+            if !known_exact.contains(&lower_name) {
+                let metadata = fs::metadata(&path)
+                    .map_err(|e| format!("Failed to get metadata for {}: {}", name, e))?;
+                let hash = sha256_file(&path)?;
+                unknown.push(UnknownModFile {
+                    filename: name,
+                    hash,
+                    size: metadata.len(),
+                });
+            }
+        } else if is_resources_file(&name) {
             let stem = Path::new(&name)
                 .file_stem()
                 .and_then(|s| s.to_str())

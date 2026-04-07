@@ -491,6 +491,19 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
             const latestVersion = detail.versions.find((v) => v.isLatest) ?? detail.versions[0];
             if (!latestVersion) return;
 
+            // Save content of user-modified XML files before the download overwrites staging
+            const modifiedXmlBackups = new Map<string, string>();
+            for (const f of inst.files) {
+                if (f.modified && f.type === "xml") {
+                    try {
+                        const content = await invoke<string>("read_mod_file_content", {
+                            profile, modId: inst.id, filename: f.filename,
+                        });
+                        modifiedXmlBackups.set(f.filename.toLowerCase(), content);
+                    } catch { /* file may not exist */ }
+                }
+            }
+
             const task = new ModDownloadTask(
                 profile,
                 detail.id,
@@ -533,7 +546,12 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                 : Promise.resolve();
 
                     disablePromise.then(() => {
-                        const newFiles = task.extractedFiles.map((f) => ({ ...f, enabled: wasEnabled }));
+                        // Carry forward per-file enabled/modified state from old files
+                        const oldFileState = new Map(inst.files.map((f) => [f.filename.toLowerCase(), { enabled: f.enabled, modified: f.modified }]));
+                        const newFiles = task.extractedFiles.map((f) => {
+                            const old = oldFileState.get(f.filename.toLowerCase());
+                            return { ...f, enabled: old?.enabled ?? wasEnabled, modified: old?.modified };
+                        });
                         updateModVersion(profile, inst.id, latestVersion.version, latestVersion.id, newFiles);
 
                         useDownloadHistory.getState().addEntry({
@@ -546,14 +564,27 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                         });
 
                         const manifest = toManifest(profile);
-                        return invoke("save_mod_manifest", { profile, manifest }).then(() => {
+                        return invoke("save_mod_manifest", { profile, manifest }).then(async () => {
+                            // Restore user-modified XML files
+                            for (const [key, content] of modifiedXmlBackups) {
+                                const match = newFiles.find((f) => f.filename.toLowerCase() === key);
+                                if (match) {
+                                    try {
+                                        await invoke("write_mod_file_content", {
+                                            profile, modId: inst.id, filename: match.filename,
+                                            content, loadOrder: oldLoadOrder, isEnabled: match.enabled,
+                                        });
+                                    } catch { /* best effort */ }
+                                }
+                            }
                             if (isTool || isToolMod(inst.files)) return;
                             if (inst.isMap) {
                                 return invoke("enable_map", { profile, modId: inst.id });
                             }
-                            if (!wasEnabled) return;
+                            const enabledFilenames = newFiles.filter((f) => f.enabled).map((f) => f.filename);
+                            if (enabledFilenames.length === 0) return;
                             return invoke<string[]>("enable_mod", {
-                                profile, modId: inst.id, loadOrder: oldLoadOrder,
+                                profile, modId: inst.id, loadOrder: oldLoadOrder, filenames: enabledFilenames,
                             }).then((conflicts) => {
                                 if (conflicts && conflicts.length > 0) {
                                     showFileConflictDialog(conflicts);
@@ -588,6 +619,19 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
             );
             const latestVersion = detail.versions.find((v) => v.isLatest) ?? detail.versions[0];
             if (!latestVersion) return;
+
+            // Save content of user-modified XML files before the download overwrites staging
+            const modifiedXmlBackups2 = new Map<string, string>();
+            for (const f of mod.files) {
+                if (f.modified && f.type === "xml") {
+                    try {
+                        const content = await invoke<string>("read_mod_file_content", {
+                            profile, modId: mod.id, filename: f.filename,
+                        });
+                        modifiedXmlBackups2.set(f.filename.toLowerCase(), content);
+                    } catch { /* file may not exist */ }
+                }
+            }
 
             const task = new ModDownloadTask(
                 profile,
@@ -629,7 +673,12 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                                 : Promise.resolve();
 
                     disablePromise.then(() => {
-                        const newFiles = task.extractedFiles.map((f) => ({ ...f, enabled: wasEnabled }));
+                        // Carry forward per-file enabled/modified state from old files
+                        const oldFileState = new Map(mod.files.map((f) => [f.filename.toLowerCase(), { enabled: f.enabled, modified: f.modified }]));
+                        const newFiles = task.extractedFiles.map((f) => {
+                            const old = oldFileState.get(f.filename.toLowerCase());
+                            return { ...f, enabled: old?.enabled ?? wasEnabled, modified: old?.modified };
+                        });
                         updateModVersion(profile, mod.id, latestVersion.version, latestVersion.id, newFiles);
 
                         useDownloadHistory.getState().addEntry({
@@ -642,14 +691,27 @@ const ModsSection: React.FC<Props> = ({ channel }: Props) => {
                         });
 
                         const manifest = toManifest(profile);
-                        return invoke("save_mod_manifest", { profile, manifest }).then(() => {
+                        return invoke("save_mod_manifest", { profile, manifest }).then(async () => {
+                            // Restore user-modified XML files
+                            for (const [key, content] of modifiedXmlBackups2) {
+                                const match = newFiles.find((f) => f.filename.toLowerCase() === key);
+                                if (match) {
+                                    try {
+                                        await invoke("write_mod_file_content", {
+                                            profile, modId: mod.id, filename: match.filename,
+                                            content, loadOrder: oldLoadOrder, isEnabled: match.enabled,
+                                        });
+                                    } catch { /* best effort */ }
+                                }
+                            }
                             if (isTool || isToolMod(mod.files)) return;
                             if (mod.isMap) {
                                 return invoke("enable_map", { profile, modId: mod.id });
                             }
-                            if (!wasEnabled) return;
+                            const enabledFilenames = newFiles.filter((f) => f.enabled).map((f) => f.filename);
+                            if (enabledFilenames.length === 0) return;
                             return invoke<string[]>("enable_mod", {
-                                profile, modId: mod.id, loadOrder: oldLoadOrder,
+                                profile, modId: mod.id, loadOrder: oldLoadOrder, filenames: enabledFilenames,
                             }).then((conflicts) => {
                                 if (conflicts && conflicts.length > 0) {
                                     showFileConflictDialog(conflicts);
