@@ -29,7 +29,8 @@ export const useServers = (latestVersion: string | null) => {
         queryFn: async (): Promise<ServerEntry[]> => {
             const all = await invoke<ServerEntry[]>("fetch_servers");
             if (!latestVersion) return all;
-            return all.filter((s) => !s.version || s.version === latestVersion);
+            const baseVersion = latestVersion.split(".").slice(0, 3).join(".");
+            return all.filter((s) => !s.version || s.version.startsWith(baseVersion));
         },
         refetchInterval: 5_000,
         staleTime: 30_000,
