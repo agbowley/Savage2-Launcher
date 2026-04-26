@@ -35,6 +35,8 @@ const PayloadProgress: React.FC<Props> = ({ payload, defaultText, fullMode }: Pr
     switch (payload.state) {
         case "downloading":
             return <ProgressDownloading payload={payload} fullMode={fullMode} />;
+        case "pending":
+            return <ProgressPending />;
         case "checking":
             return <ProgressChecking />;
         case "installing":
@@ -49,6 +51,11 @@ const PayloadProgress: React.FC<Props> = ({ payload, defaultText, fullMode }: Pr
 const ProgressWaiting: React.FC = () => {
     const { t } = useTranslation("launch");
     return (<span>{t("queued_status")}</span>);
+};
+
+const ProgressPending: React.FC = () => {
+    const { t } = useTranslation("launch");
+    return (<span>{t("pending_status")}</span>);
 };
 
 interface ProgressDownloadingProps {

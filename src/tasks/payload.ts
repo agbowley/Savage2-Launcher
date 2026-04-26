@@ -5,7 +5,7 @@ import { listen } from "@tauri-apps/api/event";
 import { throttle } from "lodash";
 import { useStore } from "zustand";
 
-export type TaskState = "downloading" | "installing" | "verifying" | "checking" | "waiting";
+export type TaskState = "downloading" | "installing" | "verifying" | "checking" | "waiting" | "pending";
 
 export interface TaskPayload {
     state: TaskState;
@@ -97,7 +97,7 @@ const calculatePayloadPercentage = (payload?: TaskPayload): number | undefined =
     return payload.total > 0 ? (payload.current / payload.total) * 100 : undefined;
 };
 
-export { store, createPayload, updatePayload, removePayload, usePayload, calculatePayloadPercentage };
+export { store, createPayload, setPayload, updatePayload, removePayload, usePayload, calculatePayloadPercentage };
 
 const throttleTime = 25;
 

@@ -5,7 +5,7 @@ import HistoryEntryComponent from "@app/components/Queue/HistoryEntry";
 import * as Progress from "@radix-ui/react-progress";
 import { QueueIcon, QueueListIcon, TimeIcon } from "@app/assets/Icons";
 import QueueStore from "@app/tasks/queue";
-import { usePayload } from "@app/tasks/payload";
+import { calculatePayloadPercentage, usePayload } from "@app/tasks/payload";
 import { useCurrentTask, cancelTask } from "@app/tasks";
 import { useDownloadHistory } from "@app/stores/DownloadHistoryStore";
 import { intlFormatDistance } from "date-fns";
@@ -23,14 +23,33 @@ function Queue() {
     const { entries: historyEntries, clearHistory } = useDownloadHistory();
 
     function getProgressValue() {
-        if (payload?.state === "downloading") {
-            return payload.current / payload.total * 100.0;
-        } else {
+        if (payload?.state !== "downloading") {
             return null;
         }
+
+        const percentage = calculatePayloadPercentage(payload);
+        if (percentage == null || !Number.isFinite(percentage) || percentage <= 0) {
+            return null;
+        }
+
+        return Math.min(percentage, 99.9);
+    }
+
+    function getProgressWidth() {
+        if (payload?.state !== "downloading") {
+            return undefined;
+        }
+
+        const percentage = calculatePayloadPercentage(payload);
+        if (percentage == null || !Number.isFinite(percentage)) {
+            return undefined;
+        }
+
+        return `${Math.min(Math.max(percentage, 0), 100)}%`;
     }
 
     const progressValue = getProgressValue();
+    const progressWidth = getProgressWidth();
     const isIndeterminate = currentTask != null && progressValue === null;
 
     return <div className={styles.page}>
@@ -52,6 +71,10 @@ function Queue() {
                                 const channel = profile === "latest" ? "stable"
                                     : profile === "beta" ? "nightly" : profile;
                                 navigate(`/s2/${channel}`);
+                            } else if (tag === "replay") {
+                                const channel = profile === "latest" ? "stable"
+                                    : profile === "beta" ? "nightly" : profile;
+                                navigate(`/s2/${channel}`, { state: { activeTab: "matches" } });
                             } else if (tag === "mod") {
                                 const modTask = currentTask as ModDownloadTask;
                                 navigate(`/mods/${modTask.modSlug}`);
@@ -75,7 +98,7 @@ function Queue() {
                     <Progress.Root className={styles.progress_bar_root} value={progressValue}>
                         <Progress.Indicator
                             className={`${styles.progress_bar_indicator} ${isIndeterminate ? styles.progress_bar_indeterminate : ""}`}
-                            style={progressValue !== null ? { width: `${progressValue}%` } : undefined}
+                            style={progressWidth ? { width: progressWidth } : undefined}
                         />
                     </Progress.Root>
                 </div>

@@ -7,6 +7,7 @@ import { intlFormatDistance } from "date-fns";
 import NewsSection from "../../NewsSection";
 import ModsSection from "../../ModsSection";
 import ServerBrowser from "../../ServerBrowser";
+import MatchesSection from "../../MatchesSection";
 import { LaunchButton } from "../LaunchButton";
 import { ReleaseChannels } from "@app/hooks/useS2Release";
 import { Link, useLocation } from "react-router-dom";
@@ -51,7 +52,7 @@ const LaunchPage: React.FC<Props> = ({ version, playName, description, websiteUr
     // Allow location.state override (e.g. back from mod detail page)
     useEffect(() => {
         const stateTab = (location.state as { activeTab?: string } | null)?.activeTab;
-        if (stateTab === "mods" || stateTab === "news" || stateTab === "servers") {
+        if (stateTab === "mods" || stateTab === "news" || stateTab === "servers" || stateTab === "matches") {
             setActiveTab(stateTab);
         }
     }, [location.state, setActiveTab]);
@@ -103,16 +104,24 @@ const LaunchPage: React.FC<Props> = ({ version, playName, description, websiteUr
                     >
                         {t("servers")}
                     </button>
+                    <button
+                        className={`${styles.tab_button} ${activeTab === "matches" ? styles.tab_active : ""}`}
+                        onClick={() => setActiveTab("matches")}
+                    >
+                        {t("matches")}
+                    </button>
                 </div>
                 {activeTab === "news" ? (
                     <NewsSection />
                 ) : activeTab === "mods" ? (
                     <ModsSection channel={channel} />
-                ) : (
+                ) : activeTab === "servers" ? (
                     <ServerBrowser
                         latestVersion={version.latestVersion}
                         onConnect={(address) => version.connectToServer(address)}
                     />
+                ) : (
+                    <MatchesSection channel={channel} version={version} />
                 )}
             </div>
             <div className={styles.sidebar}>

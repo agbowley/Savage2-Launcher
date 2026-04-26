@@ -27,6 +27,7 @@ import SettingsIcon from "./Settings.svg?react";
 import SongIcon from "./Song.svg?react";
 import TimeIcon from "./Time.svg?react";
 import TwitterIcon from "./Twitter.svg?react";
+import RefreshIcon from "./Refresh.svg?react";
 import UpdateIcon from "./Update.svg?react";
 import DriveIcon from "./Drive.svg?react";
 import UnknownUserIcon from "./UnknownUser.svg?react";
@@ -35,6 +36,7 @@ import ChangelogIcon from "./Changelog.svg?react";
 import WarningIcon from "./Warning.svg?react";
 import DropdownIcon from "./Dropdown.svg?react";
 import PlayIcon from "./Play.svg?react";
+import TrashIcon from "./Trash.svg?react";
 import ErrorIcon from "./Error.svg?react";
 import UpgradeIcon from "./Upgrade.svg?react";
 import PuzzleIcon from "./Puzzle.svg?react";
@@ -63,6 +65,7 @@ export {
     SongIcon,
     TimeIcon,
     TwitterIcon,
+    RefreshIcon,
     UpdateIcon,
     DriveIcon,
     UnknownUserIcon,
@@ -71,6 +74,7 @@ export {
     WarningIcon,
     DropdownIcon,
     PlayIcon,
+    TrashIcon,
     ErrorIcon,
     UpgradeIcon,
     PuzzleIcon,

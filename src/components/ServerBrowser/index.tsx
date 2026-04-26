@@ -8,7 +8,7 @@ import { showLoginDialog } from "@app/dialogs/dialogUtil";
 import Spinner from "../Spinner";
 import TooltipWrapper from "../TooltipWrapper";
 import LauncherIcon from "@app/assets/SourceIcons/Official.png";
-import { PlayIcon } from "@app/assets/Icons";
+import { PlayIcon, RefreshIcon } from "@app/assets/Icons";
 import styles from "./ServerBrowser.module.css";
 import type { MsAuthResponse } from "@app/types/auth";
 
@@ -102,9 +102,12 @@ function pickQuickConnectServer(
 // eslint-disable-next-line react/prop-types
 const ServerBrowser: React.FC<Props> = ({ latestVersion, onConnect }) => {
     const { t } = useTranslation("launch");
-    const { data: servers, isLoading, isError, error } = useServers(latestVersion);
+    const { data: servers, isLoading, isError, error, isFetching, refetch } = useServers(latestVersion);
     const { favourites, toggleFavourite } = useServerFavourites();
     const isLoggedIn = useAuthStore((s) => s.user !== null && s.authToken !== null);
+    const [showTip, setShowTip] = useState(
+        () => !localStorage.getItem("servers_browse_tip_dismissed"),
+    );
 
     const [search, setSearch] = useState("");
     const [hideEmpty, setHideEmpty] = useState(false);
@@ -113,6 +116,11 @@ const ServerBrowser: React.FC<Props> = ({ latestVersion, onConnect }) => {
     const [detailServer, setDetailServer] = useState<ServerEntry | null>(null);
 
     const hasMsCredentials = useAuthStore((s) => s.msPassword !== null);
+
+    const dismissTip = () => {
+        setShowTip(false);
+        localStorage.setItem("servers_browse_tip_dismissed", "1");
+    };
 
     const handleQuickConnect = useCallback(async () => {
         if (!servers || !onConnect) return;
@@ -237,6 +245,14 @@ const ServerBrowser: React.FC<Props> = ({ latestVersion, onConnect }) => {
 
     return (
         <div className={styles.container}>
+            {showTip && (
+                <div className={styles.tip_banner}>
+                    <p>{t("servers_browse_tip")}</p>
+                    <button className={styles.tip_dismiss} onClick={dismissTip}>
+                        {t("feature_tip_dismiss")}
+                    </button>
+                </div>
+            )}
             <div className={styles.filter_bar}>
                 <input
                     className={styles.search_input}
@@ -252,6 +268,17 @@ const ServerBrowser: React.FC<Props> = ({ latestVersion, onConnect }) => {
                     >
                         <FastForwardIcon />
                         {t("servers_quick_connect")}
+                    </button>
+                </TooltipWrapper>
+                <TooltipWrapper text={t("servers_refresh_tip")}>
+                    <button
+                        className={styles.refresh_icon_button}
+                        onClick={() => { void refetch(); }}
+                        disabled={isFetching}
+                        aria-label={t("servers_refresh")}
+                        title={t("servers_refresh")}
+                    >
+                        <RefreshIcon className={isFetching ? styles.refresh_icon_spinning : undefined} width={16} height={16} />
                     </button>
                 </TooltipWrapper>
                 <label className={styles.hide_empty_label}>

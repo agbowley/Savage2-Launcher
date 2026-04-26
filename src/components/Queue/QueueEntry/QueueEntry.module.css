@@ -101,6 +101,11 @@
     color: rgb(252, 211, 77);
 }
 
+.badge_replay {
+    background: rgba(46, 217, 255, 0.15);
+    color: #2ED9FF;
+}
+
 .badge_mod {
     display: inline-flex;
     padding: 2px 7px;

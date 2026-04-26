@@ -49,6 +49,7 @@ export type S2Version = {
     state: S2States,
     play: (skipVerification?: boolean) => Promise<void>,
     connectToServer: (address: string) => Promise<void>,
+    watchReplay: (replayFilename: string) => Promise<void>,
     stopGame: () => Promise<void>,
     download: () => Promise<void>,
     cancel: () => Promise<void>,
@@ -314,6 +315,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
             state,
             play: async () => {},
             connectToServer: async () => {},
+            watchReplay: async () => {},
             stopGame: async () => {},
             download: async () => {},
             cancel: async () => {},
@@ -536,6 +538,26 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
             }
             setState(S2States.ERROR);
             showErrorDialog(errMsg);
+            console.error(e);
+        }
+    };
+
+    const watchReplay = async (replayFilename: string) => {
+        if (!releaseData) return;
+
+        setState(S2States.LOADING);
+
+        try {
+            await invoke("launch", {
+                appName: "Savage 2",
+                profile,
+                replayFilename,
+            });
+
+            setState(S2States.PLAYING);
+        } catch (e) {
+            setState(S2States.ERROR);
+            showErrorDialog(e as string);
             console.error(e);
         }
     };
@@ -885,6 +907,7 @@ export const useS2Version = (releaseData: ExtendedReleaseData | undefined, profi
         state,
         play,
         connectToServer,
+        watchReplay,
         stopGame,
         download,
         cancel,

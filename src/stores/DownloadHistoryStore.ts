@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type HistoryEntryType = "install" | "update" | "repair" | "uninstall";
+export type HistoryEntryType = "install" | "update" | "repair" | "uninstall" | "replay";
 
 export interface HistoryEntry {
     id: string;
@@ -9,7 +9,7 @@ export interface HistoryEntry {
     game: string;
     /** e.g. "Community Edition", "Beta Test Client", "Legacy Client" */
     channel: string;
-    /** "install", "update", "repair", or "uninstall" */
+    /** "install", "update", "repair", "uninstall", or "replay" */
     type: HistoryEntryType;
     /** The version that was installed/updated to */
     version: string | null;
@@ -19,6 +19,10 @@ export interface HistoryEntry {
     repairedFiles?: string[];
     /** For mods: the name of the mod */
     modName?: string;
+    /** For replays: the match id */
+    matchId?: number;
+    /** For replays: the map name */
+    mapName?: string;
     /** ISO timestamp */
     timestamp: string;
 }

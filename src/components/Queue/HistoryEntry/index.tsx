@@ -19,12 +19,16 @@ const channelIcons: Record<string, string> = {
     "stable": StableS2Icon,
     "nightly": NightlyS2Icon,
     "legacy": LegacyS2Icon,
+    "latest": StableS2Icon,
+    "beta": NightlyS2Icon,
 };
 
 const channelNames: Record<string, string> = {
     "stable": "community_edition",
     "nightly": "beta_test_client",
     "legacy": "legacy_client",
+    "latest": "community_edition",
+    "beta": "beta_test_client",
     // Backward compat: old history entries stored English display names
     "Community Edition": "community_edition",
     "Beta Test Client": "beta_test_client",
@@ -41,6 +45,8 @@ function getBadgeClass(entry: HistoryEntryData): string {
             return (entry.repairedFiles?.length ?? 0) > 0 ? styles.badge_repair : styles.badge_verify;
         case "uninstall":
             return styles.badge_uninstall;
+        case "replay":
+            return styles.badge_replay;
     }
 }
 
@@ -54,6 +60,8 @@ function getBadgeLabel(entry: HistoryEntryData, t: (key: string) => string): str
             return (entry.repairedFiles?.length ?? 0) > 0 ? t("repaired_badge") : t("verified_badge");
         case "uninstall":
             return t("uninstalled_badge");
+        case "replay":
+            return t("replays_badge");
     }
 }
 
@@ -75,6 +83,8 @@ function getDetail(entry: HistoryEntryData, t: (key: string, opts?: Record<strin
         }
         case "uninstall":
             return entry.version ? t("version_removed", { version: entry.version }) : t("uninstalled_badge");
+        case "replay":
+            return entry.mapName ?? t("replays_badge");
     }
 }
 
@@ -106,9 +116,11 @@ const HistoryEntry: React.FC<Props> = ({ entry }: Props) => {
     const channelKey = channelNames[entry.channel];
     const channelLabel = channelKey ? tLaunch(channelKey) : entry.channel;
 
-    const title = entry.modName
-        ? `${channelLabel} — ${entry.modName}`
-        : `${entry.game} — ${channelLabel}`;
+    const title = entry.type === "replay" && entry.matchId != null
+        ? `${channelLabel} — ${tLaunch("match_id_label", { id: entry.matchId })}`
+        : entry.modName
+            ? `${channelLabel} — ${entry.modName}`
+            : `${entry.game} — ${channelLabel}`;
 
     return (
         <div className={styles.item}>

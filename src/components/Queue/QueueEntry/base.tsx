@@ -8,7 +8,7 @@ interface Props {
     name?: string;
     versionChannel?: string;
     version?: string;
-    taskType?: "download" | "update" | "uninstall" | "repair";
+    taskType?: "download" | "update" | "uninstall" | "repair" | "replay";
     isMod?: boolean;
     bannerMode: boolean;
     onRemove?: () => void;
@@ -20,6 +20,7 @@ function getTaskTypeLabel(taskType: string | undefined, t: (key: string) => stri
         case "update": return t("update_task");
         case "uninstall": return t("uninstall_task");
         case "repair": return t("repair_task");
+        case "replay": return t("replays_task");
         default: return t("queued_task");
     }
 }
@@ -30,6 +31,7 @@ function getBadgeClass(styles: typeof stylesNormal, taskType?: string): string {
         case "update": return styles.badge_update;
         case "uninstall": return styles.badge_uninstall;
         case "repair": return styles.badge_repair;
+        case "replay": return styles.badge_replay;
         default: return "";
     }
 }

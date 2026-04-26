@@ -6,6 +6,47 @@
     gap: 8px;
 }
 
+.tip_banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: rgba(74, 108, 247, 0.12);
+    border: 1px solid rgba(74, 108, 247, 0.3);
+    border-radius: 8px;
+    animation: tipFadeIn 0.3s ease;
+}
+
+.tip_banner p {
+    margin: 0;
+    flex: 1;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.tip_dismiss {
+    flex-shrink: 0;
+    padding: 5px 14px;
+    border: none;
+    border-radius: 4px;
+    background: #4a6cf7;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.tip_dismiss:hover {
+    filter: brightness(1.15);
+}
+
+@keyframes tipFadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 /* ---- Filter bar ---- */
 .filter_bar {
     display: flex;
@@ -270,6 +311,39 @@ td:hover .marquee_overflows .marquee_text {
 
 .quick_connect svg {
     flex-shrink: 0;
+}
+
+.refresh_icon_button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: rgba(255, 255, 255, 0.72);
+    cursor: pointer;
+    line-height: 0;
+    transition: color 0.15s;
+}
+
+.refresh_icon_button:hover:not(:disabled) {
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.refresh_icon_button:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+.refresh_icon_spinning {
+    animation: refresh_spin 0.9s linear infinite;
+}
+
+@keyframes refresh_spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 /* ---- Pin button ---- */

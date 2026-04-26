@@ -14,6 +14,7 @@ pub struct LaunchOptions {
     pub connect_address: Option<String>,
     pub ms_username: Option<String>,
     pub ms_password: Option<String>,
+    pub replay_path: Option<String>,
 }
 
 pub const PUB_KEY: &str = "";

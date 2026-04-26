@@ -1485,19 +1485,24 @@ impl AppProfile for S2AppProfile {
         // script context) to delay the Connect until the auth response has been
         // processed.
         let mut autoexec = String::from(LAUNCHER_AUTOEXEC);
-        if let (Some(username), Some(password)) = (&options.ms_username, &options.ms_password) {
-            autoexec.push_str(&format!("SetUsername {}\n", username));
-            autoexec.push_str(&format!("SetPassword {}\n", password));
-            autoexec.push_str("Login\n");
-        }
-        if let Some(addr) = &options.connect_address {
-            // Give the async Login HTTP request a brief window to complete
-            // before connecting.  500 ms is enough for most networks and
-            // keeps the menu flash barely noticeable.
-            if options.ms_username.is_some() && options.ms_password.is_some() {
-                autoexec.push_str("Sleep 500\n");
+        if let Some(replay_path) = &options.replay_path {
+            autoexec.push_str("Sleep 500\n");
+            autoexec.push_str(&format!("StartReplay \"{}\"\n", replay_path.replace('"', "\\\"")));
+        } else {
+            if let (Some(username), Some(password)) = (&options.ms_username, &options.ms_password) {
+                autoexec.push_str(&format!("SetUsername {}\n", username));
+                autoexec.push_str(&format!("SetPassword {}\n", password));
+                autoexec.push_str("Login\n");
             }
-            autoexec.push_str(&format!("Connect {}\n", addr));
+            if let Some(addr) = &options.connect_address {
+                // Give the async Login HTTP request a brief window to complete
+                // before connecting.  500 ms is enough for most networks and
+                // keeps the menu flash barely noticeable.
+                if options.ms_username.is_some() && options.ms_password.is_some() {
+                    autoexec.push_str("Sleep 500\n");
+                }
+                autoexec.push_str(&format!("Connect {}\n", addr));
+            }
         }
 
         std::fs::write(&autoexec_path, &autoexec)

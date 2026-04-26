@@ -6,6 +6,7 @@ rust_i18n::i18n!("locales", fallback = "en");
 mod utils;
 mod app_profile;
 mod mods;
+mod replays;
 mod server_browser;
 
 use app_profile::AppProfile;
@@ -562,6 +563,7 @@ fn launch(
     connect_address: Option<String>,
     ms_username: Option<String>,
     ms_password: Option<String>,
+    replay_filename: Option<String>,
 ) -> Result<(), String> {
     // Check if THIS profile is already running (other profiles are allowed)
     {
@@ -576,6 +578,11 @@ fn launch(
         &state,
         profile.clone()
     )?;
+
+    let replay_path = replay_filename
+        .as_deref()
+        .map(replays::resolve_replay_launch_path)
+        .transpose()?;
 
     let on_exit = {
         let app = app_handle.clone();
@@ -597,6 +604,7 @@ fn launch(
         ms_password: ms_password.map(|enc| {
             credential_crypto::decrypt(&enc).unwrap_or(enc)
         }),
+        replay_path,
     };
 
     match app_profile.launch(profile.clone(), on_exit, launch_options) {
@@ -1397,6 +1405,11 @@ fn main() {
             mods::uninstall_map,
             mods::read_mod_file_content,
             mods::write_mod_file_content,
+
+            // Replay management
+            replays::get_local_replay_status,
+            replays::download_replay_file,
+            replays::delete_local_replay,
 
             // Server browser
             server_browser::fetch_servers,

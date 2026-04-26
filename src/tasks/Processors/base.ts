@@ -1,6 +1,6 @@
 import { v4 as generateUUID } from "uuid";
 
-export type TaskTag = "Savage 2" | "setlist" | "mod";
+export type TaskTag = "Savage 2" | "setlist" | "mod" | "replay";
 
 export interface IBaseTask {
     startedAt?: Date,
@@ -17,6 +17,7 @@ export interface IBaseTask {
 }
 
 export class BaseTask {
+    startedAt?: Date;
     taskUUID: string;
     taskTag: TaskTag;
     profile: string;
